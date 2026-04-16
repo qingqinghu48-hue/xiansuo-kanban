@@ -37,3 +37,5 @@ users.yaml
 # 工作目录
 .workbuddy/
 .codebuddy/
+!server.py
+!build_dashboard.py
