@@ -12,9 +12,12 @@ build/
 
 # 生成文件
 dashboard_data.json
-线索看板*.html
-线索看板_diag.html
-线索看板_simple.html
+
+# 运行时文件（不提交）
+leads.db
+server.log
+users.yaml
+*.db
 
 # macOS
 .DS_Store
@@ -30,3 +33,7 @@ dashboard_data.json
 # 临时文件
 *.tmp
 *~
+
+# 工作目录
+.workbuddy/
+.codebuddy/
