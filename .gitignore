@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Excel/CSV 数据文件（根据需要可注释）
+*.xlsx
+*.csv
+
+# 生成文件
+dashboard_data.json
+线索看板*.html
+线索看板_diag.html
+线索看板_simple.html
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 临时文件
+*.tmp
+*~

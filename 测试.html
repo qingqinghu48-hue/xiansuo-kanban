@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>测试页</title>
+<style>
+body{font-family:system-ui,sans-serif;padding:20px;font-size:14px}
+button{padding:8px 16px;margin:4px;cursor:pointer}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;font-size:13px}
+th{background:#f5f5f5}
+#msg{margin:10px 0;font-weight:bold}
+</style>
+</head>
+<body>
+<h2>测试页 - 验证数据加载</h2>
+<div id="msg">等待中...</div>
+<table id="t"><thead><tr><th>入库时间</th><th>平台</th><th>姓名</th><th>手机</th><th>有效性</th><th>大区</th></tr></thead><tbody id="b"></tbody></table>
+<script src="data.js"></script>
+<script>
+// 直接操作，不用任何框架
+var ALL = window.__ALL__ || [];
+var COST = window.__COST__ || {};
+var div = document.getElementById('msg');
+if (!ALL.length) {
+  div.textContent = '❌ data.js加载失败！ALL数组为空';
+  div.style.color = 'red';
+} else {
+  div.textContent = '✅ data.js加载成功！共 ' + ALL.length + ' 条记录';
+  div.style.color = 'green';
+  var tbody = document.getElementById('b');
+  for (var i = 0; i < Math.min(ALL.length, 20); i++) {
+    var r = ALL[i];
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + (r['入库时间']||'') + '</td>' +
+      '<td>' + (r['平台']||'') + '</td>' +
+      '<td>' + (r['姓名']||'') + '</td>' +
+      '<td>' + (r['手机号']||'') + '</td>' +
+      '<td>' + (r['线索有效性']||'') + '</td>' +
+      '<td>' + (r['所属大区']||'') + '</td>';
+    tbody.appendChild(tr);
+  }
+  div.textContent += '，已显示前20条';
+}
+if (Object.keys(COST).length) {
+  var p = document.createElement('p');
+  p.style.marginTop = '10px';
+  p.textContent = '✅ COST数据: ' + Object.keys(COST).length + ' 天';
+  document.body.appendChild(p);
+} else {
+  var p = document.createElement('p');
+  p.style.marginTop = '10px';
+  p.style.color = 'red';
+  p.textContent = '❌ COST数据为空';
+  document.body.appendChild(p);
+}
+</script>
+</body>
+</html>

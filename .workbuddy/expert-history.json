@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "sessions": {
+    "6a464dc00cb84a34b5b9f1bb79f122db": [
+      {
+        "expertId": "UiDesigner",
+        "name": "像素君",
+        "profession": "UI设计师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/01-Design/UiDesigner/UiDesigner.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/01-Design/UiDesigner/UiDesigner_zh.md",
+        "usedAt": 1776184366609,
+        "industryId": "01-Design"
+      }
+    ]
+  },
+  "lastUpdated": 1776185530679
+}
