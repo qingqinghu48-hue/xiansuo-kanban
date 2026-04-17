@@ -21,7 +21,7 @@ DB_FILE = BASE_DIR / 'leads.db'
 # 数据库初始化
 # ─────────────────────────────────────────────
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS new_leads (
@@ -71,7 +71,7 @@ def load_data():
 
 # 加载新录入线索
 def load_new_leads():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('SELECT * FROM new_leads ORDER BY created_at DESC')
     rows = c.fetchall()
@@ -104,7 +104,7 @@ def load_new_leads():
 
 # 加载成本数据
 def load_cost_data():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('SELECT cost_date, platform, amount FROM cost_data ORDER BY cost_date ASC')
     rows = c.fetchall()
@@ -213,7 +213,7 @@ def add_lead():
         return jsonify({'success': False, 'message': '请填写完整信息'})
     
     # 检查是否已存在
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('SELECT id FROM new_leads WHERE phone = ?', (phone,))
     if c.fetchone():
@@ -253,7 +253,7 @@ def add_cost():
     except:
         return jsonify({'success': False, 'message': '金额格式错误'})
     
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
@@ -294,7 +294,7 @@ def update_lead():
     phone = data.get('phone', '').strip()
     
     # 检查是否是该招商员的线索
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
     row = c.fetchone()
@@ -348,7 +348,7 @@ def delete_lead():
     data = request.json
     phone = data.get('phone', '').strip()
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
     row = c.fetchone()
@@ -382,7 +382,7 @@ def mark_lead_read():
     data = request.json
     lead_id = data.get('id')
     
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('UPDATE new_leads SET is_read = 1 WHERE id = ?', (lead_id,))
     conn.commit()
@@ -405,7 +405,7 @@ def get_notifications():
         return jsonify({'unread_count': len(unread), 'notifications': unread})
     
     agent_name = user['name']
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     c.execute('SELECT * FROM new_leads WHERE agent = ? AND is_read = 0 ORDER BY created_at DESC', (agent_name,))
     rows = c.fetchall()
@@ -445,7 +445,7 @@ def import_leads():
         # 读取 Excel
         df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
 
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
         # 获取已有手机号
@@ -858,7 +858,7 @@ def kanban_content():
     unread_count = 0
     unread_leads = []
     if user['role'] != 'admin':
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
         c.execute('SELECT * FROM new_leads WHERE agent = ? AND is_read = 0', (user['name'],))
         rows = c.fetchall()
