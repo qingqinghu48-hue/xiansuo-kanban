@@ -1462,9 +1462,6 @@ async function loadCostData() {
     html += '<div class="form-row"><label>有效性</label><select id="editValid"><option value="">请选择</option><option>意向客户</option><option>一般客户</option><option>未联系上</option><option>普通线索</option><option>无意向客户</option><option>无效线索</option></select></div>';
     html += '<div class="form-row"><label>所属大区</label><input type="text" id="editRegion" value="' + esc(r['所属大区'] || '') + '"></div>';
     html += '<div class="form-row"><label>能否加微</label><select id="editWechat"><option value="">请选择</option><option>是</option><option>否</option></select></div>';
-    if (isManual) {
-      html += '<div class="form-row"><label>录入日期</label><input type="date" id="editDate" value="' + esc(r['入库时间'] || '') + '"></div>';
-    }
     html += '<div class="form-row"><label>二次联系时间</label><input type="date" id="editSecondContact" value="' + esc(r['二次联系时间'] || '') + '"></div>';
     html += '<div class="form-row"><label>二次联系备注</label><textarea id="editSecondRemark" rows="2">' + esc(r['二次联系备注'] || '') + '</textarea></div>';
     html += '<div class="form-row"><label>最近一次电联时间</label><input type="date" id="editLastCall" value="' + esc(r['最近一次电联时间'] || '') + '"></div>';
@@ -1493,7 +1490,6 @@ async function loadCostData() {
     var region = document.getElementById('editRegion').value;
     var wechat = document.getElementById('editWechat').value;
     var remark = document.getElementById('editRemark').value;
-    var entryDate = document.getElementById('editDate') ? document.getElementById('editDate').value : '';
     var secondContact = document.getElementById('editSecondContact') ? document.getElementById('editSecondContact').value : '';
     var secondRemark = document.getElementById('editSecondRemark') ? document.getElementById('editSecondRemark').value : '';
     var lastCall = document.getElementById('editLastCall') ? document.getElementById('editLastCall').value : '';
@@ -1503,7 +1499,7 @@ async function loadCostData() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        phone, name, city, validity: valid, region, can_wechat: wechat, remark, entry_date: entryDate,
+        phone, name, city, validity: valid, region, can_wechat: wechat, remark,
         '二次联系时间': secondContact, '二次联系备注': secondRemark,
         '最近一次电联时间': lastCall, '到访时间': visit, '签约时间': sign
       })
