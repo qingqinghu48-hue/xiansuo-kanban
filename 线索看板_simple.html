@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>看板测试</title>
+<style>
+body {font-family:sans-serif;padding:20px}
+#loading {color:#888;padding:40px;text-align:center}
+#main {display:none}
+.card {background:#f5f5f5;padding:12px;margin:8px 0;border-radius:6px}
+table {border-collapse:collapse;width:100%}
+td,th {border:1px solid #ddd;padding:8px;font-size:13px}
+</style>
+</head>
+<body>
+
+<div id="loading">数据加载中... <span id="status"></span></div>
+<div id="main">
+  <h2>看板测试 - 3 条</h2>
+  <div id="cards"></div>
+  <div id="charts" style="display:flex;gap:16px;margin:16px 0">
+    <div id="ct" style="width:400px;height:200px;border:1px solid #ddd"></div>
+  </div>
+  <table id="tbl"><thead><tr><th>入库时间</th><th>平台</th><th>姓名</th><th>有效性</th></tr></thead><tbody></tbody></table>
+</div>
+
+<script src="https://fastly.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+window.onerror = function(msg, url, line) {
+  document.getElementById('status').innerHTML = '<b style="color:red">JS错误: ' + msg + ' (行' + line + ')</b>';
+  return true;
+};
+document.getElementById('status').textContent = '脚本已加载';
+
+var ALL = [{"手机号": "13851518297", "姓名": "花仁华", "平台": "抖音", "入库时间": "2026-04-12", "流量类型": "", "线索有效性": "未联系上", "意向门店": "", "跟进员工": "郑建军", "线索阶段": "", "线索标签": "", "线索来源": "抖音广告", "所属大区": "南京区域", "所属招商": "郑建军", "省份": "南京", "是否能加上微信": "", "备注": "拒接发短信", "来源文件": "招商线索管理表"}, {"手机号": "13828817331", "姓名": "谢小姐", "平台": "抖音", "入库时间": "2026-04-12", "流量类型": "", "线索有效性": "", "意向门店": "", "跟进员工": "刘仁杰", "线索阶段": "", "线索标签": "", "线索来源": "抖音广告", "所属大区": "深莞惠区域", "所属招商": "刘仁杰", "省份": "深圳", "是否能加上微信": "", "备注": "", "来源文件": "招商线索管理表"}, {"手机号": "17512868889", "姓名": "殷", "平台": "抖音", "入库时间": "2026-04-12", "流量类型": "", "线索有效性": "", "意向门店": "", "跟进员工": "刘仁杰", "线索阶段": "", "线索标签": "", "线索来源": "抖音广告", "所属大区": "深莞惠区域", "所属招商": "刘仁杰", "省份": "深圳", "是否能加上微信": "", "备注": "", "来源文件": "招商线索管理表"}];
+document.getElementById('status').textContent = '数据已解析: ' + ALL.length + ' 条';
+
+(function() {
+  try {
+    var filtered = ALL.slice();
+    document.getElementById('status').textContent = '筛选后: ' + filtered.length;
+
+    // 渲染卡片
+    var platCount = {};
+    filtered.forEach(function(r) {
+      var p = r['平台'] || '其他';
+      platCount[p] = (platCount[p]||0)+1;
+    });
+    var cardsEl = document.getElementById('cards');
+    Object.keys(platCount).forEach(function(p) {
+      cardsEl.innerHTML += '<div class="card">' + p + ': ' + platCount[p] + ' 条</div>';
+    });
+
+    // 渲染表格
+    var tbody = document.querySelector('#tbl tbody');
+    filtered.forEach(function(r) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+(r['入库时间']||'')+'</td><td>'+(r['平台']||'')+'</td><td>'+(r['姓名']||'')+'</td><td>'+(r['线索有效性']||'')+'</td>';
+      tbody.appendChild(tr);
+    });
+
+    // 图表
+    var chartEl = document.getElementById('ct');
+    var chart = echarts.init(chartEl);
+    chart.setOption({
+      title: {text: '平台分布'},
+      tooltip: {trigger: 'item'},
+      series: [{
+        type: 'pie',
+        radius: '50%',
+        data: Object.keys(platCount).map(function(k) { return {name:k, value:platCount[k]}; })
+      }]
+    });
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    document.getElementById('status').textContent = '渲染完成!';
+  } catch(e) {
+    document.getElementById('status').innerHTML = '<b style="color:red">渲染出错: ' + e.message + '</b>';
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
