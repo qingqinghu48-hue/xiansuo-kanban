@@ -453,6 +453,7 @@ def import_leads():
         existing_phones = set(row[0] for row in c.fetchall())
 
         added_count = 0
+        updated_count = 0
         today = datetime.now().strftime('%Y-%m-%d')
 
         for _, row in df.iterrows():
@@ -470,11 +471,14 @@ def import_leads():
                 if not phone or phone == 'nan' or phone == '' or phone == 'None':
                     continue
 
-                # 跳过已存在的
-                if phone in existing_phones:
-                    continue
-
-                # 自动识别招商员（优先用所属招商，其次跟进员工）
+                # 获取线索数据
+                name = str(row.get('姓名', '')) if pd.notna(row.get('姓名')) else ''
+                city = str(row.get('城市', '') or row.get('省份', '')) if pd.notna(row.get('城市')) or pd.notna(row.get('省份')) else ''
+                validity = str(row.get('有效性', '') or row.get('线索有效性', '')) if pd.notna(row.get('有效性')) or pd.notna(row.get('线索有效性')) else ''
+                region = str(row.get('所属大区', '') or row.get('大区', '')) if pd.notna(row.get('所属大区')) or pd.notna(row.get('大区')) else ''
+                can_wechat = str(row.get('能否加微', '') or row.get('是否能加上微信', '')) if pd.notna(row.get('能否加微')) or pd.notna(row.get('是否能加上微信')) else ''
+                remark = str(row.get('备注', '')) if pd.notna(row.get('备注')) else ''
+                platform = str(row.get('平台', '抖音'))
                 agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
                 if not agent or agent == 'nan':
                     agent = '郑建军'  # 默认招商员
@@ -489,24 +493,26 @@ def import_leads():
                         except:
                             pass
 
-                c.execute('''
-                    INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    phone,
-                    str(row.get('平台', '抖音')),
-                    agent,
-                    entry_date,
-                    str(row.get('姓名', '')),
-                    str(row.get('城市', '') or row.get('省份', '')),
-                    str(row.get('有效性', '') or row.get('线索有效性', '')),
-                    str(row.get('所属大区', '') or row.get('大区', '')),
-                    str(row.get('能否加微', '') or row.get('是否能加上微信', '')),
-                    str(row.get('备注', '')),
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                ))
-                existing_phones.add(phone)
-                added_count += 1
+                # 如果已存在则更新（保留原日期），不存在则新增
+                if phone in existing_phones:
+                    c.execute('''
+                        UPDATE new_leads SET 
+                            name = ?, city = ?, validity = ?, region = ?, 
+                            can_wechat = ?, remark = ?, platform = ?, agent = ?
+                        WHERE phone = ?
+                    ''', (name, city, validity, region, can_wechat, remark, platform, agent, phone))
+                    updated_count += 1
+                else:
+                    c.execute('''
+                        INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        phone, platform, agent, entry_date,
+                        name, city, validity, region, can_wechat, remark,
+                        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    ))
+                    existing_phones.add(phone)
+                    added_count += 1
             except Exception as row_err:
                 print(f"跳过行: {row_err}")
                 continue
@@ -514,7 +520,7 @@ def import_leads():
         conn.commit()
         conn.close()
 
-        return jsonify({'success': True, 'message': f'成功导入 {added_count} 条新线索'})
+        return jsonify({'success': True, 'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索'})
 
     except Exception as e:
         return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
