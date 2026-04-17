@@ -799,12 +799,6 @@ def login_page():
                 <button type="submit">登录</button>
                 <div class="error" id="error"></div>
             </form>
-            <div class="demo">
-                <h3>测试账号：</h3>
-                <p>管理员：<code>admin</code> / <code>admin123</code></p>
-                <p>招商员1：<code>zhengjianjun</code> / <code>zjj001345</code></p>
-                <p>招商员2：<code>liurenjie</code> / <code>lrj001678</code></p>
-            </div>
         </div>
         <script>
             document.getElementById('loginForm').onsubmit = async (e) => {
