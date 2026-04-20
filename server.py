@@ -444,8 +444,6 @@ def import_leads():
 
         # 读取 Excel
         df = pd.read_excel(BytesIO(file.read()))
-        print(f"DEBUG: 列名={list(df.columns)}")
-        print(f"DEBUG: 总行数={len(df)}")
 
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
@@ -456,70 +454,71 @@ def import_leads():
 
         added_count = 0
         updated_count = 0
+        skipped_count = 0
         today = datetime.now().strftime('%Y-%m-%d')
 
-        for _, row in df.iterrows():
+        for i in range(len(df)):
             try:
-                phone = row.get('手机号', '') or row.get('客户电话', '')
-                # 处理浮点数手机号
-                if isinstance(phone, float):
-                    if pd.isna(phone) or phone != phone:  # NaN check
-                        continue
-                    phone = str(int(phone))
-                elif pd.isna(phone):
+                # 获取手机号（支持多种列名）
+                phone_val = df.at[i, '客户电话'] if '客户电话' in df.columns else None
+                if phone_val is None or pd.isna(phone_val):
+                    skipped_count += 1
                     continue
+                
+                # 转换为字符串
+                if isinstance(phone_val, float):
+                    phone = str(int(phone_val))
                 else:
-                    phone = str(phone).strip()
-                if not phone or phone == 'nan' or phone == '' or phone == 'None':
-                    print(f"DEBUG: 跳过空手机号行")
+                    phone = str(phone_val).strip()
+                
+                # 验证手机号
+                if len(phone) < 10 or not phone.isdigit():
+                    skipped_count += 1
                     continue
 
-                # 获取线索数据
-                name = str(row.get('姓名', '') or row.get('客户姓名', '')) if pd.notna(row.get('姓名')) or pd.notna(row.get('客户姓名')) else ''
-                city = str(row.get('所属城市', '') or row.get('城市', '') or row.get('省份', '')) if pd.notna(row.get('所属城市')) or pd.notna(row.get('城市')) or pd.notna(row.get('省份')) else ''
-                validity = str(row.get('有效性', '') or row.get('线索有效性', '')) if pd.notna(row.get('有效性')) or pd.notna(row.get('线索有效性')) else ''
-                region = str(row.get('所属大区', '') or row.get('大区', '')) if pd.notna(row.get('所属大区')) or pd.notna(row.get('大区')) else ''
-                can_wechat = str(row.get('能否加微', '') or row.get('是否能加上微信', '')) if pd.notna(row.get('能否加微')) or pd.notna(row.get('是否能加上微信')) else ''
-                remark = str(row.get('备注', '') or row.get('客户情况备注', '')) if pd.notna(row.get('备注')) or pd.notna(row.get('客户情况备注')) else ''
-                platform = str(row.get('平台', '') or row.get('线索来源', '抖音'))
-                if not platform or platform == 'nan':
+                # 获取其他字段
+                def get_val(col_name, default=''):
+                    if col_name in df.columns and not pd.isna(df.at[i, col_name]):
+                        val = df.at[i, col_name]
+                        if isinstance(val, float):
+                            return str(int(val))
+                        return str(val).strip()
+                    return default
+
+                name = get_val('客户姓名')
+                city = get_val('所属城市', '')
+                validity = get_val('线索有效性', '')
+                region = get_val('所属大区', '')
+                can_wechat = get_val('是否能加上微信', '')
+                remark = get_val('客户情况备注', '')
+                platform = get_val('线索来源', '抖音')
+                if not platform:
                     platform = '抖音'
-                agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
-                if not agent or agent == 'nan':
-                    agent = '郑建军'  # 默认招商员
+                agent = get_val('所属招商', '')
+                if not agent:
+                    agent = '郑建军'
 
                 # 解析入库日期
                 entry_date = today
-                for date_col in ['入库日期', '入库时间', '录入日期']:
-                    if date_col in row and pd.notna(row[date_col]):
-                        try:
-                            entry_date = pd.to_datetime(row[date_col]).strftime('%Y-%m-%d')
-                            break
-                        except:
-                            pass
+                if '入库日期' in df.columns and not pd.isna(df.at[i, '入库日期']):
+                    try:
+                        entry_date = pd.to_datetime(df.at[i, '入库日期']).strftime('%Y-%m-%d')
+                    except:
+                        pass
 
-                # 如果已存在则更新（保留原日期），不存在则新增
+                # 插入或更新
                 if phone in existing_phones:
-                    c.execute('''
-                        UPDATE new_leads SET 
-                            name = ?, city = ?, validity = ?, region = ?, 
-                            can_wechat = ?, remark = ?, platform = ?, agent = ?
-                        WHERE phone = ?
-                    ''', (name, city, validity, region, can_wechat, remark, platform, agent, phone))
+                    c.execute('''UPDATE new_leads SET name=?, city=?, validity=?, region=?, can_wechat=?, remark=?, platform=?, agent=? WHERE phone=?''',
+                        (name, city, validity, region, can_wechat, remark, platform, agent, phone))
                     updated_count += 1
                 else:
-                    c.execute('''
-                        INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        phone, platform, agent, entry_date,
-                        name, city, validity, region, can_wechat, remark,
-                        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    ))
+                    c.execute('''INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                     existing_phones.add(phone)
                     added_count += 1
-            except Exception as row_err:
-                print(f"跳过行: {row_err}")
+
+            except Exception as e:
+                skipped_count += 1
                 continue
 
         conn.commit()
@@ -527,8 +526,8 @@ def import_leads():
 
         return jsonify({
             'success': True, 
-            'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索',
-            'debug': {'columns': list(df.columns), 'rows': len(df), 'existing_phones_count': len(existing_phones)}
+            'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索（跳过 {skipped_count} 条无效数据）',
+            'debug': {'rows': len(df), 'added': added_count, 'updated': updated_count, 'skipped': skipped_count}
         })
 
     except Exception as e:
