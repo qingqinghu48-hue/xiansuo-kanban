@@ -458,6 +458,14 @@ def import_leads():
         has_entry_date = '入库日期' in df.columns    # 招商线索管理表
         file_type = '抖音来客' if has_follow_staff else '招商线索'
         
+        # 调试：打印列名和前3行手机号
+        print(f"DEBUG: Excel列名={list(df.columns)}")
+        print(f"DEBUG: 总行数={len(df)}")
+        for idx in range(min(3, len(df))):
+            for col in ['客户电话', '手机号', '电话']:
+                if col in df.columns:
+                    print(f"DEBUG: 行{idx} {col}={df.at[idx, col]}")
+        
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
