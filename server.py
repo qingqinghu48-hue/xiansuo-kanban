@@ -439,37 +439,41 @@ def import_leads():
         return jsonify({'success': False, 'message': '请选择文件'})
 
     try:
-        import pandas as pd
+        from openpyxl import load_workbook
         from io import BytesIO
-
-        # 读取Excel
-        try:
-            df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
-        except:
-            try:
-                df = pd.read_excel(BytesIO(file.read()), engine='xlrd')
-            except ImportError:
-                import subprocess, sys
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'openpyxl', '-q'])
-                df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
-
-        # 判断表格类型
-        has_follow_staff = '跟进员工' in df.columns  # 抖音来客后台客资表
-        has_entry_date = '入库日期' in df.columns    # 招商线索管理表
-        file_type = '抖音来客' if has_follow_staff else '招商线索'
         
-        # 调试：打印列名和前3行手机号
-        print(f"DEBUG: Excel列名={list(df.columns)}")
-        print(f"DEBUG: 总行数={len(df)}")
-        for idx in range(min(3, len(df))):
-            for col in ['客户电话', '手机号', '电话']:
-                if col in df.columns:
-                    print(f"DEBUG: 行{idx} {col}={df.at[idx, col]}")
+        # 使用openpyxl直接读取
+        excel_data = BytesIO(file.read())
+        wb = load_workbook(filename=excel_data, data_only=True)
+        ws = wb.active
+        wb.close()
+        
+        # 获取表头（第一行）
+        headers = []
+        for cell in ws[1]:
+            headers.append(str(cell.value) if cell.value else '')
+        
+        # 查找列索引
+        def col_idx(*names):
+            for name in names:
+                for i, h in enumerate(headers):
+                    if h == name:
+                        return i
+            return -1
+        
+        phone_col = col_idx('客户电话', '手机号', '电话')
+        name_col = col_idx('客户姓名', '姓名')
+        city_col = col_idx('所属城市', '城市')
+        region_col = col_idx('所属大区', '大区')
+        validity_col = col_idx('线索有效性', '有效性')
+        can_wechat_col = col_idx('是否能加上微信', '能否加微')
+        remark_col = col_idx('客户情况备注', '备注')
+        platform_col = col_idx('线索来源', '来源', '平台')
+        agent_col = col_idx('所属招商', '招商员')
+        follow_staff_col = col_idx('跟进员工')
         
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
-
-        # 获取已有手机号
         c.execute('SELECT phone FROM new_leads')
         existing_phones = set(row[0] for row in c.fetchall())
 
@@ -478,76 +482,61 @@ def import_leads():
         skipped_count = 0
         today = datetime.now().strftime('%Y-%m-%d')
 
-        for i in range(len(df)):
+        # 从第二行开始读取数据
+        for row_idx in range(2, ws.max_row + 1):
             try:
-                # 获取手机号（支持多种列名）
-                phone_val = None
-                for col in ['客户电话', '手机号', '电话']:
-                    if col in df.columns:
-                        phone_val = df.at[i, col]
-                        break
-                
-                if phone_val is None or pd.isna(phone_val):
+                # 获取手机号
+                if phone_col < 0:
                     skipped_count += 1
                     continue
-                
-                # 转换为字符串
-                if isinstance(phone_val, float):
-                    phone = str(int(phone_val))
-                else:
-                    phone = str(phone_val).strip()
-                
-                # 验证手机号
+                phone_val = ws.cell(row=row_idx, column=phone_col + 1).value
+                if not phone_val:
+                    skipped_count += 1
+                    continue
+                phone = str(phone_val).strip()
                 if len(phone) < 10 or not phone.isdigit():
                     skipped_count += 1
                     continue
 
                 # 获取字段值
-                def get_val(*cols):
-                    for col in cols:
-                        if col in df.columns and not pd.isna(df.at[i, col]):
-                            val = df.at[i, col]
-                            if isinstance(val, float):
-                                return str(int(val))
-                            return str(val).strip()
-                    return ''
+                def get_val(col):
+                    if col < 0:
+                        return ''
+                    v = ws.cell(row=row_idx, column=col + 1).value
+                    if v is None:
+                        return ''
+                    return str(v).strip()
 
-                name = get_val('客户姓名', '姓名')
-                city = get_val('所属城市', '城市', '省份')
-                validity = get_val('线索有效性', '有效性')
-                region = get_val('所属大区', '大区')
-                can_wechat = get_val('是否能加上微信', '能否加微')
-                remark = get_val('客户情况备注', '备注')
-                platform = get_val('线索来源', '来源', '平台') or '抖音'
+                name = get_val(name_col)
+                city = get_val(city_col)
+                region = get_val(region_col)
+                validity = get_val(validity_col)
+                can_wechat = get_val(can_wechat_col)
+                remark = get_val(remark_col)
+                platform = get_val(platform_col) or '抖音'
                 
-                # 招商员分配逻辑
-                agent = get_val('所属招商', '招商员')
+                # 招商员分配
+                agent = get_val(agent_col)
                 if not agent:
-                    # 抖音来客后台：根据跟进员工分配
-                    follow_staff = get_val('跟进员工')
+                    follow_staff = get_val(follow_staff_col)
                     if follow_staff:
-                        if '郑建' in follow_staff or '郑建军' in follow_staff:
+                        if '郑' in follow_staff:
                             agent = '郑建军'
-                        elif '刘仁杰' in follow_staff or '刘仁杰' in follow_staff:
-                            agent = '刘仁杰'
                         elif '刘' in follow_staff:
                             agent = '刘仁杰'
                         else:
                             agent = follow_staff
                     else:
-                        agent = '郑建军'  # 默认招商员
+                        agent = '郑建军'
 
-                # 招商线索管理表：不录入入库日期，用今天日期
-                entry_date = today
-                
-                # 更新或新增
+                # 插入或更新
                 if phone in existing_phones:
                     c.execute('''UPDATE new_leads SET name=?, city=?, validity=?, region=?, can_wechat=?, remark=?, platform=?, agent=? WHERE phone=?''',
                         (name, city, validity, region, can_wechat, remark, platform, agent, phone))
                     updated_count += 1
                 else:
                     c.execute('''INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                        (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                        (phone, platform, agent, today, name, city, validity, region, can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                     existing_phones.add(phone)
                     added_count += 1
 
@@ -560,8 +549,8 @@ def import_leads():
 
         return jsonify({
             'success': True, 
-            'message': f'[{file_type}] 成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索（跳过 {skipped_count} 条）',
-            'debug': {'file_type': file_type, 'rows': len(df), 'added': added_count, 'updated': updated_count, 'skipped': skipped_count}
+            'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索（跳过 {skipped_count} 条无效数据）',
+            'debug': {'rows': ws.max_row - 1, 'added': added_count, 'updated': updated_count, 'skipped': skipped_count}
         })
 
     except Exception as e:
