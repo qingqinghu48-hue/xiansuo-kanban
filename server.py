@@ -443,7 +443,7 @@ def import_leads():
         from io import BytesIO
 
         # 读取 Excel
-        df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+        df = pd.read_excel(BytesIO(file.read()))
         print(f"DEBUG: 列名={list(df.columns)}")
         print(f"DEBUG: 总行数={len(df)}")
 
@@ -525,7 +525,11 @@ def import_leads():
         conn.commit()
         conn.close()
 
-        return jsonify({'success': True, 'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索'})
+        return jsonify({
+            'success': True, 
+            'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索',
+            'debug': {'columns': list(df.columns), 'rows': len(df), 'existing_phones_count': len(existing_phones)}
+        })
 
     except Exception as e:
         return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
