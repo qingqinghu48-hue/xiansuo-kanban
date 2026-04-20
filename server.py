@@ -442,13 +442,16 @@ def import_leads():
         import pandas as pd
         from io import BytesIO
 
-        # 尝试读取Excel，如果失败则安装依赖
+        # 读取Excel，优先使用openpyxl引擎
         try:
-            df = pd.read_excel(BytesIO(file.read()))
-        except ImportError:
-            import subprocess, sys
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'xlrd', '-q'])
-            df = pd.read_excel(BytesIO(file.read()))
+            df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+        except:
+            try:
+                df = pd.read_excel(BytesIO(file.read()), engine='xlrd')
+            except ImportError:
+                import subprocess, sys
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'openpyxl', '-q'])
+                df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
 
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
