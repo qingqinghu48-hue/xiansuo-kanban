@@ -444,6 +444,8 @@ def import_leads():
 
         # 读取 Excel
         df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+        print(f"DEBUG: 列名={list(df.columns)}")
+        print(f"DEBUG: 总行数={len(df)}")
 
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
@@ -469,6 +471,7 @@ def import_leads():
                 else:
                     phone = str(phone).strip()
                 if not phone or phone == 'nan' or phone == '' or phone == 'None':
+                    print(f"DEBUG: 跳过空手机号行")
                     continue
 
                 # 获取线索数据
