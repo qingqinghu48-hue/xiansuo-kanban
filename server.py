@@ -442,8 +442,13 @@ def import_leads():
         import pandas as pd
         from io import BytesIO
 
-        # 读取 Excel
-        df = pd.read_excel(BytesIO(file.read()))
+        # 尝试读取Excel，如果失败则安装依赖
+        try:
+            df = pd.read_excel(BytesIO(file.read()))
+        except ImportError:
+            import subprocess, sys
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'xlrd', '-q'])
+            df = pd.read_excel(BytesIO(file.read()))
 
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
