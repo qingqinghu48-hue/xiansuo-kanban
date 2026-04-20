@@ -460,7 +460,7 @@ def import_leads():
 
         for _, row in df.iterrows():
             try:
-                phone = row.get('手机号', '')
+                phone = row.get('手机号', '') or row.get('客户电话', '')
                 # 处理浮点数手机号
                 if isinstance(phone, float):
                     if pd.isna(phone) or phone != phone:  # NaN check
@@ -475,13 +475,15 @@ def import_leads():
                     continue
 
                 # 获取线索数据
-                name = str(row.get('姓名', '')) if pd.notna(row.get('姓名')) else ''
-                city = str(row.get('城市', '') or row.get('省份', '')) if pd.notna(row.get('城市')) or pd.notna(row.get('省份')) else ''
+                name = str(row.get('姓名', '') or row.get('客户姓名', '')) if pd.notna(row.get('姓名')) or pd.notna(row.get('客户姓名')) else ''
+                city = str(row.get('所属城市', '') or row.get('城市', '') or row.get('省份', '')) if pd.notna(row.get('所属城市')) or pd.notna(row.get('城市')) or pd.notna(row.get('省份')) else ''
                 validity = str(row.get('有效性', '') or row.get('线索有效性', '')) if pd.notna(row.get('有效性')) or pd.notna(row.get('线索有效性')) else ''
                 region = str(row.get('所属大区', '') or row.get('大区', '')) if pd.notna(row.get('所属大区')) or pd.notna(row.get('大区')) else ''
                 can_wechat = str(row.get('能否加微', '') or row.get('是否能加上微信', '')) if pd.notna(row.get('能否加微')) or pd.notna(row.get('是否能加上微信')) else ''
-                remark = str(row.get('备注', '')) if pd.notna(row.get('备注')) else ''
-                platform = str(row.get('平台', '抖音'))
+                remark = str(row.get('备注', '') or row.get('客户情况备注', '')) if pd.notna(row.get('备注')) or pd.notna(row.get('客户情况备注')) else ''
+                platform = str(row.get('平台', '') or row.get('线索来源', '抖音'))
+                if not platform or platform == 'nan':
+                    platform = '抖音'
                 agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
                 if not agent or agent == 'nan':
                     agent = '郑建军'  # 默认招商员
