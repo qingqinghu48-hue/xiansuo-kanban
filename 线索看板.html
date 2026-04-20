@@ -1367,6 +1367,7 @@ async function loadCostData() {
     if (sortK) sortFiltered();
     page = 1;
     renderTable();
+    renderCards();
     try { drawPlat(); } catch(e) {}
     try { drawValid(); } catch(e) {}
   }
