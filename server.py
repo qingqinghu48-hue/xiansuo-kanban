@@ -843,7 +843,7 @@ def kanban_content():
     if not user:
         return '<h1>请先登录</h1><a href="/">返回登录</a>'
     
-    html_file = BASE_DIR / '线索看板.html'
+    html_file = Path('/www/xiansuo-kanban') / '线索看板.html'
     with open(html_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
