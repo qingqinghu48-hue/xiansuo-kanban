@@ -439,119 +439,88 @@ def import_leads():
         return jsonify({'success': False, 'message': '请选择文件'})
 
     try:
-        from openpyxl import load_workbook
+        import pandas as pd
         from io import BytesIO
-        
-        # 使用openpyxl直接读取
-        excel_data = BytesIO(file.read())
-        wb = load_workbook(filename=excel_data, data_only=True)
-        ws = wb.active
-        wb.close()
-        
-        # 获取表头（第一行）
-        headers = []
-        for cell in ws[1]:
-            headers.append(str(cell.value) if cell.value else '')
-        
-        # 查找列索引
-        def col_idx(*names):
-            for name in names:
-                for i, h in enumerate(headers):
-                    if h == name:
-                        return i
-            return -1
-        
-        phone_col = col_idx('客户电话', '手机号', '电话')
-        name_col = col_idx('客户姓名', '姓名')
-        city_col = col_idx('所属城市', '城市')
-        region_col = col_idx('所属大区', '大区')
-        validity_col = col_idx('线索有效性', '有效性')
-        can_wechat_col = col_idx('是否能加上微信', '能否加微')
-        remark_col = col_idx('客户情况备注', '备注')
-        platform_col = col_idx('线索来源', '来源', '平台')
-        agent_col = col_idx('所属招商', '招商员')
-        follow_staff_col = col_idx('跟进员工')
-        
+
+        # 读取 Excel
+        df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
+
+        # 获取已有手机号
         c.execute('SELECT phone FROM new_leads')
         existing_phones = set(row[0] for row in c.fetchall())
 
         added_count = 0
         updated_count = 0
-        skipped_count = 0
         today = datetime.now().strftime('%Y-%m-%d')
 
-        # 从第二行开始读取数据
-        for row_idx in range(2, ws.max_row + 1):
+        for _, row in df.iterrows():
             try:
-                # 获取手机号
-                if phone_col < 0:
-                    skipped_count += 1
+                phone = row.get('手机号', '')
+                # 处理浮点数手机号
+                if isinstance(phone, float):
+                    if pd.isna(phone) or phone != phone:  # NaN check
+                        continue
+                    phone = str(int(phone))
+                elif pd.isna(phone):
                     continue
-                phone_val = ws.cell(row=row_idx, column=phone_col + 1).value
-                if not phone_val:
-                    skipped_count += 1
-                    continue
-                phone = str(phone_val).strip()
-                if len(phone) < 10 or not phone.isdigit():
-                    skipped_count += 1
+                else:
+                    phone = str(phone).strip()
+                if not phone or phone == 'nan' or phone == '' or phone == 'None':
                     continue
 
-                # 获取字段值
-                def get_val(col):
-                    if col < 0:
-                        return ''
-                    v = ws.cell(row=row_idx, column=col + 1).value
-                    if v is None:
-                        return ''
-                    return str(v).strip()
+                # 获取线索数据
+                name = str(row.get('姓名', '')) if pd.notna(row.get('姓名')) else ''
+                city = str(row.get('城市', '') or row.get('省份', '')) if pd.notna(row.get('城市')) or pd.notna(row.get('省份')) else ''
+                validity = str(row.get('有效性', '') or row.get('线索有效性', '')) if pd.notna(row.get('有效性')) or pd.notna(row.get('线索有效性')) else ''
+                region = str(row.get('所属大区', '') or row.get('大区', '')) if pd.notna(row.get('所属大区')) or pd.notna(row.get('大区')) else ''
+                can_wechat = str(row.get('能否加微', '') or row.get('是否能加上微信', '')) if pd.notna(row.get('能否加微')) or pd.notna(row.get('是否能加上微信')) else ''
+                remark = str(row.get('备注', '')) if pd.notna(row.get('备注')) else ''
+                platform = str(row.get('平台', '抖音'))
+                agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
+                if not agent or agent == 'nan':
+                    agent = '郑建军'  # 默认招商员
 
-                name = get_val(name_col)
-                city = get_val(city_col)
-                region = get_val(region_col)
-                validity = get_val(validity_col)
-                can_wechat = get_val(can_wechat_col)
-                remark = get_val(remark_col)
-                platform = get_val(platform_col) or '抖音'
-                
-                # 招商员分配
-                agent = get_val(agent_col)
-                if not agent:
-                    follow_staff = get_val(follow_staff_col)
-                    if follow_staff:
-                        if '郑' in follow_staff:
-                            agent = '郑建军'
-                        elif '刘' in follow_staff:
-                            agent = '刘仁杰'
-                        else:
-                            agent = follow_staff
-                    else:
-                        agent = '郑建军'
+                # 解析入库日期
+                entry_date = today
+                for date_col in ['入库日期', '入库时间', '录入日期']:
+                    if date_col in row and pd.notna(row[date_col]):
+                        try:
+                            entry_date = pd.to_datetime(row[date_col]).strftime('%Y-%m-%d')
+                            break
+                        except:
+                            pass
 
-                # 插入或更新
+                # 如果已存在则更新（保留原日期），不存在则新增
                 if phone in existing_phones:
-                    c.execute('''UPDATE new_leads SET name=?, city=?, validity=?, region=?, can_wechat=?, remark=?, platform=?, agent=? WHERE phone=?''',
-                        (name, city, validity, region, can_wechat, remark, platform, agent, phone))
+                    c.execute('''
+                        UPDATE new_leads SET 
+                            name = ?, city = ?, validity = ?, region = ?, 
+                            can_wechat = ?, remark = ?, platform = ?, agent = ?
+                        WHERE phone = ?
+                    ''', (name, city, validity, region, can_wechat, remark, platform, agent, phone))
                     updated_count += 1
                 else:
-                    c.execute('''INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                        (phone, platform, agent, today, name, city, validity, region, can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                    c.execute('''
+                        INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        phone, platform, agent, entry_date,
+                        name, city, validity, region, can_wechat, remark,
+                        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    ))
                     existing_phones.add(phone)
                     added_count += 1
-
-            except Exception as e:
-                skipped_count += 1
+            except Exception as row_err:
+                print(f"跳过行: {row_err}")
                 continue
 
         conn.commit()
         conn.close()
 
-        return jsonify({
-            'success': True, 
-            'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索（跳过 {skipped_count} 条无效数据）',
-            'debug': {'rows': ws.max_row - 1, 'added': added_count, 'updated': updated_count, 'skipped': skipped_count}
-        })
+        return jsonify({'success': True, 'message': f'成功导入 {added_count} 条新线索，更新 {updated_count} 条已有线索'})
 
     except Exception as e:
         return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
@@ -869,8 +838,7 @@ def kanban_content():
     if not user:
         return '<h1>请先登录</h1><a href="/">返回登录</a>'
     
-    # HTML文件固定在程序目录
-    html_file = Path(__file__).parent / '线索看板.html'
+    html_file = BASE_DIR / '线索看板.html'
     with open(html_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
