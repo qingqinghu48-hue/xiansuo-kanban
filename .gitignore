@@ -14,10 +14,7 @@ build/
 dashboard_data.json
 
 # 运行时文件（不提交）
-leads.db
 server.log
-users.yaml
-*.db
 
 # macOS
 .DS_Store
