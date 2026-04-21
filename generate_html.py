@@ -2,10 +2,27 @@
 """generate_html.py — 线索看板 HTML 生成器（高级专业版，强兼容性）"""
 import json, sys, os
 from pathlib import Path
+import openpyxl
 
 BASE      = Path(__file__).parent.resolve()
 HTML_OUT  = BASE / '线索看板.html'
 DATA_JSON = BASE / 'dashboard_data.json'
+COST_XLSX = BASE / '抖音营销线索成本统计.xlsx'
+
+# ── 读取成本数据 ────────────────────────────────────────────────
+def load_cost():
+    wb = openpyxl.load_workbook(COST_XLSX)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    cost = {}
+    for row in rows[1:]:
+        date_raw = row[0]
+        spend    = row[1] or 0
+        unit     = row[2] or 0
+        if date_raw:
+            d = str(date_raw).replace('.', '-')
+            cost[d] = {'spend': float(spend), 'unit_cost': float(unit)}
+    return cost
 
 if not DATA_JSON.exists():
     print('ERROR: dashboard_data.json not found. Run build_dashboard.py first.')
@@ -14,14 +31,18 @@ if not DATA_JSON.exists():
 data = json.load(open(DATA_JSON, encoding='utf-8'))
 print('Data records: ' + str(len(data)))
 
+COST = load_cost()
+cost_days = sorted(COST.keys())
+print('Cost days: ' + str(len(cost_days)))
+
 # 构建内嵌 JS 数据块
 all_items = []
 for rec in data:
     all_items.append(json.dumps(rec, ensure_ascii=False))
 ALL_JSON = '[\n' + ',\n'.join(all_items) + '\n]'
 
-# 成本数据现在由服务器动态注入，HTML中用空对象占位
-COST_JSON = '{}'
+COST_JSON = '{' + ','.join(['"' + d + '":' + json.dumps(COST[d], ensure_ascii=False) for d in cost_days]) + '}'
+CDAYS_JSON = json.dumps(cost_days)
 
 # ── HTML 模板（全面重设计版）──────────────────────────────────────
 HTML = '''<!DOCTYPE html>
@@ -243,47 +264,6 @@ html{overflow-x:hidden}
   color:var(--primary);
   padding:3px 10px;
   border-radius:20px;
-}
-#costPanel{
-  background:var(--bg);
-  border-radius:12px;
-  padding:20px;
-  margin-bottom:20px;
-}
-#costPanel .section-title{
-  font-size:16px;
-  font-weight:700;
-  color:var(--text);
-  margin-bottom:15px;
-}
-#costPanel .form-group{
-  display:flex;
-  flex-direction:column;
-}
-#costPanel .form-group label{
-  font-size:12px;
-  color:#666;
-  margin-bottom:5px;
-}
-#costPanel .form-group input,
-#costPanel .form-group select{
-  padding:8px 12px;
-  border:1px solid var(--border-2);
-  border-radius:8px;
-  font-size:13px;
-}
-#costPanel .btn{
-  background:var(--primary);
-  color:#fff;
-  border:none;
-  padding:8px 20px;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:13px;
-}
-#costPanel .btn:hover{
-  opacity:0.9;
-}
   font-weight:600;
 }
 .chart-card-body{padding:20px}
@@ -550,30 +530,32 @@ td{
       </div>
     </div>
 
-    <!-- 成本看板：手动输入展示区域 -->
-    <div class="chart-row-full" id="costPanel" style="display:none;">
-      <div class="section-title">营销成本录入</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:15px;">
-        <div class="form-group">
-          <label>日期</label>
-          <input type="date" id="costDate">
+    <!-- 成本图1：每日总消耗（全宽） -->
+    <div class="chart-row-full">
+      <div class="section-title">每日营销总消耗 <span>（元）</span></div>
+      <div class="chart-card">
+        <div class="chart-card-head">
+          <h3>每日总消耗走势</h3>
+          <span class="chart-tag">抖音营销消耗</span>
         </div>
-        <div class="form-group">
-          <label>平台</label>
-          <select id="costPlatform">
-            <option value="抖音">抖音</option>
-            <option value="小红书">小红书</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>消耗金额（元）</label>
-          <input type="number" id="costAmount" placeholder="输入消耗金额">
-        </div>
-        <div class="form-group" style="align-self:end;">
-          <button class="btn" onclick="submitCost()">录入成本</button>
+        <div class="chart-card-body">
+          <canvas id="cvSpend" style="height:220px"></canvas>
         </div>
       </div>
-      <div id="costList" style="max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- 成本图2：单条成本（全宽） -->
+    <div class="chart-row-full">
+      <div class="section-title">每日单条线索成本 <span>（元/条）</span></div>
+      <div class="chart-card">
+        <div class="chart-card-head">
+          <h3>单条成本走势</h3>
+          <span class="chart-tag">线索成本</span>
+        </div>
+        <div class="chart-card-body">
+          <canvas id="cvUnit" style="height:220px"></canvas>
+        </div>
+      </div>
     </div>
 
     <!-- 表格 -->
@@ -628,6 +610,7 @@ td{
 <script>
 window.__ALL__ = __ALL_DATA__;
 window.__COST__ = __COST_DATA__;
+window.__COST_DAYS__ = __CDAYS_DATA__;
 </script>
 
 <!-- 主逻辑 -->
@@ -635,6 +618,7 @@ window.__COST__ = __COST_DATA__;
 (function(){
   var ALL = window.__ALL__;
   var COST = window.__COST__;
+  var CDAYS = window.__COST_DAYS__;
 
   if (!ALL || !ALL.length) {
     var txt = document.querySelector('#loading .loading-text');
@@ -875,6 +859,7 @@ window.__COST__ = __COST_DATA__;
   function renderCards() {
     var total = filtered.length;
     var dy = 0, xs = 0, qt = 0;
+    var totalSpend = 0, totalUnit = 0, costCnt = 0;
     var i, r, v;
     for (i = 0; i < filtered.length; i++) {
       r = filtered[i];
@@ -882,13 +867,21 @@ window.__COST__ = __COST_DATA__;
       else if (r['平台'] === '小红书') xs++;
       else qt++;
     }
+    for (i = 0; i < CDAYS.length; i++) {
+      var c = COST[CDAYS[i]];
+      if (c) { totalSpend += c.spend; totalUnit += c.unit_cost; costCnt++; }
+    }
+    var avgUnit = costCnt > 0 ? (totalUnit / costCnt).toFixed(1) : '0';
+    var fmtSpend = totalSpend >= 10000 ? (totalSpend / 10000).toFixed(1) + '万' : totalSpend.toFixed(0);
     var xsPct = total > 0 ? (xs / total * 100).toFixed(1) : '0';
 
     var cards = [
       { color:'blue',   icon:'&#128200;', val: total,      label:'总线索数',     sub:'筛选后合计' },
       { color:'red',    icon:'&#127775;', val: dy,          label:'抖音线索',     sub:(xs > 0 ? '+小红书 ' + xs + '条' : '') },
       { color:'amber',  icon:'&#127800;', val: xs,          label:'小红书线索',   sub:'占比' + xsPct + '%' },
-      { color:'green',  icon:'&#128101;', val: total - dy - xs, label:'其它线索', sub:'占比' + ((total - dy - xs) / (total || 1) * 100).toFixed(1) + '%' },
+      { color:'green', icon:'&#128101;', val: total - dy - xs, label:'其它线索',  sub:'占比' + ((total - dy - xs) / (total || 1) * 100).toFixed(1) + '%' },
+      { color:'green',  icon:'&#128181;', val:'&yen;' + fmtSpend, label:'累计消耗', sub:costCnt + '天平均' },
+      { color:'indigo', icon:'&#128200;', val:'&yen;' + avgUnit,   label:'单条平均成本', sub:costCnt + '天均值' },
     ];
     var j, card, html = [], row;
     for (j = 0; j < cards.length; j++) {
@@ -906,115 +899,6 @@ window.__COST__ = __COST_DATA__;
     }
     document.getElementById('kpiGrid').innerHTML = html.join('');
   }
-
-  // ── 成本录入功能（管理员） ─────────────────────────────────
-  var COST = window.__COST__ || {};
-  var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
-
-  function renderCostPanel() {
-    var panel = document.getElementById('costPanel');
-    if (!panel) return;
-    if (!isAdmin) {
-      panel.style.display = 'none';
-      return;
-    }
-    panel.style.display = 'block';
-
-    // 设置默认日期为今天
-    var today = new Date().toISOString().split('T')[0];
-    var dateInput = document.getElementById('costDate');
-    if (dateInput) dateInput.value = today;
-
-    renderCostList();
-  }
-
-  function renderCostList() {
-    var list = document.getElementById('costList');
-    if (!list) return;
-
-    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f5f5f5;"><th>日期</th><th>平台</th><th>消耗金额</th><th>操作</th></tr></thead><tbody>';
-    var costArr = [];
-    for (var key in COST) {
-      costArr.push({date: key, platform: COST[key].platform || key.split('_')[0], amount: COST[key].amount || 0});
-    }
-    costArr.sort(function(a, b){ return b.date.localeCompare(a.date); });
-
-    if (costArr.length === 0) {
-      html += '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">暂无成本数据，请点击上方"录入成本"添加</td></tr>';
-    } else {
-      for (var i = 0; i < costArr.length; i++) {
-        var c = costArr[i];
-        html += '<tr style="border-bottom:1px solid #eee;"><td>' + c.date + '</td>';
-        html += '<td style="color:' + (c.platform === '抖音' ? '#ef4444' : '#f59e0b') + ';">' + c.platform + '</td>';
-        html += '<td>¥' + c.amount.toFixed(2) + '</td>';
-        html += '<td><button onclick="deleteCost(\'' + c.date + '\',\'' + c.platform + '\')" style="color:red;cursor:pointer;border:none;background:none;">删除</button></td></tr>';
-      }
-    }
-    html += '</tbody></table>';
-    list.innerHTML = html;
-  }
-
-  window.submitCost = function() {
-    var date = document.getElementById('costDate').value;
-    var platform = document.getElementById('costPlatform').value;
-    var amount = document.getElementById('costAmount').value;
-
-    if (!date || !amount) {
-      alert('请填写日期和金额');
-      return;
-    }
-
-    fetch('/api/cost/add', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({cost_date: date, platform: platform, amount: parseFloat(amount)})
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(ret) {
-      alert(ret.message);
-      if (ret.success) {
-        document.getElementById('costAmount').value = '';
-        loadCostData();
-      }
-    });
-  };
-
-  window.deleteCost = function(date, platform) {
-    if (!confirm('确定删除 ' + date + ' ' + platform + ' 的成本数据？')) return;
-    fetch('/api/cost/delete', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({cost_date: date, platform: platform})
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(ret) {
-      alert(ret.message);
-      loadCostData();
-    });
-  };
-
-  function loadCostData() {
-    fetch('/api/cost')
-    .then(function(r){ return r.json(); })
-    .then(function(ret) {
-      if (ret.cost_data) {
-        COST = {};
-        for (var i = 0; i < ret.cost_data.length; i++) {
-          var c = ret.cost_data[i];
-          COST[c.date] = {platform: c.platform, amount: c.amount};
-        }
-        renderCostList();
-      }
-    });
-  }
-
-  // 页面加载完成后初始化成本面板
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', renderCostPanel);
-  } else {
-    renderCostPanel();
-  }
-
 
   // ── 平台饼图 ─────────────────────────────────────────────────
   function drawPlat() {
@@ -1166,16 +1050,196 @@ window.__COST__ = __COST_DATA__;
     }
   }
 
+  // ── 总消耗柱状图（全宽单轴） ─────────────────────────────────
+  function drawSpend() {
+    var cv = document.getElementById('cvSpend');
+    if (!cv) return;
+    var days = CDAYS;
+    var vals = days.map(function(d){ var c = COST[d]; return c ? c.spend : 0; });
+    if (!days.length) return;
+
+    var W = cv.offsetWidth || 800;
+    var H = parseInt(cv.style.height) || 220;
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr;
+    cv.height = H * dpr;
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    var pad = { l: 55, r: 20, t: 15, b: 45 };
+    var chartW = W - pad.l - pad.r;
+    var chartH = H - pad.t - pad.b;
+    var maxV = Math.max.apply(null, vals) || 1;
+    var barW = Math.max(4, Math.min(28, (chartW / days.length) * 0.7));
+
+    // Y轴网格
+    var yTicks = 5;
+    var y, yt, yLabel;
+    for (yt = 0; yt <= yTicks; yt++) {
+      y = pad.t + chartH - (yt / yTicks) * chartH;
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(pad.l + chartW, y);
+      ctx.stroke();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      yLabel = (maxV / yTicks * yt).toFixed(0);
+      ctx.fillText(yLabel, pad.l - 6, y);
+    }
+
+    // 柱状
+    var barGap = chartW / days.length;
+    var i, v, bx, by, bh;
+    var grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
+    grad.addColorStop(0, '#3b82f6');
+    grad.addColorStop(1, '#93c5fd');
+    for (i = 0; i < vals.length; i++) {
+      v = vals[i];
+      bx = pad.l + i * barGap + (barGap - barW) / 2;
+      bh = (v / maxV) * chartH;
+      by = pad.t + chartH - bh;
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, by, barW, bh);
+    }
+
+    // X轴标签（每隔几个显示）
+    var step = Math.ceil(days.length / 10);
+    var xi;
+    for (i = 0; i < days.length; i++) {
+      if (i % step !== 0) continue;
+      xi = pad.l + i * barGap + barGap / 2;
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(days[i].slice(5), xi, pad.t + chartH + 6);
+    }
+  }
+
+  // ── 单条成本折线图（全宽单轴） ───────────────────────────────
+  function drawUnit() {
+    var cv = document.getElementById('cvUnit');
+    if (!cv) return;
+    var days = CDAYS;
+    var vals = days.map(function(d){ var c = COST[d]; return c ? c.unit_cost : 0; });
+    if (!days.length) return;
+
+    var W = cv.offsetWidth || 800;
+    var H = parseInt(cv.style.height) || 220;
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr;
+    cv.height = H * dpr;
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    var pad = { l: 55, r: 20, t: 15, b: 45 };
+    var chartW = W - pad.l - pad.r;
+    var chartH = H - pad.t - pad.b;
+    var maxV = Math.max.apply(null, vals) || 1;
+    var minV = 0;
+
+    // Y轴网格
+    var yTicks = 5;
+    var y, yt, yLabel;
+    for (yt = 0; yt <= yTicks; yt++) {
+      y = pad.t + chartH - (yt / yTicks) * chartH;
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(pad.l + chartW, y);
+      ctx.stroke();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      yLabel = (minV + (maxV - minV) / yTicks * yt).toFixed(1);
+      ctx.fillText(yLabel, pad.l - 6, y);
+    }
+
+    // 折线
+    var step = chartW / (days.length - 1 || 1);
+    var pts = [];
+    var i, v, px, py;
+    for (i = 0; i < vals.length; i++) {
+      v = vals[i];
+      px = pad.l + i * step;
+      py = pad.t + chartH - ((v - minV) / (maxV - minV || 1)) * chartH;
+      pts.push([px, py]);
+    }
+
+    // 渐变填充
+    if (pts.length > 1) {
+      var grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
+      grad.addColorStop(0, 'rgba(245,158,11,0.25)');
+      grad.addColorStop(1, 'rgba(245,158,11,0.02)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pad.t + chartH);
+      for (i = 0; i < pts.length; i++) {
+        ctx.lineTo(pts[i][0], pts[i][1]);
+      }
+      ctx.lineTo(pts[pts.length - 1][0], pad.t + chartH);
+      ctx.closePath();
+      ctx.fill();
+
+      // 线
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+
+      // 点 + 数值
+      var dotStep = Math.ceil(days.length / 15);
+      for (i = 0; i < pts.length; i++) {
+        if (i % dotStep !== 0 && i !== pts.length - 1) continue;
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(pts[i][0], pts[i][1], 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#92400e';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(vals[i].toFixed(1), pts[i][0], pts[i][1] - 5);
+      }
+    }
+
+    // X轴标签
+    var xStep = Math.ceil(days.length / 10);
+    for (i = 0; i < days.length; i++) {
+      if (i % xStep !== 0) continue;
+      var xi = pad.l + i * step;
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(days[i].slice(5), xi, pad.t + chartH + 6);
+    }
+  }
+
   function renderAll() {
     renderCards();
     drawPlat();
     drawValid();
+    drawSpend();
+    drawUnit();
     renderTable();
   }
 
   window.onresize = function() {
     try { drawPlat(); } catch(e) {}
     try { drawValid(); } catch(e) {}
+    try { drawSpend(); } catch(e) {}
+    try { drawUnit(); } catch(e) {}
   };
 
   // 超时保护
@@ -1209,6 +1273,7 @@ window.__COST__ = __COST_DATA__;
 # ── 注入数据 ────────────────────────────────────────────────────
 HTML = HTML.replace('__ALL_DATA__', ALL_JSON)
 HTML = HTML.replace('__COST_DATA__', COST_JSON)
+HTML = HTML.replace('__CDAYS_DATA__', CDAYS_JSON)
 
 with open(HTML_OUT, 'w', encoding='utf-8') as f:
     f.write(HTML)
@@ -1217,4 +1282,4 @@ import os
 size = os.path.getsize(HTML_OUT)
 print('HTML generated: ' + str(HTML_OUT))
 print('Size: ' + str(size) + ' bytes')
-print('Data: ' + str(len(data)) + ' records')
+print('Data: ' + str(len(data)) + ' records | Cost: ' + str(len(cost_days)) + ' days')
