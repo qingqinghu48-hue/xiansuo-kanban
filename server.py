@@ -12,7 +12,7 @@ from pathlib import Path
 app = Flask(__name__)
 app.secret_key = 'xiansuo-kanban-secret-key-2024'
 
-BASE_DIR = Path(os.environ.get('XIANSUO_BASE_DIR', '/Users/apple/Desktop/线索'))
+BASE_DIR = Path(os.environ.get('XIANSUO_BASE_DIR', Path(__file__).parent))
 USERS_FILE = BASE_DIR / 'users.yaml'
 DATA_FILE = BASE_DIR / 'dashboard_data.json'
 DB_FILE = BASE_DIR / 'leads.db'
