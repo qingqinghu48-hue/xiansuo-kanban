@@ -1279,8 +1279,11 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
     if (sortK) sortFiltered();
     page = 1;
     renderTable();
+    renderCards();
     try { drawPlat(); } catch(e) {}
     try { drawValid(); } catch(e) {}
+    try { drawSpend(); } catch(e) {}
+    try { drawUnit(); } catch(e) {}
   }
 
   function sortFiltered() {
