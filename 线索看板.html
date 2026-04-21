@@ -183,8 +183,6 @@ html{overflow-x:hidden}
 .btn-pri:active{transform:scale(.98)}
 .btn-ghost{background:var(--surface2);color:var(--text-2);border:1px solid var(--border)}
 .btn-ghost:hover{background:var(--border);color:var(--text)}
-.btn-export{background:#10b981;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px}
-.btn-export:hover{background:#059669}
 
 /* ── 图表区通用 ── */
 .section-title{
@@ -219,6 +217,47 @@ html{overflow-x:hidden}
   color:var(--primary);
   padding:3px 10px;
   border-radius:20px;
+}
+#costPanel{
+  background:var(--bg);
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:20px;
+}
+#costPanel .section-title{
+  font-size:16px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:15px;
+}
+#costPanel .form-group{
+  display:flex;
+  flex-direction:column;
+}
+#costPanel .form-group label{
+  font-size:12px;
+  color:#666;
+  margin-bottom:5px;
+}
+#costPanel .form-group input,
+#costPanel .form-group select{
+  padding:8px 12px;
+  border:1px solid var(--border-2);
+  border-radius:8px;
+  font-size:13px;
+}
+#costPanel .btn{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  padding:8px 20px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:13px;
+}
+#costPanel .btn:hover{
+  opacity:0.9;
+}
   font-weight:600;
 }
 .chart-card-body{padding:20px}
@@ -232,20 +271,6 @@ canvas{display:block;width:100%}
   margin-bottom:16px;
 }
 .chart-row-full{margin-bottom:16px}
-
-/* ── 成本录入面板 ── */
-.cost-entry-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #e5e7eb}
-.cost-entry-title{font-size:16px;font-weight:600;color:#333;margin-bottom:16px}
-.cost-entry-row{display:flex;gap:20px}
-.cost-entry-item{flex:1;display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f9fafb;border-radius:8px}
-.cost-entry-item label{font-size:14px;color:#374151;white-space:nowrap}
-.cost-entry-item input[type="date"]{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:140px}
-.cost-entry-item input[type="number"]{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:120px}
-.cost-entry-item button{padding:8px 16px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500}
-.cost-entry-item button:hover{background:#2563eb}
-.cost-entry-msg{margin-top:10px;font-size:13px;padding:8px 12px;border-radius:6px;display:none}
-.cost-entry-msg.success{background:#d1fae5;color:#065f46;display:block}
-.cost-entry-msg.error{background:#fee2e2;color:#991b1b;display:block}
 
 /* ── 表格卡片 ── */
 .table-card{
@@ -390,19 +415,6 @@ td{
 .detail-l{width:88px;flex-shrink:0;font-size:12px;color:var(--text-3);font-weight:600;padding-top:1px}
 .detail-v{font-size:13px;color:var(--text)}
 
-/* ── 编辑表单 ── */
-.edit-form{padding:10px 0}
-.form-row{margin-bottom:16px}
-.form-row label{display:block;font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:600}
-.form-row input,.form-row select,.form-row textarea{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:14px;box-sizing:border-box}
-.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--primary)}
-.form-actions{display:flex;gap:10px;margin-top:20px}
-.form-actions .btn{flex:1}
-.td-btn-edit{background:#3b82f6;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;margin-right:4px}
-.td-btn-edit:hover{background:#2563eb}
-.td-btn-del{background:#ef4444;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px}
-.td-btn-del:hover{background:#dc2626}
-
 /* ── 加载状态 ── */
 #loading{
   position:fixed;inset:0;
@@ -512,70 +524,43 @@ td{
       </div>
     </div>
 
-    <!-- 成本录入面板（仅管理员可见） -->
-    <div id="costEntryPanel" style="display:none;margin-bottom:20px;">
-      <div class="cost-entry-wrap">
-        <div class="cost-entry-title">💰 线索成本录入</div>
-        <div class="cost-entry-row">
-          <div class="cost-entry-item" style="border-left:4px solid #f43f5e;">
-            <label>🔴 抖音成本</label>
-            <input type="date" id="cost_dy_date" value="">
-            <input type="number" id="cost_dy_amount" placeholder="金额（元）" step="0.01">
-            <button onclick="submitKanbanCost('抖音')">录入</button>
-          </div>
-          <div class="cost-entry-item" style="border-left:4px solid #f59e0b;">
-            <label>🟠 小红书成本</label>
-            <input type="date" id="cost_xhs_date" value="">
-            <input type="number" id="cost_xhs_amount" placeholder="金额（元）" step="0.01">
-            <button onclick="submitKanbanCost('小红书')">录入</button>
-          </div>
+    <!-- 成本看板：手动输入展示区域 -->
+    <div class="chart-row-full" id="costPanel" style="display:none;">
+      <div class="section-title">营销成本录入</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:15px;">
+        <div class="form-group">
+          <label>日期</label>
+          <input type="date" id="costDate">
         </div>
-        <div class="cost-entry-msg" id="costEntryMsg"></div>
-      </div>
-    </div>
-
-    <!-- 成本图1：每日总消耗（全宽）- 仅管理员 -->
-    <div class="chart-row-full" id="costChart1" style="display:none">
-      <div class="section-title">每日营销总消耗 <span>（元）</span></div>
-      <div class="chart-card">
-        <div class="chart-card-head">
-          <h3>每日总消耗走势</h3>
-          <span class="chart-tag">抖音营销消耗</span>
+        <div class="form-group">
+          <label>平台</label>
+          <select id="costPlatform">
+            <option value="抖音">抖音</option>
+            <option value="小红书">小红书</option>
+          </select>
         </div>
-        <div class="chart-card-body">
-          <canvas id="cvSpend" style="height:220px"></canvas>
+        <div class="form-group">
+          <label>消耗金额（元）</label>
+          <input type="number" id="costAmount" placeholder="输入消耗金额">
+        </div>
+        <div class="form-group" style="align-self:end;">
+          <button class="btn" onclick="submitCost()">录入成本</button>
         </div>
       </div>
-    </div>
-
-    <!-- 成本图2：单条成本（全宽）- 仅管理员 -->
-    <div class="chart-row-full" id="costChart2" style="display:none">
-      <div class="section-title">每日单条线索成本 <span>（元/条）</span></div>
-      <div class="chart-card">
-        <div class="chart-card-head">
-          <h3>单条成本走势</h3>
-          <span class="chart-tag">线索成本</span>
-        </div>
-        <div class="chart-card-body">
-          <canvas id="cvUnit" style="height:220px"></canvas>
-        </div>
-      </div>
+      <div id="costList" style="max-height:200px;overflow-y:auto;"></div>
     </div>
 
     <!-- 表格 -->
     <div class="table-card">
       <div class="table-card-head">
         <h2>线索明细</h2>
-        <div style="display:flex;gap:10px;align-items:center">
-          <span class="table-badge" id="tableCount">0 条</span>
-          <button class="btn btn-export" onclick="exportExcel()">📥 导出Excel</button>
-        </div>
+        <span class="table-badge" id="tableCount">0 条</span>
       </div>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th data-sort="入库时间">入库日期</th>
+              <th data-sort="入库日期">入库日期</th>
               <th data-sort="平台">平台</th>
               <th data-sort="姓名">姓名</th>
               <th>手机号</th>
@@ -585,7 +570,6 @@ td{
               <th data-sort="所属招商">招商员</th>
               <th>能否加微</th>
               <th>详情</th>
-              <th style="width:100px">操作</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -607,7 +591,7 @@ td{
 <div class="modal" id="modal">
   <div class="modal-box">
     <div class="modal-hd">
-      <h3 id="modalTitle">线索详情</h3>
+      <h3>线索详情</h3>
       <button class="modal-x" id="modalClose">&#10005;</button>
     </div>
     <div class="modal-bd" id="modalBody"></div>
@@ -1236,49 +1220,14 @@ window.__ALL__ = [
 {"手机号": "18844099931", "姓名": "姜先生", "平台": "小红书", "入库时间": "2026-03-01", "流量类型": "自然流量", "线索有效性": "一般客户", "意向门店": "", "跟进员工": "郑建军", "线索阶段": "", "线索标签": "私信留资", "线索来源": "孙北北面包合作中心", "所属大区": "南京区域, 其他区域", "所属招商": "郑建军", "省份": "吉林省", "是否能加上微信": "", "备注": "在忙，空了回过来；总部长春的，也做烘焙连锁。看好我们这个模式，想了解我们这边的合作方式。跟他讲了合作方式，有兴趣，问，南京能不能开说先看招商资料，跟老板聊完，如果来会提前讲，说公司如果在长春有计划，可以跟我们合作生产。跟他讲了，暂时我们还过不去，后面看的战略规划；他和他的烘焙团队要去韩国学习，等回来再说，还是倾向于在长春跟我们合作提供厂房", "来源文件": "孙北北面包合作中心账号客资.csv"},
 {"手机号": "15332889239", "姓名": "段先生", "平台": "抖音", "入库时间": "2026-03-01", "流量类型": "营销流量", "线索有效性": "普通线索", "线索阶段": "新线索", "线索标签": "未联系上", "线索来源": "抖音广告", "意向门店": "上海众享麦浪面包有限公司", "跟进员工": "刘仁杰", "省份": "广东-深圳", "备注": "", "来源文件": "客资中心（新）_2026-04-12 16_37_48.144.xlsx", "是否能加上微信": "", "所属大区": "", "所属招商": ""}
 ];
-window.__COST__ = {"2026-03-01":{"spend": 2000.0, "unit_cost": 222.222},"2026-03-02":{"spend": 2000.0, "unit_cost": 222.222},"2026-03-03":{"spend": 688.79, "unit_cost": 229.597},"2026-03-04":{"spend": 2000.0, "unit_cost": 181.818},"2026-03-05":{"spend": 2000.0, "unit_cost": 222.222},"2026-03-06":{"spend": 2000.0, "unit_cost": 222.222},"2026-03-07":{"spend": 2000.0, "unit_cost": 166.667},"2026-03-08":{"spend": 2000.0, "unit_cost": 222.222},"2026-03-09":{"spend": 2000.0, "unit_cost": 133.333},"2026-03-10":{"spend": 2000.0, "unit_cost": 400.0},"2026-03-11":{"spend": 2000.0, "unit_cost": 200.0},"2026-03-12":{"spend": 1645.4, "unit_cost": 548.467},"2026-03-13":{"spend": 1927.16, "unit_cost": 214.129},"2026-03-14":{"spend": 858.73, "unit_cost": 214.683},"2026-03-15":{"spend": 2000.0, "unit_cost": 142.857},"2026-03-16":{"spend": 1479.82, "unit_cost": 246.637},"2026-03-17":{"spend": 1800.09, "unit_cost": 257.156},"2026-03-18":{"spend": 1013.21, "unit_cost": 337.737},"2026-03-19":{"spend": 842.64, "unit_cost": 421.32},"2026-03-20":{"spend": 833.93, "unit_cost": 208.483},"2026-03-21":{"spend": 2000.0, "unit_cost": 222.222},"2026-03-22":{"spend": 1028.24, "unit_cost": 342.747},"2026-03-23":{"spend": 1514.19, "unit_cost": 216.313},"2026-03-24":{"spend": 1600.25, "unit_cost": 266.708},"2026-03-25":{"spend": 1062.97, "unit_cost": 177.162},"2026-03-26":{"spend": 1133.75, "unit_cost": 566.875},"2026-03-27":{"spend": 707.78, "unit_cost": 353.89},"2026-03-28":{"spend": 2000.0, "unit_cost": 285.714},"2026-03-29":{"spend": 2000.0, "unit_cost": 333.333},"2026-03-30":{"spend": 3000.0, "unit_cost": 176.471},"2026-03-31":{"spend": 3000.0, "unit_cost": 230.769},"2026-04-01":{"spend": 3000.0, "unit_cost": 214.286},"2026-04-02":{"spend": 2630.18, "unit_cost": 263.018},"2026-04-03":{"spend": 1339.14, "unit_cost": 191.306},"2026-04-04":{"spend": 2378.25, "unit_cost": 297.281},"2026-04-05":{"spend": 3000.0, "unit_cost": 214.286},"2026-04-06":{"spend": 3000.0, "unit_cost": 230.769},"2026-04-07":{"spend": 4438.08, "unit_cost": 261.064},"2026-04-08":{"spend": 2270.35, "unit_cost": 378.392},"2026-04-09":{"spend": 5000.0, "unit_cost": 227.273},"2026-04-10":{"spend": 5000.0, "unit_cost": 238.095},"2026-04-11":{"spend": 5000.0, "unit_cost": 277.778},"2026-04-12":{"spend": 3172.95, "unit_cost": 317.295},"2026-04-13":{"spend": 4563.22, "unit_cost": 304.215}};
-window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-21", "2026-03-22", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-04", "2026-04-05", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13"];
+window.__COST__ = {};
 </script>
 
 <!-- 主逻辑 -->
 <script>
-// 异步加载成本数据
-async function loadCostData() {
-  if (!window.CURRENT_USER || window.CURRENT_USER.role !== 'admin') return;
-  try {
-    var res = await fetch('/api/cost');
-    if (!res.ok) return;
-    var data = await res.json();
-    if (!data.cost_data || !data.cost_data.length) return;
-
-    // 转换API数据为看板格式 {date: {dy: amount, xhs: amount}}
-    var newCost = {};
-    data.cost_data.forEach(function(item) {
-      var d = item.date;
-      if (!newCost[d]) newCost[d] = {dy: 0, xhs: 0};
-      if (item.platform === '抖音') newCost[d].dy = item.amount;
-      else if (item.platform === '小红书') newCost[d].xhs = item.amount;
-    });
-
-    // 合并到现有COST对象
-    Object.keys(newCost).forEach(function(d) {
-      var nd = newCost[d];
-      var total = (nd.dy || 0) + (nd.xhs || 0);
-      if (!window.__COST__[d]) {
-        window.__COST__[d] = {spend: total, dy_spend: nd.dy, xhs_spend: nd.xhs};
-      } else {
-        window.__COST__[d].dy_spend = nd.dy;
-        window.__COST__[d].xhs_spend = nd.xhs;
-        window.__COST__[d].spend = total;
-      }
-    });
-  } catch(e) { console.log('成本数据加载失败', e); }
-}
-
 (function(){
   var ALL = window.__ALL__;
   var COST = window.__COST__;
-  var CDAYS = window.__COST_DAYS__;
 
   if (!ALL || !ALL.length) {
     var txt = document.querySelector('#loading .loading-text');
@@ -1298,8 +1247,8 @@ async function loadCostData() {
   filtered = [];
   page = 1;
   PS = 15;
-  sortK = '入库时间';
-  sortAsc = false;
+  sortK = '';
+  sortAsc = true;
 
   // 初始化下拉
   (function() {
@@ -1367,7 +1316,6 @@ async function loadCostData() {
     if (sortK) sortFiltered();
     page = 1;
     renderTable();
-    renderCards();
     try { drawPlat(); } catch(e) {}
     try { drawValid(); } catch(e) {}
   }
@@ -1451,93 +1399,6 @@ async function loadCostData() {
     document.getElementById('modal').className = 'modal show';
   }
 
-  // 编辑线索
-  function editLead(idx) {
-    var r = filtered[(page - 1) * PS + idx];
-    if (!r) return;
-    var isManual = r['来源文件'] === '手动录入';
-    var html = '<div class="edit-form">';
-    html += '<input type="hidden" id="editPhone" value="' + esc(r['手机号'] || r['手机']) + '">';
-    html += '<div class="form-row"><label>姓名</label><input type="text" id="editName" value="' + esc(r['姓名'] || '') + '"></div>';
-    html += '<div class="form-row"><label>城市</label><input type="text" id="editCity" value="' + esc(r['省份'] || '') + '"></div>';
-    html += '<div class="form-row"><label>有效性</label><select id="editValid"><option value="">请选择</option><option>意向客户</option><option>一般客户</option><option>未联系上</option><option>普通线索</option><option>无意向客户</option><option>无效线索</option></select></div>';
-    html += '<div class="form-row"><label>所属大区</label><input type="text" id="editRegion" value="' + esc(r['所属大区'] || '') + '"></div>';
-    html += '<div class="form-row"><label>能否加微</label><select id="editWechat"><option value="">请选择</option><option>是</option><option>否</option></select></div>';
-    html += '<div class="form-row"><label>二次联系时间</label><input type="date" id="editSecondContact" value="' + esc(r['二次联系时间'] || '') + '"></div>';
-    html += '<div class="form-row"><label>二次联系备注</label><textarea id="editSecondRemark" rows="2">' + esc(r['二次联系备注'] || '') + '</textarea></div>';
-    html += '<div class="form-row"><label>最近一次电联时间</label><input type="date" id="editLastCall" value="' + esc(r['最近一次电联时间'] || '') + '"></div>';
-    html += '<div class="form-row"><label>到访时间</label><input type="date" id="editVisit" value="' + esc(r['到访时间'] || '') + '"></div>';
-    html += '<div class="form-row"><label>签约时间</label><input type="date" id="editSign" value="' + esc(r['签约时间'] || '') + '"></div>';
-    html += '<div class="form-row"><label>备注</label><textarea id="editRemark" rows="2">' + esc(r['备注'] || '') + '</textarea></div>';
-    html += '<div class="form-actions"><button class="btn btn-pri" onclick="saveLead()">保存</button><button class="btn btn-ghost" onclick="closeModal()">取消</button></div>';
-    html += '</div>';
-    document.getElementById('modalBody').innerHTML = html;
-    document.getElementById('modalTitle').textContent = '编辑线索';
-    if (r['线索有效性'] || r['有效性']) {
-      document.getElementById('editValid').value = r['线索有效性'] || r['有效性'];
-    }
-    if (r['是否能加上微信']) {
-      document.getElementById('editWechat').value = r['是否能加上微信'];
-    }
-    document.getElementById('modal').className = 'modal show';
-  }
-
-  // 保存编辑
-  function saveLead() {
-    var phone = document.getElementById('editPhone').value;
-    var name = document.getElementById('editName').value;
-    var city = document.getElementById('editCity').value;
-    var valid = document.getElementById('editValid').value;
-    var region = document.getElementById('editRegion').value;
-    var wechat = document.getElementById('editWechat').value;
-    var remark = document.getElementById('editRemark').value;
-    var secondContact = document.getElementById('editSecondContact') ? document.getElementById('editSecondContact').value : '';
-    var secondRemark = document.getElementById('editSecondRemark') ? document.getElementById('editSecondRemark').value : '';
-    var lastCall = document.getElementById('editLastCall') ? document.getElementById('editLastCall').value : '';
-    var visit = document.getElementById('editVisit') ? document.getElementById('editVisit').value : '';
-    var sign = document.getElementById('editSign') ? document.getElementById('editSign').value : '';
-    fetch('/api/leads/update', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        phone, name, city, validity: valid, region, can_wechat: wechat, remark,
-        '二次联系时间': secondContact, '二次联系备注': secondRemark,
-        '最近一次电联时间': lastCall, '到访时间': visit, '签约时间': sign
-      })
-    }).then(r => r.json()).then(data => {
-      alert(data.message);
-      if (data.success) {
-        closeModal();
-        location.reload();
-      }
-    });
-  }
-
-  // 删除线索
-  function delLead(idx) {
-    var r = filtered[(page - 1) * PS + idx];
-    if (!r) return;
-    if (!confirm('确定要删除线索 ' + (r['手机号'] || r['手机']) + ' 吗？')) return;
-    var phone = r['手机号'] || r['手机'];
-    fetch('/api/leads/delete', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({phone})
-    }).then(r => r.json()).then(data => {
-      alert(data.message);
-      if (data.success) {
-        location.reload();
-      }
-    });
-  }
-
-  // 关闭弹窗
-  function closeModal() {
-    document.getElementById('modal').className = 'modal';
-    document.getElementById('modalTitle').textContent = '线索详情';
-  }
-  window.closeModal = closeModal;
-
   function renderTable() {
     var tbody = document.getElementById('tbody');
     var start = (page - 1) * PS;
@@ -1558,8 +1419,7 @@ async function loadCostData() {
         '<td>' + esc(r['所属大区'] || '-') + '</td>' +
         '<td>' + esc(r['所属招商'] || '-') + '</td>' +
         '<td>' + jmTag(r['是否能加上微信'] || '') + '</td>' +
-        '<td><button class="td-btn" onclick="showDetail(' + idx + ')">' + (r['备注'] ? '查看' : '-') + '</button></td>' +
-        '<td><button class="td-btn td-btn-edit" onclick="editLead(' + idx + ')">编辑</button><button class="td-btn td-btn-del" onclick="delLead(' + idx + ')">删除</button></td>' +
+        '<td><button class="td-btn" onclick="parent.showDetail(' + idx + ')">查看</button></td>' +
         '</tr>');
     }
     tbody.innerHTML = rows.join('');
@@ -1572,79 +1432,6 @@ async function loadCostData() {
   }
 
   window.showDetail = showDetail;
-  window.editLead = editLead;
-  window.delLead = delLead;
-  window.saveLead = saveLead;
-
-  // 导出Excel
-  function exportExcel() {
-    var headers = ['入库日期','平台','姓名','手机号','城市','有效性','大区','招商员','能否加微','备注','二次联系时间','二次联系备注','电联时间','到访时间','签约时间'];
-    var keys = ['入库时间','平台','姓名','手机号','省份','线索有效性','所属大区','所属招商','是否能加上微信','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间'];
-    var csv = headers.join(',') + '\n';
-    for (var i = 0; i < filtered.length; i++) {
-      var r = filtered[i];
-      var row = keys.map(function(k){ return '"' + ((r[k] || '').toString().replace(/"/g, '""')) + '"'; });
-      csv += row.join(',') + '\n';
-    }
-    var BOM = '\uFEFF';
-    var blob = new Blob([BOM + csv], {type: 'text/csv;charset=utf-8'});
-    var link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = '线索导出_' + new Date().toISOString().slice(0,10) + '.csv';
-    link.click();
-  }
-  window.exportExcel = exportExcel;
-
-  // 根据用户角色显示/隐藏消耗图表
-  if (window.CURRENT_USER && window.CURRENT_USER.role === 'admin') {
-    var c1 = document.getElementById('costChart1');
-    var c2 = document.getElementById('costChart2');
-    var cp = document.getElementById('costEntryPanel');
-    if (c1) c1.style.display = '';
-    if (c2) c2.style.display = '';
-    if (cp) { cp.style.display = ''; cp.style.display = 'block'; }
-    // 设置默认日期为今天
-    var today = new Date().toISOString().slice(0,10);
-    var d1 = document.getElementById('cost_dy_date');
-    var d2 = document.getElementById('cost_xhs_date');
-    if (d1) d1.value = today;
-    if (d2) d2.value = today;
-  }
-
-  // 看板成本录入函数
-  window.submitKanbanCost = function(platform) {
-    var dateInput = platform === '抖音' ? document.getElementById('cost_dy_date') : document.getElementById('cost_xhs_date');
-    var amountInput = platform === '抖音' ? document.getElementById('cost_dy_amount') : document.getElementById('cost_xhs_amount');
-    var msgEl = document.getElementById('costEntryMsg');
-    var date = dateInput ? dateInput.value : '';
-    var amount = amountInput ? amountInput.value : '';
-
-    if (!date || !amount) {
-      msgEl.className = 'cost-entry-msg error';
-      msgEl.textContent = '请填写日期和金额';
-      return;
-    }
-
-    fetch('/api/cost/add', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ cost_date: date, platform: platform, amount: parseFloat(amount) })
-    }).then(function(res){ return res.json(); })
-      .then(function(data) {
-        msgEl.className = 'cost-entry-msg ' + (data.success ? 'success' : 'error');
-        msgEl.textContent = data.message;
-        if (data.success) {
-          amountInput.value = '';
-          // 刷新成本数据并重绘图表
-          loadCostData().then(function() {
-            try { drawSpend(); drawUnit(); } catch(e) {}
-          });
-        }
-      }).catch(function(err) {
-        msgEl.className = 'cost-entry-msg error';
-        msgEl.textContent = '录入失败';
-      });
-  };
 
   document.getElementById('prevBtn').onclick = function() {
     if (page > 1) { page--; renderTable(); }
@@ -1681,7 +1468,6 @@ async function loadCostData() {
   function renderCards() {
     var total = filtered.length;
     var dy = 0, xs = 0, qt = 0;
-    var totalSpend = 0, totalUnit = 0, costCnt = 0;
     var i, r, v;
     for (i = 0; i < filtered.length; i++) {
       r = filtered[i];
@@ -1689,19 +1475,13 @@ async function loadCostData() {
       else if (r['平台'] === '小红书') xs++;
       else qt++;
     }
-    for (i = 0; i < CDAYS.length; i++) {
-      var c = COST[CDAYS[i]];
-      if (c) { totalSpend += c.spend; totalUnit += c.unit_cost; costCnt++; }
-    }
-    var avgUnit = costCnt > 0 ? (totalUnit / costCnt).toFixed(1) : '0';
-    var fmtSpend = totalSpend >= 10000 ? (totalSpend / 10000).toFixed(1) + '万' : totalSpend.toFixed(0);
     var xsPct = total > 0 ? (xs / total * 100).toFixed(1) : '0';
 
     var cards = [
       { color:'blue',   icon:'&#128200;', val: total,      label:'总线索数',     sub:'筛选后合计' },
       { color:'red',    icon:'&#127775;', val: dy,          label:'抖音线索',     sub:(xs > 0 ? '+小红书 ' + xs + '条' : '') },
       { color:'amber',  icon:'&#127800;', val: xs,          label:'小红书线索',   sub:'占比' + xsPct + '%' },
-      { color:'purple', icon:'&#128101;', val: total - dy - xs, label:'其它线索',  sub:'占比' + ((total - dy - xs) / (total || 1) * 100).toFixed(1) + '%' },
+      { color:'green', icon:'&#128101;', val: total - dy - xs, label:'其它线索',  sub:'占比' + ((total - dy - xs) / (total || 1) * 100).toFixed(1) + '%' },
     ];
     var j, card, html = [], row;
     for (j = 0; j < cards.length; j++) {
@@ -1719,6 +1499,115 @@ async function loadCostData() {
     }
     document.getElementById('kpiGrid').innerHTML = html.join('');
   }
+
+  // ── 成本录入功能（管理员） ─────────────────────────────────
+  var COST = window.__COST__ || {};
+  var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
+
+  function renderCostPanel() {
+    var panel = document.getElementById('costPanel');
+    if (!panel) return;
+    if (!isAdmin) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+
+    // 设置默认日期为今天
+    var today = new Date().toISOString().split('T')[0];
+    var dateInput = document.getElementById('costDate');
+    if (dateInput) dateInput.value = today;
+
+    renderCostList();
+  }
+
+  function renderCostList() {
+    var list = document.getElementById('costList');
+    if (!list) return;
+
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f5f5f5;"><th>日期</th><th>平台</th><th>消耗金额</th><th>操作</th></tr></thead><tbody>';
+    var costArr = [];
+    for (var key in COST) {
+      costArr.push({date: key, platform: COST[key].platform || key.split('_')[0], amount: COST[key].amount || 0});
+    }
+    costArr.sort(function(a, b){ return b.date.localeCompare(a.date); });
+
+    if (costArr.length === 0) {
+      html += '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">暂无成本数据，请点击上方"录入成本"添加</td></tr>';
+    } else {
+      for (var i = 0; i < costArr.length; i++) {
+        var c = costArr[i];
+        html += '<tr style="border-bottom:1px solid #eee;"><td>' + c.date + '</td>';
+        html += '<td style="color:' + (c.platform === '抖音' ? '#ef4444' : '#f59e0b') + ';">' + c.platform + '</td>';
+        html += '<td>¥' + c.amount.toFixed(2) + '</td>';
+        html += '<td><button onclick="deleteCost('' + c.date + '','' + c.platform + '')" style="color:red;cursor:pointer;border:none;background:none;">删除</button></td></tr>';
+      }
+    }
+    html += '</tbody></table>';
+    list.innerHTML = html;
+  }
+
+  window.submitCost = function() {
+    var date = document.getElementById('costDate').value;
+    var platform = document.getElementById('costPlatform').value;
+    var amount = document.getElementById('costAmount').value;
+
+    if (!date || !amount) {
+      alert('请填写日期和金额');
+      return;
+    }
+
+    fetch('/api/cost/add', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({cost_date: date, platform: platform, amount: parseFloat(amount)})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(ret) {
+      alert(ret.message);
+      if (ret.success) {
+        document.getElementById('costAmount').value = '';
+        loadCostData();
+      }
+    });
+  };
+
+  window.deleteCost = function(date, platform) {
+    if (!confirm('确定删除 ' + date + ' ' + platform + ' 的成本数据？')) return;
+    fetch('/api/cost/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({cost_date: date, platform: platform})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(ret) {
+      alert(ret.message);
+      loadCostData();
+    });
+  };
+
+  function loadCostData() {
+    fetch('/api/cost')
+    .then(function(r){ return r.json(); })
+    .then(function(ret) {
+      if (ret.cost_data) {
+        COST = {};
+        for (var i = 0; i < ret.cost_data.length; i++) {
+          var c = ret.cost_data[i];
+          COST[c.date] = {platform: c.platform, amount: c.amount};
+        }
+        renderCostList();
+      }
+    });
+  }
+
+  // 页面加载完成后初始化成本面板
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderCostPanel);
+  } else {
+    renderCostPanel();
+  }
+
 
   // ── 平台饼图 ─────────────────────────────────────────────────
   function drawPlat() {
@@ -1870,196 +1759,16 @@ async function loadCostData() {
     }
   }
 
-  // ── 总消耗柱状图（全宽单轴） ─────────────────────────────────
-  function drawSpend() {
-    var cv = document.getElementById('cvSpend');
-    if (!cv) return;
-    var days = CDAYS;
-    var vals = days.map(function(d){ var c = COST[d]; return c ? c.spend : 0; });
-    if (!days.length) return;
-
-    var W = cv.offsetWidth || 800;
-    var H = parseInt(cv.style.height) || 220;
-    var dpr = window.devicePixelRatio || 1;
-    cv.width = W * dpr;
-    cv.height = H * dpr;
-    var ctx = cv.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-
-    var pad = { l: 55, r: 20, t: 15, b: 45 };
-    var chartW = W - pad.l - pad.r;
-    var chartH = H - pad.t - pad.b;
-    var maxV = Math.max.apply(null, vals) || 1;
-    var barW = Math.max(4, Math.min(28, (chartW / days.length) * 0.7));
-
-    // Y轴网格
-    var yTicks = 5;
-    var y, yt, yLabel;
-    for (yt = 0; yt <= yTicks; yt++) {
-      y = pad.t + chartH - (yt / yTicks) * chartH;
-      ctx.strokeStyle = '#f1f5f9';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(pad.l, y);
-      ctx.lineTo(pad.l + chartW, y);
-      ctx.stroke();
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      yLabel = (maxV / yTicks * yt).toFixed(0);
-      ctx.fillText(yLabel, pad.l - 6, y);
-    }
-
-    // 柱状
-    var barGap = chartW / days.length;
-    var i, v, bx, by, bh;
-    var grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
-    grad.addColorStop(0, '#3b82f6');
-    grad.addColorStop(1, '#93c5fd');
-    for (i = 0; i < vals.length; i++) {
-      v = vals[i];
-      bx = pad.l + i * barGap + (barGap - barW) / 2;
-      bh = (v / maxV) * chartH;
-      by = pad.t + chartH - bh;
-      ctx.fillStyle = grad;
-      ctx.fillRect(bx, by, barW, bh);
-    }
-
-    // X轴标签（每隔几个显示）
-    var step = Math.ceil(days.length / 10);
-    var xi;
-    for (i = 0; i < days.length; i++) {
-      if (i % step !== 0) continue;
-      xi = pad.l + i * barGap + barGap / 2;
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(days[i].slice(5), xi, pad.t + chartH + 6);
-    }
-  }
-
-  // ── 单条成本折线图（全宽单轴） ───────────────────────────────
-  function drawUnit() {
-    var cv = document.getElementById('cvUnit');
-    if (!cv) return;
-    var days = CDAYS;
-    var vals = days.map(function(d){ var c = COST[d]; return c ? c.unit_cost : 0; });
-    if (!days.length) return;
-
-    var W = cv.offsetWidth || 800;
-    var H = parseInt(cv.style.height) || 220;
-    var dpr = window.devicePixelRatio || 1;
-    cv.width = W * dpr;
-    cv.height = H * dpr;
-    var ctx = cv.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-
-    var pad = { l: 55, r: 20, t: 15, b: 45 };
-    var chartW = W - pad.l - pad.r;
-    var chartH = H - pad.t - pad.b;
-    var maxV = Math.max.apply(null, vals) || 1;
-    var minV = 0;
-
-    // Y轴网格
-    var yTicks = 5;
-    var y, yt, yLabel;
-    for (yt = 0; yt <= yTicks; yt++) {
-      y = pad.t + chartH - (yt / yTicks) * chartH;
-      ctx.strokeStyle = '#f1f5f9';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(pad.l, y);
-      ctx.lineTo(pad.l + chartW, y);
-      ctx.stroke();
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      yLabel = (minV + (maxV - minV) / yTicks * yt).toFixed(1);
-      ctx.fillText(yLabel, pad.l - 6, y);
-    }
-
-    // 折线
-    var step = chartW / (days.length - 1 || 1);
-    var pts = [];
-    var i, v, px, py;
-    for (i = 0; i < vals.length; i++) {
-      v = vals[i];
-      px = pad.l + i * step;
-      py = pad.t + chartH - ((v - minV) / (maxV - minV || 1)) * chartH;
-      pts.push([px, py]);
-    }
-
-    // 渐变填充
-    if (pts.length > 1) {
-      var grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
-      grad.addColorStop(0, 'rgba(245,158,11,0.25)');
-      grad.addColorStop(1, 'rgba(245,158,11,0.02)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pad.t + chartH);
-      for (i = 0; i < pts.length; i++) {
-        ctx.lineTo(pts[i][0], pts[i][1]);
-      }
-      ctx.lineTo(pts[pts.length - 1][0], pad.t + chartH);
-      ctx.closePath();
-      ctx.fill();
-
-      // 线
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-      ctx.stroke();
-
-      // 点 + 数值
-      var dotStep = Math.ceil(days.length / 15);
-      for (i = 0; i < pts.length; i++) {
-        if (i % dotStep !== 0 && i !== pts.length - 1) continue;
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.arc(pts[i][0], pts[i][1], 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#92400e';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(vals[i].toFixed(1), pts[i][0], pts[i][1] - 5);
-      }
-    }
-
-    // X轴标签
-    var xStep = Math.ceil(days.length / 10);
-    for (i = 0; i < days.length; i++) {
-      if (i % xStep !== 0) continue;
-      var xi = pad.l + i * step;
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(days[i].slice(5), xi, pad.t + chartH + 6);
-    }
-  }
-
   function renderAll() {
     renderCards();
     drawPlat();
     drawValid();
-    drawSpend();
-    drawUnit();
     renderTable();
   }
 
   window.onresize = function() {
     try { drawPlat(); } catch(e) {}
     try { drawValid(); } catch(e) {}
-    try { drawSpend(); } catch(e) {}
-    try { drawUnit(); } catch(e) {}
   };
 
   // 超时保护
@@ -2077,10 +1786,7 @@ async function loadCostData() {
     if (el) el.style.display = 'none';
     var main = document.getElementById('main');
     if (main) main.style.display = 'block';
-    // 先加载成本数据再渲染
-    loadCostData().then(function() {
-      renderAll();
-    });
+    renderAll();
   } catch(e) {
     clearTimeout(timer);
     console.error(e);
