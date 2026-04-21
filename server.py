@@ -531,16 +531,8 @@ def import_leads():
 
                 # 插入或更新
                 if phone in existing_phones:
-                    # 已存在的线索：入库日期不变，只更新其它字段
-                    # 特殊处理：抖音/小红书线索的入库日期不修改
-                    if platform in ['抖音', '小红书']:
-                        # 抖音/小红书：入库日期不修改，只更新其它信息
-                        c.execute('''UPDATE new_leads SET name=?, city=?, validity=?, region=?, can_wechat=?, remark=?, agent=? WHERE phone=?''',
-                            (name, city, validity, region, can_wechat, remark, agent, phone))
-                    else:
-                        # 其它平台：以导入表为准，全部更新
-                        c.execute('''UPDATE new_leads SET name=?, city=?, validity=?, region=?, can_wechat=?, remark=?, platform=?, agent=? WHERE phone=?''',
-                            (name, city, validity, region, can_wechat, remark, platform, agent, phone))
+                    c.execute('''UPDATE new_leads SET name=?, city=?, validity=?, region=?, can_wechat=?, remark=?, platform=?, agent=? WHERE phone=?''',
+                        (name, city, validity, region, can_wechat, remark, platform, agent, phone))
                     updated_count += 1
                 else:
                     c.execute('''INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
