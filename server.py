@@ -442,8 +442,12 @@ def import_leads():
         import pandas as pd
         from io import BytesIO
 
-        # 读取 Excel
-        df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+        # 读取 Excel（先保存文件内容，避免流被消耗）
+        file_bytes = file.read()
+        df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
+
+        # 调试：记录列名到日志
+        print(f"[导入调试] 文件名: {file.filename}, 列名: {list(df.columns)}, 总行数: {len(df)}")
 
         # 根据文件名判断导入类型
         filename = file.filename
@@ -459,67 +463,98 @@ def import_leads():
 
         added_count = 0
         updated_count = 0
+        skipped_count = 0
+        skip_reasons = []
         today = datetime.now().strftime('%Y-%m-%d')
 
-        for _, row in df.iterrows():
-            try:
-                phone = row.get('手机号', '')
-                # 处理浮点数手机号
-                if isinstance(phone, float):
-                    if pd.isna(phone) or phone != phone:
+        # 手机号列名候选（兼容多种命名）
+        phone_cols = ['手机号', '手机号码', '电话', '联系电话', '手机', 'Phone', 'phone']
+        # 平台列名候选
+        platform_cols = ['平台', '来源平台', '渠道']
+        # 招商员列名候选
+        agent_cols = ['所属招商', '跟进员工', '招商员', '负责人', '分配']
+        follow_cols = ['跟进员工', '负责人', '所属招商']
+        # 日期列名候选
+        date_cols = ['入库日期', '入库时间', '录入日期', '日期', '录入时间']
+        # 姓名列名候选
+        name_cols = ['姓名', '名字', '客户姓名', '联系人']
+        # 城市列名候选
+        city_cols = ['城市', '省份', '地区', '所在城市', '省']
+        # 有效性列名候选
+        validity_cols = ['有效性', '线索有效性', '客户类型', '等级']
+        # 大区列名候选
+        region_cols = ['所属大区', '大区', '区域', '所属区域']
+        # 能否加微列名候选
+        wechat_cols = ['能否加微', '是否能加上微信', '加微信', '微信']
+        # 备注列名候选
+        remark_cols = ['备注', '说明', '备注信息']
+
+        def get_val(row, candidates, default=''):
+            for col in candidates:
+                if col in row and pd.notna(row[col]):
+                    v = str(row[col]).strip()
+                    if v and v != 'nan':
+                        return v
+            return default
+
+        def get_phone(row):
+            for col in phone_cols:
+                if col in row:
+                    v = row[col]
+                    if isinstance(v, float):
+                        if pd.isna(v) or v != v:
+                            continue
+                        # 处理 1.3193651186e+10 科学计数法
+                        if v > 1e10:
+                            return str(int(v))
+                        v = str(int(v))
+                    elif pd.isna(v):
                         continue
-                    phone = str(int(phone))
-                elif pd.isna(phone):
-                    continue
-                else:
-                    phone = str(phone).strip()
-                if not phone or phone == 'nan' or phone == '' or phone == 'None':
+                    else:
+                        v = str(v).strip()
+                    # 清理手机号：去空格、去小数点、取数字
+                    v = ''.join(filter(str.isdigit, v))
+                    if len(v) >= 7:
+                        return v
+            return ''
+
+        for idx, row in df.iterrows():
+            try:
+                phone = get_phone(row)
+                if not phone:
+                    skipped_count += 1
+                    if idx < 3:
+                        skip_reasons.append(f"第{idx+1}行: 无法识别手机号")
                     continue
 
                 # 解析平台
-                platform = str(row.get('平台', '抖音')).strip()
-                if not platform or platform == 'nan':
-                    platform = '抖音'
+                platform = get_val(row, platform_cols, '抖音')
 
                 # 解析招商员
                 if is_douyin_kezi:
-                    # 抖音来客客资表：按跟进员工分配
-                    agent = str(row.get('跟进员工', '')).strip()
+                    agent = get_val(row, follow_cols, '郑建军')
                 else:
-                    # 招商线索管理表：优先所属招商，其次跟进员工
-                    agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
-                if not agent or agent == 'nan':
+                    agent = get_val(row, ['所属招商', '跟进员工'], '') or get_val(row, follow_cols, '郑建军')
+                if not agent:
                     agent = '郑建军'
 
                 # 解析入库日期
                 entry_date = today
-                for date_col in ['入库日期', '入库时间', '录入日期']:
-                    if date_col in row and pd.notna(row[date_col]):
+                for col in date_cols:
+                    if col in row and pd.notna(row[col]):
                         try:
-                            entry_date = pd.to_datetime(row[date_col]).strftime('%Y-%m-%d')
+                            entry_date = pd.to_datetime(row[col]).strftime('%Y-%m-%d')
                             break
                         except:
                             pass
 
                 # 解析其他字段
-                name = str(row.get('姓名', '')).strip()
-                if name == 'nan':
-                    name = ''
-                city = str(row.get('城市', '') or row.get('省份', '')).strip()
-                if city == 'nan':
-                    city = ''
-                validity = str(row.get('有效性', '') or row.get('线索有效性', '')).strip()
-                if validity == 'nan':
-                    validity = ''
-                region = str(row.get('所属大区', '') or row.get('大区', '')).strip()
-                if region == 'nan':
-                    region = ''
-                can_wechat = str(row.get('能否加微', '') or row.get('是否能加上微信', '')).strip()
-                if can_wechat == 'nan':
-                    can_wechat = ''
-                remark = str(row.get('备注', '')).strip()
-                if remark == 'nan':
-                    remark = ''
+                name = get_val(row, name_cols)
+                city = get_val(row, city_cols)
+                validity = get_val(row, validity_cols)
+                region = get_val(row, region_cols)
+                can_wechat = get_val(row, wechat_cols)
+                remark = get_val(row, remark_cols)
 
                 if phone in existing:
                     # ── 已存在线索：UPDATE ──
@@ -530,7 +565,6 @@ def import_leads():
                     # 招商线索管理表模式下，抖音/小红书平台的入库日期不修改
                     if is_zhaoshang and old_platform in ('抖音', '小红书'):
                         entry_date = old['entry_date']
-                    # 其他情况（非招商模式、或其他平台）以导入数据为准
 
                     c.execute('''
                         UPDATE new_leads SET
@@ -549,23 +583,33 @@ def import_leads():
                     added_count += 1
 
             except Exception as row_err:
-                print(f"跳过行: {row_err}")
+                skipped_count += 1
+                skip_reasons.append(f"第{idx+1}行: {str(row_err)[:50]}")
                 continue
 
         conn.commit()
         conn.close()
 
+        # 组装返回消息
         msg_parts = []
         if added_count:
             msg_parts.append(f'新增 {added_count} 条')
         if updated_count:
             msg_parts.append(f'更新 {updated_count} 条')
+        if skipped_count:
+            msg_parts.append(f'跳过 {skipped_count} 条')
         if not msg_parts:
             msg_parts.append('未导入任何数据')
 
-        return jsonify({'success': True, 'message': '，'.join(msg_parts)})
+        message = '，'.join(msg_parts)
+        if skip_reasons:
+            message += '。前几条跳过原因: ' + '; '.join(skip_reasons[:3])
+
+        return jsonify({'success': True, 'message': message})
 
     except Exception as e:
+        import traceback
+        print(f"[导入错误] {str(e)}\n{traceback.format_exc()}")
         return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
 
 # ─────────────────────────────────────────────
