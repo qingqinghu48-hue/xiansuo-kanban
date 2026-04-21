@@ -654,11 +654,24 @@ def admin_page():
         </div>
 
         <div class="container" style="margin-top:20px">
-            <h2>📊 Excel批量导入线索</h2>
-            <p style="color:#666;font-size:13px;margin-bottom:15px">上传Excel文件，系统会自动识别招商员和新增线索（已存在的手机号会自动跳过）</p>
+            <h2>📊 Excel 批量导入线索</h2>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:#475569;line-height:1.8">
+                <div style="font-weight:700;color:#1e293b;margin-bottom:8px;font-size:14px">📋 导入规则说明</div>
+                <div style="margin-bottom:10px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-weight:600">招商线索管理表</span> <span style="color:#94a3b8">（文件名包含"招商线索管理表"）</span></div>
+                <ul style="margin:0 0 12px 18px;padding:0">
+                    <li>已存在的线索 → <b>更新其他信息</b>，抖音/小红书平台的<b>入库日期保持不变</b></li>
+                    <li>其他平台线索（400线索等）→ 所有信息以导入表为准，<b>包括入库日期</b></li>
+                    <li>招商员分配：优先「所属招商」，其次「跟进员工」</li>
+                </ul>
+                <div style="margin-bottom:10px"><span style="background:#fce7f3;color:#be185d;padding:2px 8px;border-radius:4px;font-weight:600">抖音来客客资表</span> <span style="color:#94a3b8">（文件名包含"客资"或"抖音"）</span></div>
+                <ul style="margin:0 0 0 18px;padding:0">
+                    <li>按「跟进员工」直接分配账号（如郑建军 → 郑建军）</li>
+                    <li>新线索新增，已存在线索更新全部信息</li>
+                </ul>
+            </div>
             <form id="importForm">
                 <div class="form-group">
-                    <label>选择Excel文件</label>
+                    <label>选择 Excel 文件 <span style="color:#999;font-weight:400">（.xlsx / .xls）</span></label>
                     <input type="file" id="excelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px">
                 </div>
                 <button type="submit" class="btn" style="background:#10b981">导入线索</button>
