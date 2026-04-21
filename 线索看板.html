@@ -365,6 +365,52 @@ td{
   transition:background .15s;
 }
 .modal-x:hover{background:#e2e8f0}
+
+/* ── 批量导入 ── */
+.import-dropzone{
+  border:2px dashed var(--border);
+  border-radius:var(--radius);
+  padding:32px 24px;
+  text-align:center;
+  transition:all .2s;
+  background:var(--surface2);
+  cursor:pointer;
+}
+.import-dropzone.dragover{
+  border-color:var(--primary);
+  background:#eff6ff;
+}
+.import-icon{font-size:32px;margin-bottom:8px}
+.import-text{font-size:14px;color:var(--text-2);font-weight:500}
+.import-hint{font-size:12px;color:var(--text-3);margin-top:6px}
+.import-fileinfo{
+  margin-top:12px;
+  padding:10px 14px;
+  background:#f0fdf4;
+  border:1px solid #bbf7d0;
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  color:#166534;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.import-remove{
+  cursor:pointer;
+  color:#166534;
+  font-weight:700;
+  padding:2px 6px;
+  border-radius:var(--radius-xs);
+  transition:background .15s;
+}
+.import-remove:hover{background:#bbf7d0}
+.import-result{
+  margin-top:12px;
+  font-size:13px;
+  min-height:20px;
+}
+.import-result.ok{color:var(--success);font-weight:600}
+.import-result.err{color:var(--danger);font-weight:600}
 .modal-bd{padding:20px;overflow-y:auto;max-height:calc(85vh - 60px)}
 .detail-row{
   display:flex;padding:11px 0;
@@ -455,6 +501,7 @@ td{
         <div style="flex:1"></div>
         <button class="btn btn-pri" id="btnFilter">应用筛选</button>
         <button class="btn btn-ghost" id="btnReset">重置</button>
+        <button class="btn btn-ghost" id="btnImport" style="margin-left:6px;border-color:var(--primary);color:var(--primary)">批量导入</button>
       </div>
     </div>
 
@@ -556,6 +603,33 @@ td{
       <button class="modal-x" id="modalClose">&#10005;</button>
     </div>
     <div class="modal-bd" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- 批量导入弹窗 -->
+<div class="modal" id="importModal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hd">
+      <h3>批量导入线索</h3>
+      <button class="modal-x" id="importModalClose">&#10005;</button>
+    </div>
+    <div class="modal-bd" style="padding:24px">
+      <div class="import-dropzone" id="importDropzone">
+        <div class="import-icon">&#128193;</div>
+        <div class="import-text">拖拽 Excel 文件到此处，或 <span style="color:var(--primary);cursor:pointer" id="importBrowse">点击选择</span></div>
+        <div class="import-hint">支持 .xlsx 格式，需包含「手机号」列</div>
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none">
+      </div>
+      <div class="import-fileinfo" id="importFileInfo" style="display:none">
+        <span id="importFileName"></span>
+        <span class="import-remove" id="importRemove">&#10005;</span>
+      </div>
+      <div class="import-result" id="importResult"></div>
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-ghost" id="importCancel">取消</button>
+        <button class="btn btn-pri" id="importSubmit" disabled style="margin-left:8px">导入线索</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1838,6 +1912,108 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
     var txt = document.querySelector('#loading .loading-text');
     if (txt) txt.textContent = '渲染出错，请打开控制台查看：' + e.message;
   }
+
+  // ── 批量导入逻辑 ──
+  (function(){
+    var importModal = document.getElementById('importModal');
+    var btnImport   = document.getElementById('btnImport');
+    var btnClose    = document.getElementById('importModalClose');
+    var btnCancel   = document.getElementById('importCancel');
+    var dropzone    = document.getElementById('importDropzone');
+    var fileInput   = document.getElementById('importFile');
+    var browse      = document.getElementById('importBrowse');
+    var fileInfo    = document.getElementById('importFileInfo');
+    var fileName    = document.getElementById('importFileName');
+    var btnRemove   = document.getElementById('importRemove');
+    var btnSubmit   = document.getElementById('importSubmit');
+    var resultBox   = document.getElementById('importResult');
+    var currentFile = null;
+
+    function openImport(){ importModal.classList.add('show'); }
+    function closeImport(){
+      importModal.classList.remove('show');
+      currentFile = null;
+      fileInput.value = '';
+      fileInfo.style.display = 'none';
+      resultBox.textContent = '';
+      resultBox.className = 'import-result';
+      btnSubmit.disabled = true;
+    }
+    function setFile(file){
+      if (!file) return;
+      currentFile = file;
+      fileName.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+      fileInfo.style.display = 'flex';
+      resultBox.textContent = '';
+      resultBox.className = 'import-result';
+      btnSubmit.disabled = false;
+    }
+
+    if (btnImport)   btnImport.addEventListener('click', openImport);
+    if (btnClose)    btnClose.addEventListener('click', closeImport);
+    if (btnCancel)   btnCancel.addEventListener('click', closeImport);
+    if (browse)      browse.addEventListener('click', function(e){ e.stopPropagation(); fileInput.click(); });
+    if (fileInput)   fileInput.addEventListener('change', function(){ if (this.files[0]) setFile(this.files[0]); });
+    if (btnRemove)   btnRemove.addEventListener('click', function(e){ e.stopPropagation(); currentFile=null; fileInput.value=''; fileInfo.style.display='none'; btnSubmit.disabled=true; });
+
+    if (dropzone){
+      dropzone.addEventListener('click', function(){ fileInput.click(); });
+      dropzone.addEventListener('dragover', function(e){ e.preventDefault(); this.classList.add('dragover'); });
+      dropzone.addEventListener('dragleave', function(e){ e.preventDefault(); this.classList.remove('dragover'); });
+      dropzone.addEventListener('drop', function(e){
+        e.preventDefault();
+        this.classList.remove('dragover');
+        var files = e.dataTransfer.files;
+        if (files && files[0]) setFile(files[0]);
+      });
+    }
+
+    if (btnSubmit){
+      btnSubmit.addEventListener('click', function(){
+        if (!currentFile) return;
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = '导入中…';
+        resultBox.textContent = '';
+        resultBox.className = 'import-result';
+
+        var form = new FormData();
+        form.append('file', currentFile);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/leads/import', true);
+        xhr.onload = function(){
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '导入线索';
+          try {
+            var res = JSON.parse(xhr.responseText);
+            if (res.success){
+              resultBox.textContent = res.message;
+              resultBox.className = 'import-result ok';
+              setTimeout(function(){ closeImport(); location.reload(); }, 1500);
+            } else {
+              resultBox.textContent = res.message || '导入失败';
+              resultBox.className = 'import-result err';
+            }
+          } catch(err){
+            resultBox.textContent = '响应解析失败';
+            resultBox.className = 'import-result err';
+          }
+        };
+        xhr.onerror = function(){
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '导入线索';
+          resultBox.textContent = '网络错误，请检查连接';
+          resultBox.className = 'import-result err';
+        };
+        xhr.send(form);
+      });
+    }
+
+    // 点击遮罩关闭
+    if (importModal){
+      importModal.addEventListener('click', function(e){ if (e.target === importModal) closeImport(); });
+    }
+  })();
 })();
 </script>
 </body>
