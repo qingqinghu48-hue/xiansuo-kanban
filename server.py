@@ -270,38 +270,13 @@ def add_cost():
     return jsonify({'success': True, 'message': f'{platform} {cost_date} 成本录入成功'})
 
 # ─────────────────────────────────────────────
-# 删除成本数据 API
-# ─────────────────────────────────────────────
-@app.route('/api/cost/delete', methods=['POST'])
-def delete_cost():
-    user = session.get('user')
-    if not user or user['role'] != 'admin':
-        return jsonify({'success': False, 'message': '只有管理员可以删除成本'}), 401
-    
-    data = request.json
-    cost_date = data.get('cost_date', '').strip()
-    platform = data.get('platform', '').strip()
-    
-    if not cost_date or not platform:
-        return jsonify({'success': False, 'message': '参数错误'})
-    
-    conn = sqlite3.connect(str(DB_FILE))
-    c = conn.cursor()
-    c.execute('DELETE FROM cost_data WHERE cost_date = ? AND platform = ?', (cost_date, platform))
-    conn.commit()
-    deleted = c.rowcount
-    conn.close()
-    
-    return jsonify({'success': True, 'message': f'已删除 {deleted} 条记录'})
-
-# ─────────────────────────────────────────────
 # 获取成本数据 API
 # ─────────────────────────────────────────────
 @app.route('/api/cost', methods=['GET'])
 def get_cost():
     user = session.get('user')
-    if not user:
-        return jsonify({'cost_data': []})
+    if not user or user['role'] != 'admin':
+        return jsonify({'error': '无权限'}), 401
     
     cost_data = load_cost_data()
     return jsonify({'cost_data': cost_data})
@@ -924,12 +899,6 @@ def kanban_content():
     pattern = r'window\.__ALL__\s*=\s*\[[\s\S]*?\];'
     replacement = 'window.__ALL__ = ' + json.dumps(filtered, ensure_ascii=False) + ';'
     content = re.sub(pattern, replacement, content, count=1)
-    
-    # 注入成本数据
-    cost_data = load_cost_data()
-    cost_pattern = r'window\.__COST__\s*=\s*\{[\s\S]*?\};'
-    cost_replacement = 'window.__COST__ = ' + json.dumps(cost_data, ensure_ascii=False) + ';'
-    content = re.sub(cost_pattern, cost_replacement, content, count=1)
     
     # 注入用户信息和未读提醒
     unread_count = 0
