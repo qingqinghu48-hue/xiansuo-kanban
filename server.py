@@ -999,4 +999,4 @@ if __name__ == '__main__':
     print("  招商员1: zhengjianjun / zjj001345")
     print("  招商员2: liurenjie / lrj001678")
     print()
-    app.run(debug=True, port=5001, host='0.0.0.0')
+    app.run(debug=False, port=5001, host='0.0.0.0')
