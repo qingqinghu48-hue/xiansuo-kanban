@@ -869,84 +869,14 @@ def kanban_content():
     if not user:
         return '<h1>请先登录</h1><a href="/">返回登录</a>'
     
-    # HTML文件固定在程序目录
+    # 直接返回静态 HTML 文件（数据已嵌入）
     html_file = Path(__file__).parent / '线索看板.html'
     with open(html_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    records = load_data()
-    new_leads = load_new_leads()
-    
-    # 根据用户角色过滤数据
-    if user['role'] == 'admin':
-        filtered = records + new_leads
-    else:
-        agent_name = user['name']
-        filtered = [r for r in records if r.get('所属招商', '') == agent_name 
-                    or r.get('跟进员工', '') == agent_name]
-        # 加上新录入的线索
-        filtered += [r for r in new_leads if r.get('所属招商', '') == agent_name]
-    
-    # 替换原始数据
-    pattern = r'window\.__ALL__\s*=\s*\[[\s\S]*?\];'
-    replacement = 'window.__ALL__ = ' + json.dumps(filtered, ensure_ascii=False) + ';'
-    content = re.sub(pattern, replacement, content, count=1)
-    
-    # 注入用户信息和未读提醒
-    unread_count = 0
-    unread_leads = []
-    if user['role'] != 'admin':
-        conn = sqlite3.connect(str(DB_FILE))
-        c = conn.cursor()
-        c.execute('SELECT * FROM new_leads WHERE agent = ? AND is_read = 0', (user['name'],))
-        rows = c.fetchall()
-        conn.close()
-        unread_count = len(rows)
-        for row in rows:
-            unread_leads.append({'id': row[0], '手机号': row[1], '平台': row[2], '入库时间': row[10][:10] if row[10] else ''})
-    
-    # 注入用户信息和提醒
-    user_script = '<script>window.CURRENT_USER = ' + json.dumps(user) + '; window.UNREAD_LEADS = ' + json.dumps(unread_leads) + '; window.UNREAD_COUNT = ' + str(unread_count) + ';</script>'
+    # 注入用户信息
+    user_script = '<script>window.CURRENT_USER = ' + json.dumps(user) + ';</script>'
     content = content.replace('</head>', user_script + '</head>')
-    
-    # 添加提醒弹窗样式和逻辑
-    if user['role'] != 'admin' and unread_count > 0:
-        alert_html = '''
-        <div id="leadAlert" style="position:fixed;top:70px;right:20px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;padding:20px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:9999;max-width:350px;display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <strong style="font-size:16px;">🔔 新线索提醒</strong>
-                <span id="alertClose" style="cursor:pointer;font-size:20px;padding:0 5px;">×</span>
-            </div>
-            <p style="margin-bottom:10px;">您有 <strong id="alertCount">''' + str(unread_count) + '''</strong> 条新线索待处理：</p>
-            <div id="alertList"></div>
-        </div>
-        <script>
-            (function() {
-                var leads = window.UNREAD_LEADS || [];
-                var count = window.UNREAD_COUNT || 0;
-                if (count > 0) {
-                    var alertDiv = document.getElementById('leadAlert');
-                    var listDiv = document.getElementById('alertList');
-                    leads.forEach(function(lead) {
-                        listDiv.innerHTML += '<div style="background:rgba(255,255,255,0.2);padding:8px 10px;border-radius:6px;margin-top:8px;font-size:13px;">📱 ' + lead['手机号'] + '<br><span style="font-size:12px;">平台: ' + lead['平台'] + ' | ' + lead['入库时间'] + '</span></div>';
-                    });
-                    alertDiv.style.display = 'block';
-                    document.getElementById('alertClose').onclick = function() {
-                        alertDiv.style.display = 'none';
-                        // 标记所有未读线索为已读
-                        leads.forEach(function(lead) {
-                            fetch('/api/leads/mark_read', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({id: lead.id})
-                            });
-                        });
-                    };
-                }
-            })();
-        </script>
-        '''
-        content = content.replace('</body>', alert_html + '</body>')
     
     return content
 
