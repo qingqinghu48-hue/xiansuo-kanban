@@ -445,14 +445,20 @@ def import_leads():
         # 读取 Excel
         df = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
 
+        # 根据文件名判断导入类型
+        filename = file.filename
+        is_zhaoshang = '招商线索管理表' in filename
+        is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
+
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
-        # 获取已有手机号
-        c.execute('SELECT phone FROM new_leads')
-        existing_phones = set(row[0] for row in c.fetchall())
+        # 获取已有线索（phone -> platform, entry_date）
+        c.execute('SELECT phone, platform, entry_date FROM new_leads')
+        existing = {row[0]: {'platform': row[1] or '', 'entry_date': row[2] or ''} for row in c.fetchall()}
 
         added_count = 0
+        updated_count = 0
         today = datetime.now().strftime('%Y-%m-%d')
 
         for _, row in df.iterrows():
@@ -460,7 +466,7 @@ def import_leads():
                 phone = row.get('手机号', '')
                 # 处理浮点数手机号
                 if isinstance(phone, float):
-                    if pd.isna(phone) or phone != phone:  # NaN check
+                    if pd.isna(phone) or phone != phone:
                         continue
                     phone = str(int(phone))
                 elif pd.isna(phone):
@@ -470,14 +476,20 @@ def import_leads():
                 if not phone or phone == 'nan' or phone == '' or phone == 'None':
                     continue
 
-                # 跳过已存在的
-                if phone in existing_phones:
-                    continue
+                # 解析平台
+                platform = str(row.get('平台', '抖音')).strip()
+                if not platform or platform == 'nan':
+                    platform = '抖音'
 
-                # 自动识别招商员（优先用所属招商，其次跟进员工）
-                agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
+                # 解析招商员
+                if is_douyin_kezi:
+                    # 抖音来客客资表：按跟进员工分配
+                    agent = str(row.get('跟进员工', '')).strip()
+                else:
+                    # 招商线索管理表：优先所属招商，其次跟进员工
+                    agent = str(row.get('所属招商', '') or row.get('跟进员工', '')).strip()
                 if not agent or agent == 'nan':
-                    agent = '郑建军'  # 默认招商员
+                    agent = '郑建军'
 
                 # 解析入库日期
                 entry_date = today
@@ -489,24 +501,53 @@ def import_leads():
                         except:
                             pass
 
-                c.execute('''
-                    INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    phone,
-                    str(row.get('平台', '抖音')),
-                    agent,
-                    entry_date,
-                    str(row.get('姓名', '')),
-                    str(row.get('城市', '') or row.get('省份', '')),
-                    str(row.get('有效性', '') or row.get('线索有效性', '')),
-                    str(row.get('所属大区', '') or row.get('大区', '')),
-                    str(row.get('能否加微', '') or row.get('是否能加上微信', '')),
-                    str(row.get('备注', '')),
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                ))
-                existing_phones.add(phone)
-                added_count += 1
+                # 解析其他字段
+                name = str(row.get('姓名', '')).strip()
+                if name == 'nan':
+                    name = ''
+                city = str(row.get('城市', '') or row.get('省份', '')).strip()
+                if city == 'nan':
+                    city = ''
+                validity = str(row.get('有效性', '') or row.get('线索有效性', '')).strip()
+                if validity == 'nan':
+                    validity = ''
+                region = str(row.get('所属大区', '') or row.get('大区', '')).strip()
+                if region == 'nan':
+                    region = ''
+                can_wechat = str(row.get('能否加微', '') or row.get('是否能加上微信', '')).strip()
+                if can_wechat == 'nan':
+                    can_wechat = ''
+                remark = str(row.get('备注', '')).strip()
+                if remark == 'nan':
+                    remark = ''
+
+                if phone in existing:
+                    # ── 已存在线索：UPDATE ──
+                    old = existing[phone]
+                    old_platform = old['platform']
+
+                    # 入库日期更新规则：
+                    # 招商线索管理表模式下，抖音/小红书平台的入库日期不修改
+                    if is_zhaoshang and old_platform in ('抖音', '小红书'):
+                        entry_date = old['entry_date']
+                    # 其他情况（非招商模式、或其他平台）以导入数据为准
+
+                    c.execute('''
+                        UPDATE new_leads SET
+                            platform = ?, agent = ?, entry_date = ?, name = ?,
+                            city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?
+                        WHERE phone = ?
+                    ''', (platform, agent, entry_date, name, city, validity, region, can_wechat, remark, phone))
+                    updated_count += 1
+                else:
+                    # ── 新线索：INSERT ──
+                    c.execute('''
+                        INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                    existing[phone] = {'platform': platform, 'entry_date': entry_date}
+                    added_count += 1
+
             except Exception as row_err:
                 print(f"跳过行: {row_err}")
                 continue
@@ -514,7 +555,15 @@ def import_leads():
         conn.commit()
         conn.close()
 
-        return jsonify({'success': True, 'message': f'成功导入 {added_count} 条新线索'})
+        msg_parts = []
+        if added_count:
+            msg_parts.append(f'新增 {added_count} 条')
+        if updated_count:
+            msg_parts.append(f'更新 {updated_count} 条')
+        if not msg_parts:
+            msg_parts.append('未导入任何数据')
+
+        return jsonify({'success': True, 'message': '，'.join(msg_parts)})
 
     except Exception as e:
         return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
