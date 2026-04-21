@@ -879,7 +879,7 @@ window.__COST_DAYS__ = __CDAYS_DATA__;
       { color:'blue',   icon:'&#128200;', val: total,      label:'总线索数',     sub:'筛选后合计' },
       { color:'red',    icon:'&#127775;', val: dy,          label:'抖音线索',     sub:(xs > 0 ? '+小红书 ' + xs + '条' : '') },
       { color:'amber',  icon:'&#127800;', val: xs,          label:'小红书线索',   sub:'占比' + xsPct + '%' },
-      { color:'green', icon:'&#128101;', val: total - dy - xs, label:'其它线索',  sub:'占比' + ((total - dy - xs) / (total || 1) * 100).toFixed(1) + '%' },
+      { color:'purple', icon:'&#128101;', val: total - dy - xs, label:'其它线索',  sub:'占比' + ((total - dy - xs) / (total || 1) * 100).toFixed(1) + '%' },
       { color:'green',  icon:'&#128181;', val:'&yen;' + fmtSpend, label:'累计消耗', sub:costCnt + '天平均' },
       { color:'indigo', icon:'&#128200;', val:'&yen;' + avgUnit,   label:'单条平均成本', sub:costCnt + '天均值' },
     ];
