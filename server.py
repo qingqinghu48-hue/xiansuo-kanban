@@ -559,14 +559,23 @@ def import_leads():
                     if isinstance(v, float):
                         if pd.isna(v) or v != v:
                             continue
-                        if v > 1e10:
-                            return str(int(v))
-                        v = str(int(v))
+                        # 处理科学计数法，如 1.3193651186e+10
+                        if v > 1e9:
+                            v = str(int(round(v)))
+                        else:
+                            v = str(int(v))
+                    elif isinstance(v, int):
+                        v = str(v)
                     elif pd.isna(v):
                         continue
                     else:
                         v = str(v).strip()
+                    # 清理：去空格、去小数点、取数字
                     v = ''.join(filter(str.isdigit, v))
+                    # 中国大陆手机号 11 位
+                    if len(v) == 11:
+                        return v
+                    # 其他情况至少 7 位
                     if len(v) >= 7:
                         return v
             return ''
@@ -580,13 +589,19 @@ def import_leads():
                         pass
             return default
 
+        # 调试：打印前几行原始数据
+        for i in range(min(3, len(df))):
+            raw_phone = df.iloc[i].get('手机号', df.iloc[i].get('电话', 'N/A'))
+            print(f"[导入调试] 第{i+1}行原始手机号: {raw_phone} (类型: {type(raw_phone).__name__})")
+
         for idx, row in df.iterrows():
             try:
                 phone = get_phone(row)
                 if not phone:
                     skipped_count += 1
-                    if idx < 3:
-                        skip_reasons.append(f"第{idx+1}行: 无法识别手机号")
+                    if idx < 5:
+                        raw = row.get('手机号', row.get('电话', row.get('手机号码', 'N/A')))
+                        skip_reasons.append(f"第{idx+1}行: 无法识别手机号 (原始值: {raw})")
                     continue
 
                 # ── 解析所有字段 ──
