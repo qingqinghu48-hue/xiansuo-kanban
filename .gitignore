@@ -6,15 +6,35 @@ dist/
 build/
 .venv/
 
-# Excel/CSV 数据文件（根据需要可注释）
+# 数据库及数据文件（绝对禁止同步到服务端）
+*.db
+*.db-journal
+users.yaml
+data.js
+
+# Excel/CSV 数据文件（导入源文件，不提交）
 *.xlsx
 *.csv
+
+# 客资数据目录
+抖音客资/
+小红书客资/
 
 # 生成文件
 dashboard_data.json
 
 # 运行时文件（不提交）
 server.log
+sync.log
+test_out.txt
+
+# 编码备份
+server_b64.txt
+server_b64_clean.txt
+data_b64.txt
+
+# 压缩包备份
+*.tar.gz
 
 # macOS
 .DS_Store
@@ -34,5 +54,3 @@ server.log
 # 工作目录
 .workbuddy/
 .codebuddy/
-!server.py
-!build_dashboard.py
