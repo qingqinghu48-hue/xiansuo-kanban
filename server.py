@@ -815,12 +815,40 @@ def import_douyin_kezi():
         except Exception as read_err:
             return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
 
+        def read_with_fallback(bio, engine, sheet_name=None):
+            """先用pandas读，异常时回退到openpyxl手动构造DataFrame（兼容pandas 1.1.5）"""
+            bio.seek(0)
+            try:
+                if sheet_name:
+                    df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
+                else:
+                    df = pd.read_excel(bio, engine=engine)
+                # pandas 1.1.5 可能返回空或仅1列的异常结果
+                if len(df) > 0 and len(df.columns) > 1:
+                    return df
+            except Exception:
+                pass
+
+            # 回退：openpyxl 手动读取
+            from openpyxl import load_workbook
+            bio.seek(0)
+            wb = load_workbook(bio, data_only=True)
+            ws = wb.active if sheet_name is None else wb[sheet_name]
+
+            data = []
+            headers = None
+            for row in ws.iter_rows(values_only=True):
+                if headers is None:
+                    headers = [str(c).strip() if c is not None else '' for c in row]
+                else:
+                    data.append(row)
+            return pd.DataFrame(data, columns=headers)
+
         # 直接读取第一个有数据的sheet
         df = None
         debug_info = []
         try:
-            bio.seek(0)
-            df = pd.read_excel(bio, engine=engine)
+            df = read_with_fallback(bio, engine)
             debug_info.append(f"直接读取成功，行数={len(df)}, 列名={list(df.columns)}")
         except Exception as e:
             debug_info.append(f"直接读取失败: {e}")
@@ -829,8 +857,7 @@ def import_douyin_kezi():
         if df is None or len(df) == 0:
             for sheet_name in xls.sheet_names:
                 try:
-                    bio.seek(0)
-                    df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
+                    df = read_with_fallback(bio, engine, sheet_name)
                     debug_info.append(f"Sheet {sheet_name} 读取成功，行数={len(df)}")
                     if len(df) > 0:
                         break
