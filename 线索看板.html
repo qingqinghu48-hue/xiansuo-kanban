@@ -2246,7 +2246,14 @@ window.__COST_DAYS__ = [];
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({cost_date: date, platform: platform, amount: amount, unit_cost: (!isNaN(unitCost) && unitCost > 0) ? unitCost : 0})
         })
-        .then(function(r){ return r.json(); })
+        .then(function(r){
+          if (!r.ok) {
+            return r.text().then(function(txt){
+              throw new Error('HTTP ' + r.status + ' ' + r.statusText + ': ' + txt.slice(0,200));
+            });
+          }
+          return r.json();
+        })
         .then(function(res){
           btnSubmit.disabled = false;
           btnSubmit.textContent = '确认录入';
@@ -2289,7 +2296,7 @@ window.__COST_DAYS__ = [];
         .catch(function(err){
           btnSubmit.disabled = false;
           btnSubmit.textContent = '确认录入';
-          resultBox.textContent = '网络错误';
+          resultBox.textContent = '请求失败: ' + (err.message || '网络错误');
           resultBox.className = 'cost-result err';
         });
       });
