@@ -1826,9 +1826,10 @@ window.__COST_DAYS__ = [];
     var xsPct = total > 0 ? (xs / total * 100).toFixed(1) : '0';
 
     var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
+    var dyPct = total > 0 ? (dy / total * 100).toFixed(1) : '0';
     var cards = [
       { color:'blue',   icon:'&#128200;', val: total,      label:'总线索数',     sub:'筛选后合计' },
-      { color:'red',    icon:'&#127775;', val: dy,          label:'抖音线索',     sub:(xs > 0 ? '+小红书 ' + xs + '条' : '') },
+      { color:'red',    icon:'&#127775;', val: dy,          label:'抖音线索',     sub:'占比' + dyPct + '%' },
       { color:'amber',  icon:'&#127800;', val: xs,          label:'小红书线索',   sub:'占比' + xsPct + '%' }
     ];
     if (isAdmin) {
