@@ -1410,6 +1410,34 @@ window.__COST_DAYS__ = [];
     }
   })();
 
+  function saveFilterState() {
+    var state = {
+      ds: document.getElementById('ds').value,
+      de: document.getElementById('de').value,
+      fp: document.getElementById('fp').value,
+      fv: document.getElementById('fv').value,
+      fr: document.getElementById('fr').value,
+      fs: document.getElementById('fs').value,
+      fk: document.getElementById('fk').value
+    };
+    try { localStorage.setItem('kanban_filter', JSON.stringify(state)); } catch(e) {}
+  }
+
+  function loadFilterState() {
+    try {
+      var raw = localStorage.getItem('kanban_filter');
+      if (!raw) return;
+      var state = JSON.parse(raw);
+      if (state.ds) document.getElementById('ds').value = state.ds;
+      if (state.de) document.getElementById('de').value = state.de;
+      if (state.fp) document.getElementById('fp').value = state.fp;
+      if (state.fv) document.getElementById('fv').value = state.fv;
+      if (state.fr) document.getElementById('fr').value = state.fr;
+      if (state.fs) document.getElementById('fs').value = state.fs;
+      if (state.fk) document.getElementById('fk').value = state.fk;
+    } catch(e) {}
+  }
+
   function doFilter() {
     var ds = document.getElementById('ds').value;
     var de = document.getElementById('de').value;
@@ -1446,6 +1474,7 @@ window.__COST_DAYS__ = [];
     try { drawDyUnit(); } catch(e) {}
     try { drawXhsSpend(); } catch(e) {}
     try { drawXhsUnit(); } catch(e) {}
+    saveFilterState();
   }
 
   function sortFiltered() {
@@ -2176,6 +2205,7 @@ window.__COST_DAYS__ = [];
   }, 4000);
 
   try {
+    loadFilterState();
     doFilter();
     clearTimeout(timer);
     var el = document.getElementById('loading');
