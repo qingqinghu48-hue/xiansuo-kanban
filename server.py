@@ -537,7 +537,7 @@ def get_notifications():
     return jsonify({'unread_count': len(notifications), 'notifications': notifications})
 
 # ─────────────────────────────────────────────
-# 导入Excel线索（管理员）— v3 完整字段版
+# 导入Excel线索（管理员）— v4 规则重写版
 # ─────────────────────────────────────────────
 @app.route('/api/leads/import', methods=['POST'])
 def import_leads():
@@ -549,6 +549,7 @@ def import_leads():
         return jsonify({'success': False, 'message': '请选择文件'})
 
     file = request.files['file']
+    import_type = request.form.get('import_type', '').strip()
     if file.filename == '':
         return jsonify({'success': False, 'message': '请选择文件'})
 
@@ -576,7 +577,7 @@ def import_leads():
             return jsonify({'success': False, 'message': 'Excel 文件为空（0行数据）'})
 
         cols = [str(c).strip() for c in df.columns]
-        print(f"[导入] 文件={filename}, 行数={len(df)}, 列名={cols}")
+        print(f"[导入] 文件={filename}, 类型={import_type}, 行数={len(df)}, 列名={cols}")
 
         # ── 2) 智能识别列 ──
         def find_col(keywords):
@@ -608,9 +609,9 @@ def import_leads():
 
         print(f"[导入] 列映射: 手机={phone_col}, 平台={platform_col}, 招商={agent_col}, 日期={date_col}")
 
-        # ── 3) 文件类型判断 ──
-        is_zhaoshang = '招商' in filename
-        is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
+        # ── 3) 导入类型判断（优先以用户选择的类型为准）──
+        is_zhaoshang = import_type == 'zhaoshang' or (not import_type and '招商' in filename)
+        is_douyin_kezi = import_type == 'douyin' or (not import_type and ('客资' in filename or ('抖音' in filename and '招商' not in filename)))
 
         # ── 4) 解析所有行 ──
         def get_val(row, col):
@@ -697,15 +698,26 @@ def import_leads():
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
-        # 5.1) 清理已有重复
+        # 5.1) 清理已有重复（同一 phone 保留 id 最小）
         c.execute('SELECT phone, COUNT(*) as cnt FROM new_leads GROUP BY phone HAVING cnt > 1')
         for phone, cnt in c.fetchall():
             c.execute('DELETE FROM new_leads WHERE phone = ? AND id NOT IN (SELECT MIN(id) FROM new_leads WHERE phone = ?)', (phone, phone))
         conn.commit()
 
-        # 5.2) 加载已有线索
-        c.execute('SELECT phone, platform, entry_date FROM new_leads')
-        existing = {row[0]: {'platform': row[1], 'entry_date': row[2]} for row in c.fetchall()}
+        # 5.2) 加载已有线索（phone -> 完整旧数据）
+        c.execute('''SELECT phone, platform, entry_date, name, city, validity,
+                            can_wechat, remark,
+                            二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间
+                     FROM new_leads''')
+        existing = {}
+        for row in c.fetchall():
+            existing[row[0]] = {
+                'platform': row[1], 'entry_date': row[2], 'name': row[3],
+                'city': row[4], 'validity': row[5], 'can_wechat': row[6],
+                'remark': row[7],
+                'follow_time': row[8], 'follow_note': row[9],
+                'call_time': row[10], 'visit_time': row[11], 'sign_time': row[12]
+            }
 
         added, updated, dup_skip = 0, 0, 0
         seen_in_file = set()
@@ -723,11 +735,21 @@ def import_leads():
 
             if phone in existing:
                 old = existing[phone]
-                # 招商线索管理表导入时，抖音/小红书入库日期不变
-                if is_zhaoshang and old['platform'] in ('抖音', '小红书'):
-                    entry_date = old['entry_date']
 
-                # UPDATE 全部字段
+                # ===== 核心规则 =====
+                if is_zhaoshang:
+                    # 招商线索管理表：
+                    # 1) 已存在的线索 → 丢弃（不入库），只更新其他信息
+                    # 2) 抖音/小红书 → 入库日期不变；其他平台 → 以表格为准
+                    if old['platform'] in ('抖音', '小红书'):
+                        entry_date = old['entry_date']
+                    # else: 其他平台，entry_date 保持表格值（已在上面赋值）
+
+                elif is_douyin_kezi:
+                    # 抖音来客客资表：入库日期和信息都以表格为准
+                    pass  # entry_date 保持表格值
+
+                # UPDATE 全部字段（除入库日期按上述规则外，其余都以最新表格为准）
                 c.execute('''UPDATE new_leads SET
                     platform = ?, agent = ?, entry_date = ?, name = ?,
                     city = ?, validity = ?, can_wechat = ?, remark = ?,
@@ -861,12 +883,34 @@ def admin_page():
 
         <div class="container" style="margin-top:20px">
             <h2>📊 Excel 批量导入线索</h2>
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.7">
-                <div style="font-weight:700;margin-bottom:4px">&#128161; 导入说明</div>
-                <div>• 支持 .xlsx / .xls 格式，会自动识别"手机号"、"电话"等列</div>
-                <div>• 文件名含 <b>"招商"</b> → 抖音/小红书已存在线索的<b>入库日期不修改</b></div>
-                <div>• 已存在手机号 → <b>更新</b>其他信息；新手机号 → <b>新增</b></div>
+
+            <!-- 导入类型选择 -->
+            <div class="form-group" style="margin-bottom:16px">
+                <label>选择导入类型 <span style="color:#c00">*</span></label>
+                <select id="importType" style="padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px">
+                    <option value="">-- 请选择 --</option>
+                    <option value="zhaoshang">📋 招商线索管理表</option>
+                    <option value="douyin">🎵 抖音来客客资表</option>
+                </select>
             </div>
+
+            <!-- 招商线索管理表规则说明 -->
+            <div id="zhaoshangRules" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#1e40af;line-height:1.8">
+                <div style="font-weight:700;margin-bottom:6px;font-size:14px">📋 招商线索管理表 — 导入规则</div>
+                <div>1️⃣ 已存在线索（相同电话/微信号）→ <b>不入库</b>，只更新其他信息</div>
+                <div>2️⃣ 抖音/小红书平台 → <b>入库日期不变</b>；其他平台 → 以表格日期为准</div>
+                <div>3️⃣ 已存在线索信息不同 → 除入库日期外，<b>全部以最新表格为准</b></div>
+                <div>4️⃣ 入库日期以表格内日期为准，不是导入时间</div>
+            </div>
+
+            <!-- 抖音来客客资表规则说明 -->
+            <div id="douyinRules" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#991b1b;line-height:1.8">
+                <div style="font-weight:700;margin-bottom:6px;font-size:14px">🎵 抖音来客客资表 — 导入规则</div>
+                <div>1️⃣ 按表格"跟进员工"分配线索到对应账号（如郑建军、刘仁杰）</div>
+                <div>2️⃣ 入库日期和信息 <b>全部以表格为准</b></div>
+                <div>3️⃣ 入库日期以表格内日期为准，不是导入时间</div>
+            </div>
+
             <form id="importForm">
                 <div class="form-group">
                     <label>选择 Excel 文件 <span style="color:#999;font-weight:400">（.xlsx / .xls）</span></label>
@@ -879,6 +923,12 @@ def admin_page():
         </div>
 
         <script>
+            // 导入类型切换显示规则
+            document.getElementById('importType').addEventListener('change', function() {
+                document.getElementById('zhaoshangRules').style.display = this.value === 'zhaoshang' ? 'block' : 'none';
+                document.getElementById('douyinRules').style.display = this.value === 'douyin' ? 'block' : 'none';
+            });
+
             document.getElementById('leadForm').onsubmit = async (e) => {
                 e.preventDefault();
                 const res = await fetch('/api/leads/add', {
@@ -904,9 +954,17 @@ def admin_page():
             document.getElementById('importForm').onsubmit = async (e) => {
                 e.preventDefault();
                 const fileInput = document.getElementById('excelFile');
+                const importType = document.getElementById('importType').value;
                 const btn = document.getElementById('importBtn');
                 const msgBox = document.getElementById('importMessage');
                 const resultBox = document.getElementById('importResult');
+
+                if (!importType) {
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message error';
+                    msgBox.textContent = '请先选择导入类型（招商线索管理表 或 抖音来客客资表）';
+                    return;
+                }
 
                 if (!fileInput.files[0]) {
                     msgBox.style.display = 'block';
@@ -922,6 +980,7 @@ def admin_page():
 
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
+                formData.append('import_type', importType);
 
                 try {
                     const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
@@ -934,10 +993,11 @@ def admin_page():
                     if (data.success) {
                         fileInput.value = '';
                         // 显示统计卡片
-                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        let html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:10px">';
                         html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
                         html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.updated || 0) + '</div><div style="font-size:13px;color:#856404">更新</div></div>';
-                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                        html += '<div style="background:#e0f2fe;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#075985">' + (data.dup_skip || 0) + '</div><div style="font-size:13px;color:#075985">重复跳过</div></div>';
+                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">空值跳过</div></div>';
                         html += '</div>';
 
                         // 显示失败详情
