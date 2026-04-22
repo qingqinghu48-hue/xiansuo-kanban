@@ -1,6 +1,6 @@
 """
 线索看板后端服务 v2
-版本: 4.22.003
+版本: 4.22.017
 - 用户认证和数据 API
 - 线索分配功能
 """
@@ -9,6 +9,15 @@ from flask import Flask, request, jsonify, session, render_template_string
 import yaml, json, os, sqlite3, re
 from datetime import datetime
 from pathlib import Path
+
+
+def _clean_val(val):
+    """清理字符串值，去除换行和回车，避免破坏 JSON/JS 格式"""
+    if val is None:
+        return ''
+    s = str(val)
+    s = s.replace('\r', ' ').replace('\n', ' ')
+    return s.strip()
 
 app = Flask(__name__)
 app.secret_key = 'xiansuo-kanban-secret-key-2024'
@@ -86,33 +95,25 @@ def load_new_leads():
     
     leads = []
     for row in rows:
-        def clean(val):
-            if val is None:
-                return ''
-            s = str(val)
-            # 去除换行和回车，避免破坏 JSON/JS 格式
-            s = s.replace('\r', ' ').replace('\n', ' ')
-            return s.strip()
-
         leads.append({
             'id': row[0],
-            '手机号': clean(row[1]),
-            '平台': clean(row[2]),
-            '所属招商': clean(row[3]),
-            '录入日期': clean(row[12]),
-            '姓名': clean(row[4]),
-            '省份': clean(row[5]),
-            '线索有效性': clean(row[6]),
-            '所属大区': clean(row[7]),
-            '是否能加上微信': clean(row[8]),
-            '备注': clean(row[9]),
-            '入库时间': clean(row[12]) or (clean(row[10])[:10] if len(row) > 10 else ''),
+            '手机号': _clean_val(row[1]),
+            '平台': _clean_val(row[2]),
+            '所属招商': _clean_val(row[3]),
+            '录入日期': _clean_val(row[12]),
+            '姓名': _clean_val(row[4]),
+            '省份': _clean_val(row[5]),
+            '线索有效性': _clean_val(row[6]),
+            '所属大区': _clean_val(row[7]),
+            '是否能加上微信': _clean_val(row[8]),
+            '备注': _clean_val(row[9]),
+            '入库时间': _clean_val(row[12]) or (_clean_val(row[10])[:10] if len(row) > 10 else ''),
             '是否已读': row[11] if len(row) > 11 else 0,
-            '二次联系时间': clean(row[13]),
-            '二次联系备注': clean(row[14]),
-            '最近一次电联时间': clean(row[15]),
-            '到访时间': clean(row[16]),
-            '签约时间': clean(row[17]),
+            '二次联系时间': _clean_val(row[13]),
+            '二次联系备注': _clean_val(row[14]),
+            '最近一次电联时间': _clean_val(row[15]),
+            '到访时间': _clean_val(row[16]),
+            '签约时间': _clean_val(row[17]),
             '来源文件': '手动录入'
         })
     return leads
@@ -569,18 +570,40 @@ def import_leads():
         filename_lower = filename.lower()
 
         # ── 1) 读取Excel ──
+        bio = BytesIO(file_bytes)
+        df = None
         try:
             if filename_lower.endswith('.xls'):
-                df = pd.read_excel(BytesIO(file_bytes), engine='xlrd')
+                df = pd.read_excel(bio, engine='xlrd')
             else:
-                df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
+                df = pd.read_excel(bio, engine='openpyxl')
         except Exception as read_err:
             err_msg = str(read_err)
             if 'not supported' in err_msg.lower():
                 err_msg += '（服务器缺少openpyxl库，请联系管理员安装: pip install openpyxl）'
             return jsonify({'success': False, 'message': f'读取Excel失败: {err_msg}'})
 
-        if len(df) == 0:
+        # 兼容 pandas 1.1.5：直接读取异常时回退到 openpyxl 手动构造
+        if not filename_lower.endswith('.xls') and (df is None or len(df) == 0 or len(df.columns) <= 1):
+            try:
+                bio.seek(0)
+                from openpyxl import load_workbook
+                wb = load_workbook(bio, data_only=True)
+                ws = wb.active
+                data = []
+                headers = None
+                for row in ws.iter_rows(values_only=True):
+                    if headers is None:
+                        headers = [str(c).strip() if c is not None else '' for c in row]
+                    else:
+                        data.append(row)
+                df = pd.DataFrame(data, columns=headers)
+                if df is not None and len(df) > 0:
+                    df = df.dropna(how='all')
+            except Exception:
+                pass
+
+        if df is None or len(df) == 0:
             return jsonify({'success': False, 'message': 'Excel 文件为空（0行数据）'})
 
         cols = [str(c).strip() for c in df.columns]
