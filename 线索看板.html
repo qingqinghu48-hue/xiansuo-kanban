@@ -576,7 +576,7 @@ td{
               <th data-sort="所属大区">大区</th>
               <th data-sort="所属招商">招商员</th>
               <th>能否加微</th>
-              <th>详情</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -1448,20 +1448,46 @@ window.__COST_DAYS__ = [];
     return '<span style="color:#94a3b8">—</span>';
   }
 
-  function showDetail(idx) {
-    var r = filtered[(page - 1) * PS + idx];
+  function showDetail(gidx) {
+    var r = filtered[gidx];
     if (!r) return;
     var html = '';
-    var keys = ['姓名','手机号','手机','平台','入库时间','入库日期','线索有效性','有效性','所属大区','所属招商','备注'];
+    var keys = ['姓名','手机号','手机','平台','入库时间','入库日期','线索有效性','有效性','所属大区','所属招商','跟进员工','省份','城市','是否能加上微信','流量类型','意向门店','线索阶段','线索标签','来源文件','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间','录入日期'];
     var k, i;
     for (i = 0; i < keys.length; i++) {
       k = keys[i];
-      if (r[k] != null) {
+      if (r[k] != null && String(r[k]).trim() !== '') {
         html += '<div class="detail-row"><div class="detail-l">' + esc(k) + '</div><div class="detail-v">' + esc(r[k]) + '</div></div>';
       }
     }
     document.getElementById('modalBody').innerHTML = html;
     document.getElementById('modal').className = 'modal show';
+  }
+
+  function deleteLead(gidx) {
+    var r = filtered[gidx];
+    if (!r) return;
+    var phone = r['手机号'] || r['手机'];
+    if (!phone || phone === '-') { alert('该记录缺少手机号，无法删除'); return; }
+    if (!confirm('确定删除 ' + (r['姓名'] || '') + ' (' + phone + ') 的线索记录？')) return;
+    fetch('/api/leads/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phone: phone})
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      if (data.success){
+        filtered.splice(gidx, 1);
+        renderTable();
+        renderCards();
+        try { drawPlat(); } catch(e){}
+        try { drawValid(); } catch(e){}
+      } else {
+        alert(data.message || '删除失败');
+      }
+    })
+    .catch(function(err){ alert('网络错误'); });
   }
 
   function renderTable() {
@@ -1484,7 +1510,10 @@ window.__COST_DAYS__ = [];
         '<td>' + esc(r['所属大区'] || '-') + '</td>' +
         '<td>' + esc(r['所属招商'] || '-') + '</td>' +
         '<td>' + jmTag(r['是否能加上微信'] || '') + '</td>' +
-        '<td><button class="td-btn" onclick="parent.showDetail(' + idx + ')">查看</button></td>' +
+        '<td>' +
+          '<button class="td-btn" onclick="parent.showDetail(' + i + ')" style="margin-right:4px">查看</button>' +
+          '<button class="td-btn" onclick="parent.deleteLead(' + i + ')" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>' +
+        '</td>' +
         '</tr>');
     }
     tbody.innerHTML = rows.join('');
@@ -1497,6 +1526,7 @@ window.__COST_DAYS__ = [];
   }
 
   window.showDetail = showDetail;
+  window.deleteLead = deleteLead;
 
   document.getElementById('prevBtn').onclick = function() {
     if (page > 1) { page--; renderTable(); }
