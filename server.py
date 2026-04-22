@@ -867,25 +867,6 @@ def admin_page():
             <div class="message" id="message"></div>
         </div>
 
-        <div class="container" style="margin-top:20px">
-            <h2>📊 Excel 批量导入线索</h2>
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.7">
-                <div style="font-weight:700;margin-bottom:4px">&#128161; 导入说明</div>
-                <div>• 支持 .xlsx / .xls 格式，会自动识别"手机号"、"电话"等列</div>
-                <div>• 文件名含 <b>"招商"</b> → 抖音/小红书已存在线索的<b>入库日期不修改</b></div>
-                <div>• 已存在手机号 → <b>更新</b>其他信息；新手机号 → <b>新增</b></div>
-            </div>
-            <form id="importForm">
-                <div class="form-group">
-                    <label>选择 Excel 文件 <span style="color:#999;font-weight:400">（.xlsx / .xls）</span></label>
-                    <input type="file" id="excelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px">
-                </div>
-                <button type="submit" class="btn" id="importBtn" style="background:linear-gradient(135deg,#10b981,#059669)">导入线索</button>
-            </form>
-            <div class="message" id="importMessage"></div>
-            <div id="importResult" style="margin-top:15px;display:none"></div>
-        </div>
-
         <script>
             document.getElementById('leadForm').onsubmit = async (e) => {
                 e.preventDefault();
@@ -923,53 +904,6 @@ def admin_page():
                     return;
                 }
 
-                btn.disabled = true;
-                btn.textContent = '正在导入...';
-                msgBox.style.display = 'none';
-                resultBox.style.display = 'none';
-
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-
-                try {
-                    const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
-                    const data = await res.json();
-
-                    msgBox.style.display = 'block';
-                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
-                    msgBox.textContent = data.message;
-
-                    if (data.success) {
-                        fileInput.value = '';
-                        // 显示统计卡片
-                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
-                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
-                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.updated || 0) + '</div><div style="font-size:13px;color:#856404">更新</div></div>';
-                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
-                        html += '</div>';
-
-                        // 显示失败详情
-                        if (data.bad_rows && data.bad_rows.length) {
-                            html += '<div style="margin-top:15px"><div style="font-weight:700;margin-bottom:8px;color:#721c24">前几条识别失败详情：</div>';
-                            html += '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f8d7da"><th style="padding:8px;border:1px solid #f5c6cb">Excel行号</th><th style="padding:8px;border:1px solid #f5c6cb">原始值</th><th style="padding:8px;border:1px solid #f5c6cb">原因</th></tr></thead><tbody>';
-                            data.bad_rows.forEach(r => {
-                                html += '<tr><td style="padding:8px;border:1px solid #f5c6cb;text-align:center">' + r.row + '</td><td style="padding:8px;border:1px solid #f5c6cb">' + (r.raw || '') + '</td><td style="padding:8px;border:1px solid #f5c6cb">' + r.reason + '</td></tr>';
-                            });
-                            html += '</tbody></table></div>';
-                        }
-
-                        resultBox.innerHTML = html;
-                        resultBox.style.display = 'block';
-                    }
-                } catch(err) {
-                    msgBox.style.display = 'block';
-                    msgBox.className = 'message error';
-                    msgBox.textContent = '网络错误: ' + err;
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = '导入线索';
-                }
-            };
         </script>
     </body>
     </html>
