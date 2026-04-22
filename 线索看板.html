@@ -2057,7 +2057,7 @@ window.__COST_DAYS__ = [];
         fetch('/api/cost/add', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({cost_date: date, platform: platform, amount: amount})
+          body: JSON.stringify({cost_date: date, platform: platform, amount: amount, unit_cost: (!isNaN(unitCost) && unitCost > 0) ? unitCost : 0})
         })
         .then(function(r){ return r.json(); })
         .then(function(res){

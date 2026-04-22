@@ -48,10 +48,16 @@ def init_db():
             cost_date TEXT NOT NULL,
             platform TEXT NOT NULL,
             amount REAL NOT NULL,
+            unit_cost REAL DEFAULT 0,
             created_at TEXT NOT NULL,
             UNIQUE(cost_date, platform)
         )
     ''')
+    # 兼容旧表：若缺少 unit_cost 列则添加
+    try:
+        c.execute('SELECT unit_cost FROM cost_data LIMIT 1')
+    except sqlite3.OperationalError:
+        c.execute('ALTER TABLE cost_data ADD COLUMN unit_cost REAL DEFAULT 0')
     conn.commit()
     conn.close()
 
@@ -106,10 +112,10 @@ def load_new_leads():
 def load_cost_data():
     conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
-    c.execute('SELECT cost_date, platform, amount FROM cost_data ORDER BY cost_date ASC')
+    c.execute('SELECT cost_date, platform, amount, unit_cost FROM cost_data ORDER BY cost_date ASC')
     rows = c.fetchall()
     conn.close()
-    return [{'date': r[0], 'platform': r[1], 'amount': r[2]} for r in rows]
+    return [{'date': r[0], 'platform': r[1], 'amount': r[2], 'unit_cost': r[3] if r[3] else 0} for r in rows]
 
 # ─────────────────────────────────────────────
 # 登录接口
@@ -244,6 +250,7 @@ def add_cost():
     cost_date = data.get('cost_date', '').strip()
     platform = data.get('platform', '').strip()
     amount = data.get('amount', 0)
+    unit_cost = data.get('unit_cost', 0)
     
     if not cost_date or not platform:
         return jsonify({'success': False, 'message': '请填写日期和平台'})
@@ -253,16 +260,21 @@ def add_cost():
     except:
         return jsonify({'success': False, 'message': '金额格式错误'})
     
+    try:
+        unit_cost = float(unit_cost) if unit_cost else 0
+    except:
+        unit_cost = 0
+    
     conn = sqlite3.connect(str(DB_FILE))
     c = conn.cursor()
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     # 替换或插入（upsert）
     c.execute('''
-        INSERT INTO cost_data (cost_date, platform, amount, created_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(cost_date, platform) DO UPDATE SET amount = ?, created_at = ?
-    ''', (cost_date, platform, amount, now, amount, now))
+        INSERT INTO cost_data (cost_date, platform, amount, unit_cost, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(cost_date, platform) DO UPDATE SET amount = ?, unit_cost = ?, created_at = ?
+    ''', (cost_date, platform, amount, unit_cost, now, amount, unit_cost, now))
     
     conn.commit()
     conn.close()
@@ -994,17 +1006,17 @@ def kanban_content():
     cost_by_plat = {'抖音': {}, '小红书': {}}
     all_days = set()
     for c in cost_data:
-        d, plat, amt = c['date'], c['platform'], c['amount']
+        d, plat, amt, uc = c['date'], c['platform'], c['amount'], c.get('unit_cost', 0)
         all_days.add(d)
         if plat not in cost_by_plat:
             cost_by_plat[plat] = {}
-        cost_by_plat[plat][d] = {'spend': amt, 'unit_cost': 0, 'leads': 0}
-    # 按平台计算单条成本
+        cost_by_plat[plat][d] = {'spend': amt, 'unit_cost': uc if uc else 0, 'leads': 0}
+    # 按平台计算单条成本（若数据库中未填写则自动计算）
     for plat in cost_by_plat:
         for d in cost_by_plat[plat]:
             day_leads = len([r for r in filtered if str(r.get('入库时间', '')).startswith(d) and r.get('平台') == plat])
             cost_by_plat[plat][d]['leads'] = day_leads
-            if day_leads > 0 and cost_by_plat[plat][d]['spend'] > 0:
+            if cost_by_plat[plat][d]['unit_cost'] <= 0 and day_leads > 0 and cost_by_plat[plat][d]['spend'] > 0:
                 cost_by_plat[plat][d]['unit_cost'] = round(cost_by_plat[plat][d]['spend'] / day_leads, 2)
     cost_days = sorted(all_days)
     cost_script = 'window.__COST_BY_PLAT__ = ' + json.dumps(cost_by_plat, ensure_ascii=False) + ';\nwindow.__COST_DAYS__ = ' + json.dumps(cost_days, ensure_ascii=False) + ';'
