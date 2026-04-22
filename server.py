@@ -996,6 +996,9 @@ def kanban_content():
         # 加上新录入的线索
         filtered += [r for r in new_leads if r.get('所属招商', '') == agent_name]
     
+    # 统一按入库时间降序排列（最近日期在前）
+    filtered.sort(key=lambda x: str(x.get('入库时间', '') or x.get('录入日期', '') or ''), reverse=True)
+    
     # 替换原始数据
     pattern = r'window\.__ALL__\s*=\s*\[[\s\S]*?\];'
     replacement = 'window.__ALL__ = ' + json.dumps(filtered, ensure_ascii=False) + ';'
