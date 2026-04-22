@@ -502,7 +502,7 @@ td{
     </div>
 
     <!-- 抖音成本看板 -->
-    <div class="chart-row-full">
+    <div class="chart-row-full cost-section">
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
         <span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">抖音</span>
         营销成本情况
@@ -530,7 +530,7 @@ td{
     </div>
 
     <!-- 小红书成本看板 -->
-    <div class="chart-row-full">
+    <div class="chart-row-full cost-section">
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
         <span style="background:#fce7f3;color:#be185d;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">小红书</span>
         营销成本情况
@@ -1931,6 +1931,14 @@ window.__COST_DAYS__ = [];
     var main = document.getElementById('main');
     if (main) main.style.display = 'block';
     renderAll();
+
+    // 招商员隐藏成本相关按钮和看板
+    var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
+    if (!isAdmin) {
+      var btnCost = document.getElementById('btnCost');
+      if (btnCost) btnCost.style.display = 'none';
+      document.querySelectorAll('.cost-section').forEach(function(el){ el.style.display = 'none'; });
+    }
   } catch(e) {
     clearTimeout(timer);
     console.error(e);
