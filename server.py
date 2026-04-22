@@ -537,7 +537,7 @@ def get_notifications():
     return jsonify({'unread_count': len(notifications), 'notifications': notifications})
 
 # ─────────────────────────────────────────────
-# 导入Excel线索（管理员）— 全新重构版
+# 导入Excel线索（管理员）— v3 完整字段版
 # ─────────────────────────────────────────────
 @app.route('/api/leads/import', methods=['POST'])
 def import_leads():
@@ -560,7 +560,7 @@ def import_leads():
         filename = file.filename
         filename_lower = filename.lower()
 
-        # ── 1) 读取Excel（按扩展名显式指定引擎，避免pandas默认调用xlrd）──
+        # ── 1) 读取Excel ──
         try:
             if filename_lower.endswith('.xls'):
                 df = pd.read_excel(BytesIO(file_bytes), engine='xlrd')
@@ -570,8 +570,7 @@ def import_leads():
             err_msg = str(read_err)
             if 'not supported' in err_msg.lower():
                 err_msg += '（服务器缺少openpyxl库，请联系管理员安装: pip install openpyxl）'
-            return jsonify({'success': False,
-                'message': f'读取Excel失败: {err_msg}'})
+            return jsonify({'success': False, 'message': f'读取Excel失败: {err_msg}'})
 
         if len(df) == 0:
             return jsonify({'success': False, 'message': 'Excel 文件为空（0行数据）'})
@@ -579,156 +578,142 @@ def import_leads():
         cols = [str(c).strip() for c in df.columns]
         print(f"[导入] 文件={filename}, 行数={len(df)}, 列名={cols}")
 
-        # ── 2) 智能识别手机号列 ──
-        def find_phone_col():
-            # 优先按列名匹配
-            phone_keywords = ['手机号', '手机号码', '电话', '联系电话', '手机',
-                              'Phone', 'phone', '客户电话', '客户手机', 'Tel']
-            for kw in phone_keywords:
-                for col in cols:
-                    if kw.lower() in col.lower():
-                        return col
-            # 列名匹配失败 → 看哪列最多11位数字
-            best_col, best_score = None, 0
-            for col in cols:
-                score = 0
-                for val in df[col].head(30):
-                    digits = ''.join(filter(str.isdigit, str(val)))
-                    if len(digits) == 11:
-                        score += 1
-                if score > best_score:
-                    best_score = score
-                    best_col = col
-            if best_score >= 3:
-                print(f"[导入] 智能识别手机号列: {best_col} (匹配{best_score}条)")
-                return best_col
-            return None
-
-        phone_col = find_phone_col()
-        if not phone_col:
-            return jsonify({'success': False,
-                'message': f'无法识别手机号列。当前列名: {cols}。请确保包含"手机号"或"电话"列。'})
-
-        # ── 3) 识别其他列 ──
+        # ── 2) 智能识别列 ──
         def find_col(keywords):
             for kw in keywords:
+                kw_lower = kw.lower()
                 for col in cols:
-                    if kw.lower() in col.lower():
+                    if kw_lower in col.lower():
                         return col
             return None
 
+        phone_col    = find_col(['手机号', '手机号码', '电话', '联系电话', '手机', 'phone', '客户电话'])
         platform_col = find_col(['平台', '来源', '渠道', '来源平台'])
         agent_col    = find_col(['所属招商', '跟进员工', '负责人', '招商员', '员工', '分配'])
         date_col     = find_col(['入库日期', '录入日期', '日期', '入库时间', '录入时间'])
         name_col     = find_col(['姓名', '名字', '客户姓名', '联系人'])
+        city_col     = find_col(['城市', '省份', '地区', '所在城市', '省'])
+        validity_col = find_col(['线索有效性', '有效性', '客户类型', '等级'])
+        wechat_col   = find_col(['是否能加上微信', '能否加微', '加微信', '微信'])
+        remark_col   = find_col(['备注', '说明', '备注信息', '客户情况备注'])
+        follow_time_col  = find_col(['二次联系时间', '跟进时间', '下次联系时间'])
+        follow_note_col  = find_col(['二次联系备注', '跟进备注', '联系备注'])
+        call_time_col    = find_col(['最近一次电联时间', '电联时间', '最近联系时间'])
+        visit_time_col   = find_col(['到访时间', '到店时间', '来访时间'])
+        sign_time_col    = find_col(['签约时间', '成交时间', '签约日期'])
 
-        print(f"[导入] 列映射: 手机={phone_col}, 平台={platform_col}, 招商={agent_col}, 日期={date_col}, 姓名={name_col}")
+        if not phone_col:
+            return jsonify({'success': False,
+                'message': f'无法识别手机号列。当前列名: {cols}'})
 
-        # ── 4) 文件类型判断 ──
+        print(f"[导入] 列映射: 手机={phone_col}, 平台={platform_col}, 招商={agent_col}, 日期={date_col}")
+
+        # ── 3) 文件类型判断 ──
         is_zhaoshang = '招商' in filename
-        is_douyin    = '客资' in filename or '抖音' in filename
+        is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
 
-        # ── 5) 解析所有行 ──
+        # ── 4) 解析所有行 ──
+        def get_val(row, col):
+            if not col:
+                return ''
+            v = row.get(col, '')
+            if pd.isna(v):
+                return ''
+            s = str(v).strip()
+            return s if s.lower() != 'nan' else ''
+
+        def parse_date(row, col):
+            if not col:
+                return ''
+            v = row.get(col)
+            if pd.isna(v):
+                return ''
+            try:
+                return pd.to_datetime(v).strftime('%Y-%m-%d')
+            except:
+                return ''
+
         parsed = []
         bad_rows = []
         for idx, row in df.iterrows():
             raw = row.get(phone_col, '')
             if pd.isna(raw):
-                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '手机号为空'})
+                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '联系方式为空'})
                 continue
-
             s = str(raw).strip()
             if not s or s.lower() == 'nan':
-                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '手机号为空'})
+                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '联系方式为空'})
                 continue
 
             digits = ''.join(filter(str.isdigit, s))
             if len(digits) == 11:
                 phone = digits
             elif len(digits) >= 7:
-                phone = digits  # 座机或其他
+                phone = digits
             else:
-                # 微信号、邮箱等：保留原始值（如 laozhao0068、Jie-HY）
-                phone = s
+                phone = s  # 微信号保留
 
-            # 平台
-            platform = '抖音'
-            if platform_col:
-                p = str(row.get(platform_col, '')).strip()
-                if p and p.lower() != 'nan':
-                    platform = p
-
-            # 招商员
-            agent = '郑建军'
-            if agent_col:
-                a = str(row.get(agent_col, '')).strip()
-                if a and a.lower() != 'nan':
-                    agent = a
-
-            # 入库日期：以Excel表格日期为准
-            entry_date = ''
-            if date_col and pd.notna(row.get(date_col)):
-                try:
-                    entry_date = pd.to_datetime(row[date_col]).strftime('%Y-%m-%d')
-                except:
-                    pass
-            # 兜底：尝试其他常见日期列
+            # 入库日期：以Excel表格为准
+            entry_date = parse_date(row, date_col)
             if not entry_date:
-                for fallback_col in ['日期', '时间', '创建日期', '添加日期']:
-                    if fallback_col in cols and pd.notna(row.get(fallback_col)):
-                        try:
-                            entry_date = pd.to_datetime(row[fallback_col]).strftime('%Y-%m-%d')
+                for fc in ['日期', '时间', '创建日期', '添加日期']:
+                    col = find_col([fc])
+                    if col:
+                        entry_date = parse_date(row, col)
+                        if entry_date:
                             break
-                        except:
-                            continue
-            # 实在没有日期才用今天
             if not entry_date:
                 entry_date = datetime.now().strftime('%Y-%m-%d')
 
+            # 招商员分配
+            if is_douyin_kezi:
+                agent = get_val(row, agent_col) or '郑建军'
+            else:
+                agent = get_val(row, find_col(['所属招商'])) or get_val(row, find_col(['跟进员工'])) or get_val(row, agent_col) or '郑建军'
+
             parsed.append({
                 'phone': phone,
-                'platform': platform,
+                'platform': get_val(row, platform_col) or '抖音',
                 'agent': agent,
                 'entry_date': entry_date,
-                'name': str(row.get(name_col, '')).strip() if name_col else '',
-                'excel_row': int(idx) + 2
+                'name': get_val(row, name_col),
+                'city': get_val(row, city_col),
+                'validity': get_val(row, validity_col),
+                'can_wechat': get_val(row, wechat_col),
+                'remark': get_val(row, remark_col),
+                'follow_time': parse_date(row, follow_time_col),
+                'follow_note': get_val(row, follow_note_col),
+                'call_time': parse_date(row, call_time_col),
+                'visit_time': parse_date(row, visit_time_col),
+                'sign_time': parse_date(row, sign_time_col),
             })
 
         if not parsed:
-            sample = str(df[phone_col].head(3).tolist())
-            return jsonify({'success': False,
-                'message': f'未能解析出任何有效数据。{phone_col}列前3行: {sample}'})
+            return jsonify({'success': False, 'message': '未能解析出任何有效数据'})
 
         print(f"[导入] 解析成功: {len(parsed)} 条, 空值跳过: {len(bad_rows)} 条")
 
-        # ── 6) 数据库写入 ──
+        # ── 5) 数据库写入 ──
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
-        # 6.1) 清理已有重复：同一phone保留id最小的一条
+        # 5.1) 清理已有重复
         c.execute('SELECT phone, COUNT(*) as cnt FROM new_leads GROUP BY phone HAVING cnt > 1')
-        dup_groups = c.fetchall()
-        dup_cleaned = 0
-        for phone, cnt in dup_groups:
+        for phone, cnt in c.fetchall():
             c.execute('DELETE FROM new_leads WHERE phone = ? AND id NOT IN (SELECT MIN(id) FROM new_leads WHERE phone = ?)', (phone, phone))
-            dup_cleaned += cnt - 1
-        if dup_cleaned:
-            print(f"[导入] 清理历史重复: {dup_cleaned} 条")
-            conn.commit()
+        conn.commit()
 
-        # 重新加载existing
+        # 5.2) 加载已有线索
         c.execute('SELECT phone, platform, entry_date FROM new_leads')
         existing = {row[0]: {'platform': row[1], 'entry_date': row[2]} for row in c.fetchall()}
 
-        added, updated, skipped = 0, 0, 0
-        seen_in_file = set()  # Excel内部去重
+        added, updated, dup_skip = 0, 0, 0
+        seen_in_file = set()
 
         for item in parsed:
             phone = item['phone']
-
-            # Excel内部去重
             if phone in seen_in_file:
-                skipped += 1
+                dup_skip += 1
                 continue
             seen_in_file.add(phone)
 
@@ -738,39 +723,50 @@ def import_leads():
 
             if phone in existing:
                 old = existing[phone]
-                # 入库日期保护：招商线索管理表导入时，抖音/小红书平台的入库日期不修改
+                # 招商线索管理表导入时，抖音/小红书入库日期不变
                 if is_zhaoshang and old['platform'] in ('抖音', '小红书'):
                     entry_date = old['entry_date']
 
+                # UPDATE 全部字段
                 c.execute('''UPDATE new_leads SET
-                    platform = ?, agent = ?, entry_date = ?, name = ?
-                    WHERE phone = ?''',
-                    (platform, agent, entry_date, item['name'], phone))
+                    platform = ?, agent = ?, entry_date = ?, name = ?,
+                    city = ?, validity = ?, can_wechat = ?, remark = ?,
+                    二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
+                    WHERE phone = ?''', (
+                    platform, agent, entry_date, item['name'],
+                    item['city'], item['validity'], item['can_wechat'], item['remark'],
+                    item['follow_time'], item['follow_note'], item['call_time'],
+                    item['visit_time'], item['sign_time'], phone))
                 updated += 1
             else:
+                # INSERT 新线索
                 c.execute('''INSERT INTO new_leads
-                    (phone, platform, agent, entry_date, name, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)''',
-                    (phone, platform, agent, entry_date, item['name'],
-                     datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                    (phone, platform, agent, entry_date, name, city, validity,
+                     can_wechat, remark, created_at,
+                     二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
+                    phone, platform, agent, entry_date, item['name'], item['city'],
+                    item['validity'], item['can_wechat'], item['remark'],
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    item['follow_time'], item['follow_note'], item['call_time'],
+                    item['visit_time'], item['sign_time']))
                 added += 1
                 existing[phone] = {'platform': platform, 'entry_date': entry_date}
 
         conn.commit()
         conn.close()
 
-        # ── 7) 返回结果 ──
         msg = f'导入完成！新增 {added} 条，更新 {updated} 条'
+        if dup_skip:
+            msg += f'，Excel内重复跳过 {dup_skip} 条'
         if bad_rows:
-            msg += f'，无法识别 {len(bad_rows)} 条'
+            msg += f'，空值跳过 {len(bad_rows)} 条'
 
         return jsonify({
-            'success': True,
-            'message': msg,
-            'added': added,
-            'updated': updated,
-            'bad': len(bad_rows),
-            'bad_rows': bad_rows[:5]  # 前5条失败详情
+            'success': True, 'message': msg,
+            'added': added, 'updated': updated,
+            'dup_skip': dup_skip, 'bad': len(bad_rows),
+            'bad_rows': bad_rows[:5]
         })
 
     except Exception as e:
