@@ -517,15 +517,11 @@ def import_leads():
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
-        # 获取已有线索全部信息（phone -> 完整记录）
-        c.execute('SELECT * FROM new_leads')
-        cols = [desc[0] for desc in c.description]
-        existing = {}
-        for row in c.fetchall():
-            existing[row[1]] = dict(zip(cols, row))  # phone -> dict
+        # 获取已有线索的手机号集合
+        c.execute('SELECT phone FROM new_leads')
+        existing_phones = {row[0] for row in c.fetchall()}
 
         added_count = 0
-        updated_count = 0
         skipped_count = 0
         skip_reasons = []
         today = datetime.now().strftime('%Y-%m-%d')
@@ -598,18 +594,13 @@ def import_leads():
 
                 # 招商员分配逻辑
                 if is_douyin_kezi:
-                    # 抖音来客客资表：按"跟进员工"直接分配
                     agent = get_val(row, agent_cols_kz, '郑建军')
                 else:
-                    # 招商线索管理表：优先"所属招商"，其次"跟进员工"
                     agent = get_val(row, ['所属招商'], '') or get_val(row, ['跟进员工'], '') or get_val(row, agent_cols_zs, '郑建军')
                 if not agent:
                     agent = '郑建军'
 
-                # 入库日期
                 entry_date = parse_date(row, date_cols, today)
-
-                # 其他字段
                 name = get_val(row, name_cols)
                 city = get_val(row, city_cols)
                 validity = get_val(row, validity_cols)
@@ -622,15 +613,17 @@ def import_leads():
                 visit_time = parse_date(row, visit_cols, '')
                 sign_time = parse_date(row, sign_cols, '')
 
-                if phone in existing:
-                    # ── 已存在线索：UPDATE ──
-                    old = existing[phone]
-                    old_platform = old.get('platform', '')
+                if phone in existing_phones:
+                    # ── 已存在线索：UPDATE（不重复插入）──
+                    # 获取旧数据以判断平台类型
+                    c.execute('SELECT platform, entry_date FROM new_leads WHERE phone = ?', (phone,))
+                    old_row = c.fetchone()
+                    old_platform = old_row[0] if old_row else ''
+                    old_entry_date = old_row[1] if old_row else ''
 
-                    # 入库日期保护规则：
-                    # 招商线索管理表导入时，抖音/小红书平台的入库日期不修改
+                    # 入库日期保护：招商线索管理表导入时，抖音/小红书平台的入库日期不修改
                     if is_zhaoshang and old_platform in ('抖音', '小红书'):
-                        entry_date = old.get('entry_date', '') or entry_date
+                        entry_date = old_entry_date
 
                     c.execute('''
                         UPDATE new_leads SET
@@ -659,6 +652,7 @@ def import_leads():
                         follow_time, follow_note, call_time, visit_time, sign_time
                     ))
                     added_count += 1
+                    existing_phones.add(phone)
 
             except Exception as row_err:
                 skipped_count += 1
@@ -671,10 +665,8 @@ def import_leads():
         msg_parts = []
         if added_count:
             msg_parts.append(f'新增 {added_count} 条')
-        if updated_count:
-            msg_parts.append(f'更新 {updated_count} 条')
         if skipped_count:
-            msg_parts.append(f'跳过 {skipped_count} 条')
+            msg_parts.append(f'跳过 {skipped_count} 条（已存在或格式错误）')
         if not msg_parts:
             msg_parts.append('未导入任何数据')
 
@@ -776,12 +768,17 @@ def admin_page():
 
         <div class="container" style="margin-top:20px">
             <h2>📊 Excel 批量导入线索</h2>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.7">
+                <div style="font-weight:700;margin-bottom:4px">&#128161; 导入提示</div>
+                <div>• 文件名包含 <b>"招商线索管理表"</b> → 新线索新增，已存在的更新其他信息（抖音/小红书入库日期不变）</div>
+                <div>• 文件名包含 <b>"客资"</b> 或 <b>"抖音"</b> → 按"跟进员工"分配账号，新线索新增，已存在的更新</div>
+            </div>
             <form id="importForm">
                 <div class="form-group">
                     <label>选择 Excel 文件 <span style="color:#999;font-weight:400">（.xlsx / .xls）</span></label>
                     <input type="file" id="excelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px">
                 </div>
-                <button type="submit" class="btn" style="background:#10b981">导入线索</button>
+                <button type="submit" class="btn" style="background:linear-gradient(135deg,#10b981,#059669)">导入线索</button>
             </form>
             <div class="message" id="importMessage"></div>
         </div>
