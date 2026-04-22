@@ -523,6 +523,7 @@ def import_leads():
         existing_phones = {row[0] for row in c.fetchall()}
 
         added_count = 0
+        updated_count = 0
         skipped_count = 0
         skip_reasons = []
         today = datetime.now().strftime('%Y-%m-%d')
@@ -681,8 +682,10 @@ def import_leads():
         msg_parts = []
         if added_count:
             msg_parts.append(f'新增 {added_count} 条')
+        if updated_count:
+            msg_parts.append(f'更新 {updated_count} 条')
         if skipped_count:
-            msg_parts.append(f'跳过 {skipped_count} 条（已存在或格式错误）')
+            msg_parts.append(f'跳过 {skipped_count} 条（格式错误）')
         if not msg_parts:
             msg_parts.append('未导入任何数据')
 
