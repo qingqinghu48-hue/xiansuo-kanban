@@ -487,7 +487,7 @@ def get_notifications():
     return jsonify({'unread_count': len(notifications), 'notifications': notifications})
 
 # ─────────────────────────────────────────────
-# 导入Excel线索（管理员）
+# 导入Excel线索（管理员）— 全新重构版
 # ─────────────────────────────────────────────
 @app.route('/api/leads/import', methods=['POST'])
 def import_leads():
@@ -507,193 +507,179 @@ def import_leads():
         from io import BytesIO
 
         file_bytes = file.read()
-        df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
-
-        print(f"[导入调试] 文件名: {file.filename}, 列名: {list(df.columns)}, 总行数: {len(df)}")
-
         filename = file.filename
-        is_zhaoshang = '招商线索管理表' in filename
-        is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
+        filename_lower = filename.lower()
 
+        # ── 1) 读取Excel（自动识别引擎）──
+        try:
+            df = pd.read_excel(BytesIO(file_bytes))
+        except Exception as read_err:
+            return jsonify({'success': False,
+                'message': f'读取Excel失败: {str(read_err)}。建议将文件另存为 .xlsx 格式后重试'})
+
+        if len(df) == 0:
+            return jsonify({'success': False, 'message': 'Excel 文件为空（0行数据）'})
+
+        cols = [str(c).strip() for c in df.columns]
+        print(f"[导入] 文件={filename}, 行数={len(df)}, 列名={cols}")
+
+        # ── 2) 智能识别手机号列 ──
+        def find_phone_col():
+            # 优先按列名匹配
+            phone_keywords = ['手机号', '手机号码', '电话', '联系电话', '手机',
+                              'Phone', 'phone', '客户电话', '客户手机', 'Tel']
+            for kw in phone_keywords:
+                for col in cols:
+                    if kw.lower() in col.lower():
+                        return col
+            # 列名匹配失败 → 看哪列最多11位数字
+            best_col, best_score = None, 0
+            for col in cols:
+                score = 0
+                for val in df[col].head(30):
+                    digits = ''.join(filter(str.isdigit, str(val)))
+                    if len(digits) == 11:
+                        score += 1
+                if score > best_score:
+                    best_score = score
+                    best_col = col
+            if best_score >= 3:
+                print(f"[导入] 智能识别手机号列: {best_col} (匹配{best_score}条)")
+                return best_col
+            return None
+
+        phone_col = find_phone_col()
+        if not phone_col:
+            return jsonify({'success': False,
+                'message': f'无法识别手机号列。当前列名: {cols}。请确保包含"手机号"或"电话"列。'})
+
+        # ── 3) 识别其他列 ──
+        def find_col(keywords):
+            for kw in keywords:
+                for col in cols:
+                    if kw.lower() in col.lower():
+                        return col
+            return None
+
+        platform_col = find_col(['平台', '来源', '渠道', '来源平台'])
+        agent_col    = find_col(['所属招商', '跟进员工', '负责人', '招商员', '员工', '分配'])
+        date_col     = find_col(['入库日期', '录入日期', '日期', '入库时间', '录入时间'])
+        name_col     = find_col(['姓名', '名字', '客户姓名', '联系人'])
+
+        print(f"[导入] 列映射: 手机={phone_col}, 平台={platform_col}, 招商={agent_col}, 日期={date_col}, 姓名={name_col}")
+
+        # ── 4) 文件类型判断 ──
+        is_zhaoshang = '招商' in filename
+        is_douyin    = '客资' in filename or '抖音' in filename
+
+        # ── 5) 解析所有行 ──
+        parsed = []
+        bad_rows = []
+        for idx, row in df.iterrows():
+            raw = row.get(phone_col, '')
+            if pd.isna(raw):
+                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '手机号为空'})
+                continue
+
+            # 统一转字符串并提取数字
+            s = str(raw).strip()
+            digits = ''.join(filter(str.isdigit, s))
+
+            if len(digits) == 11:
+                phone = digits
+            elif len(digits) >= 7:
+                phone = digits  # 座机或其他
+            else:
+                bad_rows.append({'row': int(idx)+2, 'raw': s[:20], 'reason': f'提取到{digits}位数字'})
+                continue
+
+            # 平台
+            platform = '抖音'
+            if platform_col:
+                p = str(row.get(platform_col, '')).strip()
+                if p and p.lower() != 'nan':
+                    platform = p
+
+            # 招商员
+            agent = '郑建军'
+            if agent_col:
+                a = str(row.get(agent_col, '')).strip()
+                if a and a.lower() != 'nan':
+                    agent = a
+
+            # 入库日期
+            entry_date = datetime.now().strftime('%Y-%m-%d')
+            if date_col and pd.notna(row.get(date_col)):
+                try:
+                    entry_date = pd.to_datetime(row[date_col]).strftime('%Y-%m-%d')
+                except:
+                    pass
+
+            parsed.append({
+                'phone': phone,
+                'platform': platform,
+                'agent': agent,
+                'entry_date': entry_date,
+                'name': str(row.get(name_col, '')).strip() if name_col else '',
+                'excel_row': int(idx) + 2
+            })
+
+        if not parsed:
+            sample = str(df[phone_col].head(3).tolist())
+            return jsonify({'success': False,
+                'message': f'未能解析出任何有效手机号。{phone_col}列前3行: {sample}'})
+
+        print(f"[导入] 解析成功: {len(parsed)} 条, 失败: {len(bad_rows)} 条")
+
+        # ── 6) 数据库写入 ──
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
+        c.execute('SELECT phone, platform, entry_date FROM new_leads')
+        existing = {row[0]: {'platform': row[1], 'entry_date': row[2]} for row in c.fetchall()}
 
-        # 获取已有线索的手机号集合
-        c.execute('SELECT phone FROM new_leads')
-        existing_phones = {row[0] for row in c.fetchall()}
+        added, updated, skipped = 0, 0, 0
+        for item in parsed:
+            phone = item['phone']
+            platform = item['platform']
+            agent = item['agent']
+            entry_date = item['entry_date']
 
-        added_count = 0
-        updated_count = 0
-        skipped_count = 0
-        skip_reasons = []
-        today = datetime.now().strftime('%Y-%m-%d')
+            if phone in existing:
+                old = existing[phone]
+                # 入库日期保护
+                if is_zhaoshang and old['platform'] in ('抖音', '小红书'):
+                    entry_date = old['entry_date']
 
-        # ── 列名候选配置 ──
-        phone_cols = ['手机号', '手机号码', '电话', '联系电话', '手机', 'Phone', 'phone']
-        platform_cols = ['平台', '来源平台', '渠道']
-        agent_cols_zs = ['所属招商', '跟进员工', '招商员', '负责人', '分配']
-        agent_cols_kz = ['跟进员工', '负责人', '所属招商']
-        date_cols = ['入库日期', '入库时间', '录入日期', '日期', '录入时间']
-        name_cols = ['姓名', '名字', '客户姓名', '联系人']
-        city_cols = ['城市', '省份', '地区', '所在城市', '省']
-        validity_cols = ['线索有效性', '有效性', '客户类型', '等级']
-        region_cols = ['所属大区', '大区', '区域', '所属区域']
-        wechat_cols = ['是否能加上微信', '能否加微', '加微信', '微信']
-        remark_cols = ['备注', '说明', '备注信息']
-        follow_time_cols = ['二次联系时间', '跟进时间', '下次联系时间']
-        follow_note_cols = ['二次联系备注', '跟进备注', '联系备注']
-        call_cols = ['最近一次电联时间', '电联时间', '最近联系时间']
-        visit_cols = ['到访时间', '到店时间', '来访时间']
-        sign_cols = ['签约时间', '成交时间', '签约日期']
-
-        def get_val(row, candidates, default=''):
-            for col in candidates:
-                if col in row and pd.notna(row[col]):
-                    v = str(row[col]).strip()
-                    if v and v != 'nan':
-                        return v
-            return default
-
-        def get_phone(row):
-            for col in phone_cols:
-                if col in row:
-                    v = row[col]
-                    if isinstance(v, float):
-                        if pd.isna(v) or v != v:
-                            continue
-                        # 处理科学计数法，如 1.3193651186e+10
-                        if v > 1e9:
-                            v = str(int(round(v)))
-                        else:
-                            v = str(int(v))
-                    elif isinstance(v, int):
-                        v = str(v)
-                    elif pd.isna(v):
-                        continue
-                    else:
-                        v = str(v).strip()
-                    # 清理：去空格、去小数点、取数字
-                    v = ''.join(filter(str.isdigit, v))
-                    # 中国大陆手机号 11 位
-                    if len(v) == 11:
-                        return v
-                    # 其他情况至少 7 位
-                    if len(v) >= 7:
-                        return v
-            return ''
-
-        def parse_date(row, candidates, default=''):
-            for col in candidates:
-                if col in row and pd.notna(row[col]):
-                    try:
-                        return pd.to_datetime(row[col]).strftime('%Y-%m-%d')
-                    except:
-                        pass
-            return default
-
-        # 调试：打印前几行原始数据
-        for i in range(min(3, len(df))):
-            raw_phone = df.iloc[i].get('手机号', df.iloc[i].get('电话', 'N/A'))
-            print(f"[导入调试] 第{i+1}行原始手机号: {raw_phone} (类型: {type(raw_phone).__name__})")
-
-        for idx, row in df.iterrows():
-            try:
-                phone = get_phone(row)
-                if not phone:
-                    skipped_count += 1
-                    if idx < 5:
-                        raw = row.get('手机号', row.get('电话', row.get('手机号码', 'N/A')))
-                        skip_reasons.append(f"第{idx+1}行: 无法识别手机号 (原始值: {raw})")
-                    continue
-
-                # ── 解析所有字段 ──
-                platform = get_val(row, platform_cols, '抖音')
-
-                # 招商员分配逻辑
-                if is_douyin_kezi:
-                    agent = get_val(row, agent_cols_kz, '郑建军')
-                else:
-                    agent = get_val(row, ['所属招商'], '') or get_val(row, ['跟进员工'], '') or get_val(row, agent_cols_zs, '郑建军')
-                if not agent:
-                    agent = '郑建军'
-
-                entry_date = parse_date(row, date_cols, today)
-                name = get_val(row, name_cols)
-                city = get_val(row, city_cols)
-                validity = get_val(row, validity_cols)
-                region = get_val(row, region_cols)
-                can_wechat = get_val(row, wechat_cols)
-                remark = get_val(row, remark_cols)
-                follow_time = parse_date(row, follow_time_cols, '')
-                follow_note = get_val(row, follow_note_cols)
-                call_time = parse_date(row, call_cols, '')
-                visit_time = parse_date(row, visit_cols, '')
-                sign_time = parse_date(row, sign_cols, '')
-
-                if phone in existing_phones:
-                    # ── 已存在线索：UPDATE（不重复插入）──
-                    # 获取旧数据以判断平台类型
-                    c.execute('SELECT platform, entry_date FROM new_leads WHERE phone = ?', (phone,))
-                    old_row = c.fetchone()
-                    old_platform = old_row[0] if old_row else ''
-                    old_entry_date = old_row[1] if old_row else ''
-
-                    # 入库日期保护：招商线索管理表导入时，抖音/小红书平台的入库日期不修改
-                    if is_zhaoshang and old_platform in ('抖音', '小红书'):
-                        entry_date = old_entry_date
-
-                    c.execute('''
-                        UPDATE new_leads SET
-                            platform = ?, agent = ?, entry_date = ?, name = ?,
-                            city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
-                            二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
-                        WHERE phone = ?
-                    ''', (
-                        platform, agent, entry_date, name,
-                        city, validity, region, can_wechat, remark,
-                        follow_time, follow_note, call_time, visit_time, sign_time,
-                        phone
-                    ))
-                    updated_count += 1
-                else:
-                    # ── 新线索：INSERT ──
-                    c.execute('''
-                        INSERT INTO new_leads (
-                            phone, platform, agent, entry_date, name, city, validity, region,
-                            can_wechat, remark, created_at,
-                            二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        phone, platform, agent, entry_date, name, city, validity, region,
-                        can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        follow_time, follow_note, call_time, visit_time, sign_time
-                    ))
-                    added_count += 1
-                    existing_phones.add(phone)
-
-            except Exception as row_err:
-                skipped_count += 1
-                skip_reasons.append(f"第{idx+1}行: {str(row_err)[:50]}")
-                continue
+                c.execute('''UPDATE new_leads SET
+                    platform = ?, agent = ?, entry_date = ?, name = ?
+                    WHERE phone = ?''',
+                    (platform, agent, entry_date, item['name'], phone))
+                updated += 1
+            else:
+                c.execute('''INSERT INTO new_leads
+                    (phone, platform, agent, entry_date, name, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)''',
+                    (phone, platform, agent, entry_date, item['name'],
+                     datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                added += 1
+                existing[phone] = {'platform': platform, 'entry_date': entry_date}
 
         conn.commit()
         conn.close()
 
-        msg_parts = []
-        if added_count:
-            msg_parts.append(f'新增 {added_count} 条')
-        if updated_count:
-            msg_parts.append(f'更新 {updated_count} 条')
-        if skipped_count:
-            msg_parts.append(f'跳过 {skipped_count} 条（格式错误）')
-        if not msg_parts:
-            msg_parts.append('未导入任何数据')
+        # ── 7) 返回结果 ──
+        msg = f'导入完成！新增 {added} 条，更新 {updated} 条'
+        if bad_rows:
+            msg += f'，无法识别 {len(bad_rows)} 条'
 
-        message = '，'.join(msg_parts)
-        if skip_reasons:
-            message += '。前几条跳过原因: ' + '; '.join(skip_reasons[:3])
-
-        return jsonify({'success': True, 'message': message})
+        return jsonify({
+            'success': True,
+            'message': msg,
+            'added': added,
+            'updated': updated,
+            'bad': len(bad_rows),
+            'bad_rows': bad_rows[:5]  # 前5条失败详情
+        })
 
     except Exception as e:
         import traceback
@@ -788,18 +774,20 @@ def admin_page():
         <div class="container" style="margin-top:20px">
             <h2>📊 Excel 批量导入线索</h2>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.7">
-                <div style="font-weight:700;margin-bottom:4px">&#128161; 导入提示</div>
-                <div>• 文件名包含 <b>"招商线索管理表"</b> → 新线索新增，已存在的更新其他信息（抖音/小红书入库日期不变）</div>
-                <div>• 文件名包含 <b>"客资"</b> 或 <b>"抖音"</b> → 按"跟进员工"分配账号，新线索新增，已存在的更新</div>
+                <div style="font-weight:700;margin-bottom:4px">&#128161; 导入说明</div>
+                <div>• 支持 .xlsx / .xls 格式，会自动识别"手机号"、"电话"等列</div>
+                <div>• 文件名含 <b>"招商"</b> → 抖音/小红书已存在线索的<b>入库日期不修改</b></div>
+                <div>• 已存在手机号 → <b>更新</b>其他信息；新手机号 → <b>新增</b></div>
             </div>
             <form id="importForm">
                 <div class="form-group">
                     <label>选择 Excel 文件 <span style="color:#999;font-weight:400">（.xlsx / .xls）</span></label>
                     <input type="file" id="excelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px">
                 </div>
-                <button type="submit" class="btn" style="background:linear-gradient(135deg,#10b981,#059669)">导入线索</button>
+                <button type="submit" class="btn" id="importBtn" style="background:linear-gradient(135deg,#10b981,#059669)">导入线索</button>
             </form>
             <div class="message" id="importMessage"></div>
+            <div id="importResult" style="margin-top:15px;display:none"></div>
         </div>
 
         <script>
@@ -828,24 +816,62 @@ def admin_page():
             document.getElementById('importForm').onsubmit = async (e) => {
                 e.preventDefault();
                 const fileInput = document.getElementById('excelFile');
+                const btn = document.getElementById('importBtn');
+                const msgBox = document.getElementById('importMessage');
+                const resultBox = document.getElementById('importResult');
+
                 if (!fileInput.files[0]) {
-                    alert('请选择Excel文件');
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message error';
+                    msgBox.textContent = '请选择Excel文件';
                     return;
                 }
+
+                btn.disabled = true;
+                btn.textContent = '正在导入...';
+                msgBox.style.display = 'none';
+                resultBox.style.display = 'none';
+
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
+
                 try {
                     const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
                     const data = await res.json();
-                    const msg = document.getElementById('importMessage');
-                    msg.style.display = 'block';
-                    msg.className = 'message ' + (data.success ? 'success' : 'error');
-                    msg.textContent = data.message;
+
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                    msgBox.textContent = data.message;
+
                     if (data.success) {
                         fileInput.value = '';
+                        // 显示统计卡片
+                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.updated || 0) + '</div><div style="font-size:13px;color:#856404">更新</div></div>';
+                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                        html += '</div>';
+
+                        // 显示失败详情
+                        if (data.bad_rows && data.bad_rows.length) {
+                            html += '<div style="margin-top:15px"><div style="font-weight:700;margin-bottom:8px;color:#721c24">前几条识别失败详情：</div>';
+                            html += '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f8d7da"><th style="padding:8px;border:1px solid #f5c6cb">Excel行号</th><th style="padding:8px;border:1px solid #f5c6cb">原始值</th><th style="padding:8px;border:1px solid #f5c6cb">原因</th></tr></thead><tbody>';
+                            data.bad_rows.forEach(r => {
+                                html += '<tr><td style="padding:8px;border:1px solid #f5c6cb;text-align:center">' + r.row + '</td><td style="padding:8px;border:1px solid #f5c6cb">' + (r.raw || '') + '</td><td style="padding:8px;border:1px solid #f5c6cb">' + r.reason + '</td></tr>';
+                            });
+                            html += '</tbody></table></div>';
+                        }
+
+                        resultBox.innerHTML = html;
+                        resultBox.style.display = 'block';
                     }
                 } catch(err) {
-                    alert('导入失败: ' + err);
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message error';
+                    msgBox.textContent = '网络错误: ' + err;
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '导入线索';
                 }
             };
         </script>
