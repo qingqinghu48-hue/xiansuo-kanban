@@ -1046,8 +1046,8 @@ def kanban_content():
                 cost_by_plat[plat][d]['unit_cost'] = round(cost_by_plat[plat][d]['spend'] / day_leads, 2)
     cost_days = sorted(all_days)
     cost_script = 'window.__COST_BY_PLAT__ = ' + json.dumps(cost_by_plat, ensure_ascii=False) + ';\nwindow.__COST_DAYS__ = ' + json.dumps(cost_days, ensure_ascii=False) + ';'
-    content = re.sub(r'window\.__COST__\s*=\s*\{[\s\S]*?\};\s*window\.__COST_DAYS__\s*=\s*\[[\s\S]*?\];', cost_script, content, count=1)
-    # 兼容旧变量
+    content = re.sub(r'window\.__COST_BY_PLAT__\s*=\s*\{[\s\S]*?\};\s*window\.__COST_DAYS__\s*=\s*\[[\s\S]*?\];', cost_script, content, count=1)
+    # 兼容旧变量（HTML 中已改为 COST_BY_PLAT，此行为保险保留）
     content = content.replace('window.__COST__', 'window.__COST_BY_PLAT__')
 
     # 注入用户信息和未读提醒
