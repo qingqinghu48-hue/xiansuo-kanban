@@ -815,21 +815,28 @@ def import_douyin_kezi():
         except Exception as read_err:
             return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
 
+        # 直接读取第一个有数据的sheet
         df = None
-        last_err = ''
-        for sheet_name in xls.sheet_names:
-            try:
-                bio.seek(0)
-                temp_df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
-                if len(temp_df) > 0:
-                    df = temp_df
-                    break
-            except Exception as e:
-                last_err = str(e)
-                continue
+        try:
+            bio.seek(0)
+            df = pd.read_excel(bio, engine=engine)
+            print(f"[抖音导入] 直接读取成功，行数={len(df)}, 列名={list(df.columns)}")
+        except Exception as e:
+            print(f"[抖音导入] 直接读取失败: {e}")
+            # 回退：逐个sheet尝试
+            for sheet_name in xls.sheet_names:
+                try:
+                    bio.seek(0)
+                    df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
+                    print(f"[抖音导入] Sheet {sheet_name} 读取成功，行数={len(df)}")
+                    if len(df) > 0:
+                        break
+                except Exception as e2:
+                    print(f"[抖音导入] Sheet {sheet_name} 读取失败: {e2}")
+                    continue
 
         if df is None or len(df) == 0:
-            return jsonify({'success': False, 'message': f'Excel 文件为空（所有sheet均无数据）。sheet列表: {xls.sheet_names}。最后错误: {last_err}'})
+            return jsonify({'success': False, 'message': f'Excel 文件为空（所有sheet均无数据）。sheet列表: {xls.sheet_names}'})
 
         cols = [str(c).strip() for c in df.columns]
 
