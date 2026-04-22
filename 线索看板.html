@@ -603,6 +603,10 @@ td{
           <label>消耗金额（元）</label>
           <input type="number" id="costAmount" placeholder="请输入当日消耗金额" step="0.01" min="0">
         </div>
+        <div class="cost-field">
+          <label>单条线索成本（元/条）<span style="color:var(--text-3);font-weight:400"> — 选填，不填则自动计算</span></label>
+          <input type="number" id="costUnit" placeholder="留空自动按当日线索数计算" step="0.01" min="0">
+        </div>
         <div style="text-align:right;margin-top:12px">
           <button class="btn btn-pri" id="costSubmit">确认录入</button>
         </div>
@@ -1914,6 +1918,7 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
     var inpDate   = document.getElementById('costDate');
     var inpPlat   = document.getElementById('costPlatform');
     var inpAmt    = document.getElementById('costAmount');
+    var inpUnit   = document.getElementById('costUnit');
     var resultBox = document.getElementById('costResult');
     var costList  = document.getElementById('costList');
 
@@ -1987,6 +1992,7 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
       var today = new Date().toISOString().slice(0,10);
       inpDate.value = today;
       inpAmt.value = '';
+      if (inpUnit) inpUnit.value = '';
       resultBox.textContent = '';
       resultBox.className = 'cost-result';
       refreshCostList();
@@ -2007,6 +2013,7 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
         var date = inpDate.value;
         var platform = inpPlat.value;
         var amount = parseFloat(inpAmt.value);
+        var unitCost = inpUnit ? parseFloat(inpUnit.value) : NaN;
         if (!date){ resultBox.textContent = '请选择日期'; resultBox.className = 'cost-result err'; return; }
         if (isNaN(amount) || amount < 0){ resultBox.textContent = '请输入有效金额'; resultBox.className = 'cost-result err'; return; }
 
@@ -2031,13 +2038,17 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
             var key = date;
             if (!COST[key]) COST[key] = {};
             COST[key].spend = amount;
-            // 重新计算单条成本
-            var dayLeads = 0;
-            for (var i = 0; i < ALL.length; i++){
-              var dt = String(ALL[i]['入库时间'] || '').slice(0,10);
-              if (dt === key && ALL[i]['平台'] === platform) dayLeads++;
+            // 单条成本：优先使用手动输入，否则自动计算
+            if (!isNaN(unitCost) && unitCost > 0){
+              COST[key].unit_cost = unitCost;
+            } else {
+              var dayLeads = 0;
+              for (var i = 0; i < ALL.length; i++){
+                var dt = String(ALL[i]['入库时间'] || '').slice(0,10);
+                if (dt === key && ALL[i]['平台'] === platform) dayLeads++;
+              }
+              COST[key].unit_cost = dayLeads > 0 ? (amount / dayLeads).toFixed(2) : 0;
             }
-            COST[key].unit_cost = dayLeads > 0 ? (amount / dayLeads).toFixed(2) : 0;
             // 确保日期在CDAYS中
             if (CDAYS.indexOf(key) === -1){
               CDAYS.push(key);
@@ -2048,6 +2059,7 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
             drawUnit();
             refreshCostList();
             inpAmt.value = '';
+            if (inpUnit) inpUnit.value = '';
           } else {
             resultBox.textContent = res.message || '录入失败';
             resultBox.className = 'cost-result err';
