@@ -801,74 +801,66 @@ def import_douyin_kezi():
     try:
         import pandas as pd
         from io import BytesIO
+        from openpyxl import load_workbook
 
         file_bytes = file.read()
         bio = BytesIO(file_bytes)
+        filename_lower = file.filename.lower()
+        is_xls = filename_lower.endswith('.xls')
 
-        # 读取Excel（尝试多个sheet，跳过空sheet）
-        try:
-            if file.filename.lower().endswith('.xls'):
-                engine = 'xlrd'
-            else:
-                engine = 'openpyxl'
-            xls = pd.ExcelFile(bio, engine=engine)
-        except Exception as read_err:
-            return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
-
-        def read_with_fallback(bio, engine, sheet_name=None):
-            """先用pandas读，异常时回退到openpyxl手动构造DataFrame（兼容pandas 1.1.5）"""
-            bio.seek(0)
-            try:
-                if sheet_name:
-                    df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
-                else:
-                    df = pd.read_excel(bio, engine=engine)
-                # pandas 1.1.5 可能返回空或仅1列的异常结果
-                if len(df) > 0 and len(df.columns) > 1:
-                    return df
-            except Exception:
-                pass
-
-            # 回退：openpyxl 手动读取
-            from openpyxl import load_workbook
+        # 获取 sheet 名称列表
+        if is_xls:
+            xls = pd.ExcelFile(bio, engine='xlrd')
+            sheet_names = xls.sheet_names
+        else:
             bio.seek(0)
             wb = load_workbook(bio, data_only=True)
-            ws = wb.active if sheet_name is None else wb[sheet_name]
+            sheet_names = wb.sheetnames
 
-            data = []
-            headers = None
-            for row in ws.iter_rows(values_only=True):
-                if headers is None:
-                    headers = [str(c).strip() if c is not None else '' for c in row]
+        def load_sheet(bio, filename, sheet_name=None):
+            """统一读取Excel返回DataFrame。xlsx走openpyxl，xls走pandas+xlrd"""
+            if filename.lower().endswith('.xls'):
+                bio.seek(0)
+                if sheet_name:
+                    df = pd.read_excel(bio, sheet_name=sheet_name, engine='xlrd')
                 else:
-                    data.append(row)
-            return pd.DataFrame(data, columns=headers)
+                    df = pd.read_excel(bio, engine='xlrd')
+            else:
+                bio.seek(0)
+                wb = load_workbook(bio, data_only=True)
+                ws = wb[sheet_name] if sheet_name else wb.active
+                data = []
+                headers = None
+                for row in ws.iter_rows(values_only=True):
+                    if headers is None:
+                        headers = [str(c).strip() if c is not None else '' for c in row]
+                    else:
+                        data.append(row)
+                df = pd.DataFrame(data, columns=headers)
+            if df is not None and len(df) > 0:
+                df = df.dropna(how='all')
+            return df
 
         # 直接读取第一个有数据的sheet
         df = None
         debug_info = []
         try:
-            df = read_with_fallback(bio, engine)
-            debug_info.append(f"直接读取成功，行数={len(df)}, 列名={list(df.columns)}")
+            df = load_sheet(bio, file.filename)
+            debug_info.append(f"直接读取成功，行数={len(df)}, 列数={len(df.columns)}")
         except Exception as e:
             debug_info.append(f"直接读取失败: {e}")
 
-        # 如果直接读取为空，回退逐个sheet尝试
+        # 如果直接读取为空，逐个sheet尝试
         if df is None or len(df) == 0:
-            for sheet_name in xls.sheet_names:
+            for sheet_name in sheet_names:
                 try:
-                    df = read_with_fallback(bio, engine, sheet_name)
+                    df = load_sheet(bio, file.filename, sheet_name)
                     debug_info.append(f"Sheet {sheet_name} 读取成功，行数={len(df)}")
                     if len(df) > 0:
                         break
                 except Exception as e2:
                     debug_info.append(f"Sheet {sheet_name} 读取失败: {e2}")
                     continue
-
-        # 跳过空行，重新统计有效数据
-        if df is not None and len(df) > 0:
-            df = df.dropna(how='all')
-            debug_info.append(f"去掉空行后行数={len(df)}")
 
         if df is None or len(df) == 0:
             return jsonify({'success': False, 'message': f'Excel 文件为空。调试: {" | ".join(debug_info)}'})
