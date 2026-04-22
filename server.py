@@ -269,12 +269,18 @@ def add_cost():
     c = conn.cursor()
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # 替换或插入（upsert）
-    c.execute('''
-        INSERT INTO cost_data (cost_date, platform, amount, unit_cost, created_at)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(cost_date, platform) DO UPDATE SET amount = ?, unit_cost = ?, created_at = ?
-    ''', (cost_date, platform, amount, unit_cost, now, amount, unit_cost, now))
+    # 兼容低版本 SQLite：手动判断更新或插入
+    c.execute('SELECT id FROM cost_data WHERE cost_date = ? AND platform = ?', (cost_date, platform))
+    existing = c.fetchone()
+    if existing:
+        c.execute('''
+            UPDATE cost_data SET amount = ?, unit_cost = ?, created_at = ? WHERE id = ?
+        ''', (amount, unit_cost, now, existing[0]))
+    else:
+        c.execute('''
+            INSERT INTO cost_data (cost_date, platform, amount, unit_cost, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (cost_date, platform, amount, unit_cost, now))
     
     conn.commit()
     conn.close()
