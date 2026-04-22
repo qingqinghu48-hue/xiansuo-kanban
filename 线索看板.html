@@ -473,7 +473,6 @@ td{
         <button class="btn btn-pri" id="btnFilter">应用筛选</button>
         <button class="btn btn-ghost" id="btnReset">重置</button>
         <button class="btn btn-ghost" id="btnCost" style="margin-left:6px;border-color:var(--danger);color:var(--danger)">录入成本</button>
-        <button class="btn btn-ghost" id="btnImport" style="margin-left:6px;border-color:var(--primary);color:var(--primary)">批量导入</button>
       </div>
     </div>
 
@@ -500,6 +499,19 @@ td{
           <canvas id="cvValid" style="height:280px"></canvas>
         </div>
       </div>
+    </div>
+
+    <!-- 批量导入入口（仅管理员） -->
+    <div class="chart-row-full cost-section" id="importSection">
+      <div class="section-title" style="display:flex;align-items:center;gap:10px">
+        <span style="background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">导入</span>
+        Excel 批量导入线索
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
+        <input type="file" id="importFileInline" accept=".xlsx,.xls" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff">
+        <button class="btn btn-pri" id="btnImportInline" style="white-space:nowrap">开始导入</button>
+      </div>
+      <div class="cost-result" id="importResultInline" style="margin-top:8px"></div>
     </div>
 
     <!-- 抖音成本看板 -->
@@ -653,27 +665,6 @@ td{
       <div style="margin-top:16px;text-align:right">
         <button class="btn btn-ghost" id="costCancel">关闭</button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- 批量导入弹窗 -->
-<div class="modal" id="importModal">
-  <div class="modal-box" style="max-width:560px">
-    <div class="modal-hd">
-      <h3>Excel 批量导入线索</h3>
-      <button class="modal-x" id="importModalClose">&#10005;</button>
-    </div>
-    <div class="modal-bd" style="padding:24px">
-      <div class="cost-field">
-        <label>选择 Excel 文件 <span style="color:var(--text-3);font-weight:400">（.xlsx / .xls）</span></label>
-        <input type="file" id="importFile" accept=".xlsx,.xls" style="padding:8px;border:1px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box">
-      </div>
-      <div style="text-align:right;margin-top:16px">
-        <button class="btn btn-ghost" id="importCancel">取消</button>
-        <button class="btn btn-pri" id="importSubmit" style="margin-left:8px">开始导入</button>
-      </div>
-      <div class="cost-result" id="importResult"></div>
     </div>
   </div>
 </div>
@@ -2136,13 +2127,11 @@ window.__COST_DAYS__ = [];
     if (main) main.style.display = 'block';
     renderAll();
 
-    // 招商员隐藏成本相关按钮和看板、导入按钮
+    // 招商员隐藏成本相关按钮和看板、导入区域
     var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
     if (!isAdmin) {
       var btnCost = document.getElementById('btnCost');
       if (btnCost) btnCost.style.display = 'none';
-      var btnImport = document.getElementById('btnImport');
-      if (btnImport) btnImport.style.display = 'none';
       document.querySelectorAll('.cost-section').forEach(function(el){ el.style.display = 'none'; });
     }
   } catch(e) {
@@ -2351,72 +2340,59 @@ window.__COST_DAYS__ = [];
     }
   })();
 
-  // ── 批量导入逻辑 ──
+  // ── 批量导入逻辑（弹窗版 + 行内版） ──
   (function(){
-    var importModal = document.getElementById('importModal');
-    var btnImport   = document.getElementById('btnImport');
-    var btnImpClose = document.getElementById('importModalClose');
-    var btnImpCancel= document.getElementById('importCancel');
-    var btnImpSubmit= document.getElementById('importSubmit');
-    var inpFile     = document.getElementById('importFile');
-    var impResult   = document.getElementById('importResult');
+    function doImport(file, btn, resultBox, clearFile){
+      if (!file){ resultBox.textContent = '请选择 Excel 文件'; resultBox.className = 'cost-result err'; return; }
 
-    function openImport(){ importModal.classList.add('show'); impResult.textContent = ''; impResult.className = 'cost-result'; }
-    function closeImport(){ importModal.classList.remove('show'); }
+      btn.disabled = true;
+      var oldText = btn.textContent;
+      btn.textContent = '导入中…';
+      resultBox.textContent = '';
+      resultBox.className = 'cost-result';
 
-    if (btnImport)   btnImport.addEventListener('click', openImport);
-    if (btnImpClose) btnImpClose.addEventListener('click', closeImport);
-    if (btnImpCancel)btnImpCancel.addEventListener('click', closeImport);
-    if (importModal){
-      importModal.addEventListener('click', function(e){ if (e.target === importModal) closeImport(); });
+      var formData = new FormData();
+      formData.append('file', file);
+
+      fetch('/api/leads/import', {
+        method: 'POST',
+        body: formData
+      })
+      .then(function(r){
+        if (!r.ok) {
+          return r.text().then(function(txt){
+            throw new Error('HTTP ' + r.status + ' ' + r.statusText + ': ' + txt.slice(0,200));
+          });
+        }
+        return r.json();
+      })
+      .then(function(res){
+        btn.disabled = false;
+        btn.textContent = oldText;
+        if (res.success){
+          resultBox.textContent = res.message;
+          resultBox.className = 'cost-result ok';
+          if (clearFile) clearFile.value = '';
+          setTimeout(function(){ location.reload(); }, 1500);
+        } else {
+          resultBox.textContent = res.message || '导入失败';
+          resultBox.className = 'cost-result err';
+        }
+      })
+      .catch(function(err){
+        btn.disabled = false;
+        btn.textContent = oldText;
+        resultBox.textContent = '请求失败: ' + (err.message || '网络错误');
+        resultBox.className = 'cost-result err';
+      });
     }
 
-    if (btnImpSubmit){
-      btnImpSubmit.addEventListener('click', function(){
-        var file = inpFile.files[0];
-        if (!file){ impResult.textContent = '请选择 Excel 文件'; impResult.className = 'cost-result err'; return; }
-
-        btnImpSubmit.disabled = true;
-        btnImpSubmit.textContent = '导入中…';
-        impResult.textContent = '';
-        impResult.className = 'cost-result';
-
-        var formData = new FormData();
-        formData.append('file', file);
-
-        fetch('/api/leads/import', {
-          method: 'POST',
-          body: formData
-        })
-        .then(function(r){
-          if (!r.ok) {
-            return r.text().then(function(txt){
-              throw new Error('HTTP ' + r.status + ' ' + r.statusText + ': ' + txt.slice(0,200));
-            });
-          }
-          return r.json();
-        })
-        .then(function(res){
-          btnImpSubmit.disabled = false;
-          btnImpSubmit.textContent = '开始导入';
-          if (res.success){
-            impResult.textContent = res.message;
-            impResult.className = 'cost-result ok';
-            inpFile.value = '';
-            // 3秒后刷新页面以显示新数据
-            setTimeout(function(){ location.reload(); }, 1500);
-          } else {
-            impResult.textContent = res.message || '导入失败';
-            impResult.className = 'cost-result err';
-          }
-        })
-        .catch(function(err){
-          btnImpSubmit.disabled = false;
-          btnImpSubmit.textContent = '开始导入';
-          impResult.textContent = '请求失败: ' + (err.message || '网络错误');
-          impResult.className = 'cost-result err';
-        });
-      });
+    // 行内版（营销成本看板上方）
+    var btnImpInline = document.getElementById('btnImportInline');
+    var inpFileInline= document.getElementById('importFileInline');
+    var impResInline = document.getElementById('importResultInline');
+    if (btnImpInline && inpFileInline && impResInline){
+      btnImpInline.addEventListener('click', function(){ doImport(inpFileInline.files[0], btnImpInline, impResInline, inpFileInline); });
     }
   })();
 })();
