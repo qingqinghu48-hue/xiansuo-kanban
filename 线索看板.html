@@ -1715,9 +1715,12 @@ window.__COST_DAYS__ = [];
       else if (r['平台'] === '小红书') xs++;
       else qt++;
     }
+    var plats = ['抖音','小红书'];
     for (i = 0; i < CDAYS.length; i++) {
-      var c = COST[CDAYS[i]];
-      if (c) { totalSpend += c.spend; totalUnit += c.unit_cost; costCnt++; }
+      for (var pi = 0; pi < plats.length; pi++) {
+        var c = (COST_BY_PLAT[plats[pi]] || {})[CDAYS[i]];
+        if (c && c.spend > 0) { totalSpend += c.spend; totalUnit += c.unit_cost; costCnt++; }
+      }
     }
     var avgUnit = costCnt > 0 ? (totalUnit / costCnt).toFixed(1) : '0';
     var fmtSpend = totalSpend >= 10000 ? (totalSpend / 10000).toFixed(1) + '万' : totalSpend.toFixed(0);
@@ -2139,22 +2142,54 @@ window.__COST_DAYS__ = [];
     var resultBox = document.getElementById('costResult');
     var costList  = document.getElementById('costList');
 
+    // 辅助：从 COST_BY_PLAT 收集所有日期（去重排序）
+    function rebuildDays(){
+      var days = {};
+      var plats = ['抖音','小红书'];
+      for (var p = 0; p < plats.length; p++){
+        var dict = COST_BY_PLAT[plats[p]] || {};
+        for (var d in dict){
+          if (dict[d] && dict[d].spend > 0) days[d] = 1;
+        }
+      }
+      CDAYS = Object.keys(days).sort();
+    }
+
+    // 辅助：计算某日某平台的线索数
+    function countDayLeads(date, platform){
+      var cnt = 0;
+      for (var i = 0; i < ALL.length; i++){
+        var dt = String(ALL[i]['入库时间'] || '').slice(0,10);
+        if (dt === date && ALL[i]['平台'] === platform) cnt++;
+      }
+      return cnt;
+    }
+
     function refreshCostList(){
       if (!costList) return;
       var html = '<table style="width:100%;font-size:13px;border-collapse:collapse">';
-      html += '<tr style="color:var(--text-3);font-size:12px;text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border)">日期</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">平台</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">金额</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);width:50px"></th></tr>';
+      html += '<tr style="color:var(--text-3);font-size:12px;text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border)">日期</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">平台</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">金额</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">单条成本</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);width:50px"></th></tr>';
       var hasData = false;
+      var plats = ['抖音','小红书'];
+      var platColor = {'抖音':'#3b82f6','小红书':'#ec4899'};
+      // 按日期倒序，每个日期下按平台顺序
       for (var i = CDAYS.length - 1; i >= 0; i--){
         var d = CDAYS[i];
-        var c = COST[d];
-        if (c && c.spend > 0){
-          hasData = true;
-          html += '<tr>';
-          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">' + d + '</td>';
-          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">抖音</td>';
-          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">¥' + c.spend.toFixed(2) + '</td>';
-          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)"><button class="cost-del-btn" data-date="' + d + '" data-plat="抖音" style="padding:2px 8px;font-size:11px;color:var(--danger);border:1px solid var(--danger);background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
-          html += '</tr>';
+        for (var p = 0; p < plats.length; p++){
+          var plat = plats[p];
+          var dict = COST_BY_PLAT[plat] || {};
+          var c = dict[d];
+          if (c && c.spend > 0){
+            hasData = true;
+            var uc = c.unit_cost > 0 ? '¥' + parseFloat(c.unit_cost).toFixed(2) : '自动';
+            html += '<tr>';
+            html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">' + d + '</td>';
+            html += '<td style="padding:8px;border-bottom:1px solid var(--border-2);color:' + platColor[plat] + '">' + plat + '</td>';
+            html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">¥' + parseFloat(c.spend).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">' + uc + '</td>';
+            html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)"><button class="cost-del-btn" data-date="' + d + '" data-plat="' + plat + '" style="padding:2px 8px;font-size:11px;color:var(--danger);border:1px solid var(--danger);background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
+            html += '</tr>';
+          }
         }
       }
       if (!hasData){
@@ -2180,11 +2215,10 @@ window.__COST_DAYS__ = [];
           .then(function(res){
             if (res.success){
               // 删除本地数据
-              if (COST[delDate]){
-                delete COST[delDate];
-                var idx = CDAYS.indexOf(delDate);
-                if (idx > -1) CDAYS.splice(idx, 1);
+              if (COST_BY_PLAT[delPlat] && COST_BY_PLAT[delPlat][delDate]){
+                delete COST_BY_PLAT[delPlat][delDate];
               }
+              rebuildDays();
               refreshCostList();
               renderCards();
               drawDySpend();
@@ -2199,7 +2233,7 @@ window.__COST_DAYS__ = [];
             }
           })
           .catch(function(err){
-            resultBox.textContent = '网络错误';
+            resultBox.textContent = '请求失败: ' + (err.message || '网络错误');
             resultBox.className = 'cost-result err';
           });
         });
@@ -2234,6 +2268,7 @@ window.__COST_DAYS__ = [];
         var amount = parseFloat(inpAmt.value);
         var unitCost = inpUnit ? parseFloat(inpUnit.value) : NaN;
         if (!date){ resultBox.textContent = '请选择日期'; resultBox.className = 'cost-result err'; return; }
+        if (!platform){ resultBox.textContent = '请选择平台'; resultBox.className = 'cost-result err'; return; }
         if (isNaN(amount) || amount < 0){ resultBox.textContent = '请输入有效金额'; resultBox.className = 'cost-result err'; return; }
 
         btnSubmit.disabled = true;
@@ -2261,25 +2296,14 @@ window.__COST_DAYS__ = [];
             resultBox.textContent = res.message;
             resultBox.className = 'cost-result ok';
             // 更新本地数据并刷新图表
-            var key = date;
-            if (!COST[key]) COST[key] = {};
-            COST[key].spend = amount;
-            // 单条成本：优先使用手动输入，否则自动计算
-            if (!isNaN(unitCost) && unitCost > 0){
-              COST[key].unit_cost = unitCost;
-            } else {
-              var dayLeads = 0;
-              for (var i = 0; i < ALL.length; i++){
-                var dt = String(ALL[i]['入库时间'] || '').slice(0,10);
-                if (dt === key && ALL[i]['平台'] === platform) dayLeads++;
-              }
-              COST[key].unit_cost = dayLeads > 0 ? (amount / dayLeads).toFixed(2) : 0;
+            if (!COST_BY_PLAT[platform]) COST_BY_PLAT[platform] = {};
+            var uc = (!isNaN(unitCost) && unitCost > 0) ? unitCost : 0;
+            if (uc <= 0){
+              var dayLeads = countDayLeads(date, platform);
+              uc = dayLeads > 0 ? parseFloat((amount / dayLeads).toFixed(2)) : 0;
             }
-            // 确保日期在CDAYS中
-            if (CDAYS.indexOf(key) === -1){
-              CDAYS.push(key);
-              CDAYS.sort();
-            }
+            COST_BY_PLAT[platform][date] = {spend: amount, unit_cost: uc, leads: countDayLeads(date, platform)};
+            rebuildDays();
             renderCards();
             drawDySpend();
             drawDyUnit();
