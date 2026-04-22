@@ -824,7 +824,9 @@ def import_douyin_kezi():
             debug_info.append(f"直接读取成功，行数={len(df)}, 列名={list(df.columns)}")
         except Exception as e:
             debug_info.append(f"直接读取失败: {e}")
-            # 回退：逐个sheet尝试
+
+        # 如果直接读取为空，回退逐个sheet尝试
+        if df is None or len(df) == 0:
             for sheet_name in xls.sheet_names:
                 try:
                     bio.seek(0)
