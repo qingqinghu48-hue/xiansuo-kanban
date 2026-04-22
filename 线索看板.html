@@ -656,6 +656,58 @@ td{
   </div>
 </div>
 
+<!-- 线索编辑弹窗 -->
+<div class="modal" id="editModal">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-hd">
+      <h3>编辑线索</h3>
+      <button class="modal-x" id="editModalClose">&#10005;</button>
+    </div>
+    <div class="modal-bd" style="padding:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="cost-field"><label>客户姓名</label><input type="text" id="editName"></div>
+        <div class="cost-field"><label>客户电话</label><input type="text" id="editPhone" readonly style="background:var(--surface2);color:var(--text-3)"></div>
+        <div class="cost-field"><label>所属大区</label><input type="text" id="editRegion"></div>
+        <div class="cost-field"><label>所属城市</label><input type="text" id="editCity"></div>
+        <div class="cost-field" style="grid-column:1/-1">
+          <label>线索有效性</label>
+          <select id="editValidity">
+            <option value="">请选择</option>
+            <option>意向客户</option>
+            <option>一般客户</option>
+            <option>未联系上</option>
+            <option>普通线索</option>
+            <option>无意向客户</option>
+            <option>无效线索</option>
+          </select>
+        </div>
+        <div class="cost-field" style="grid-column:1/-1">
+          <label>能否加上微信</label>
+          <select id="editCanWechat">
+            <option value="">请选择</option>
+            <option>是</option>
+            <option>否</option>
+          </select>
+        </div>
+        <div class="cost-field"><label>二次联系时间</label><input type="date" id="editContactTime"></div>
+        <div class="cost-field"><label>二次联系备注</label><input type="text" id="editContactRemark"></div>
+        <div class="cost-field"><label>最近一次电联时间</label><input type="date" id="editCallTime"></div>
+        <div class="cost-field"><label>到访时间</label><input type="date" id="editVisitTime"></div>
+        <div class="cost-field"><label>签约时间</label><input type="date" id="editSignTime"></div>
+        <div class="cost-field" style="grid-column:1/-1">
+          <label>客户情况备注</label>
+          <textarea id="editRemark" rows="3" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-xs);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div style="text-align:right;margin-top:16px">
+        <button class="btn btn-ghost" id="editCancel">取消</button>
+        <button class="btn btn-pri" id="editSave" style="margin-left:8px">保存</button>
+      </div>
+      <div class="cost-result" id="editResult"></div>
+    </div>
+  </div>
+</div>
+
 <!-- 数据块 -->
 <script>
 window.__ALL__ = [
@@ -1521,6 +1573,7 @@ window.__COST_DAYS__ = [];
         '<td>' + jmTag(r['是否能加上微信'] || '') + '</td>' +
         '<td>' +
           '<button class="td-btn" onclick="showDetail(' + i + ')" style="margin-right:4px">查看</button>' +
+          '<button class="td-btn" onclick="editLead(' + i + ')" style="margin-right:4px;background:#fff;color:var(--primary);border-color:var(--primary)">编辑</button>' +
           '<button class="td-btn" onclick="deleteLead(' + i + ')" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>' +
         '</td>' +
         '</tr>');
@@ -1534,8 +1587,90 @@ window.__COST_DAYS__ = [];
     document.getElementById('nextBtn').disabled = (page >= totalPages);
   }
 
+  function editLead(gidx){
+    var r = filtered[gidx];
+    if (!r) { toast('记录不存在', 'err'); return; }
+    document.getElementById('editPhone').value = r['手机号'] || r['手机'] || '';
+    document.getElementById('editName').value = r['姓名'] || '';
+    document.getElementById('editRegion').value = r['所属大区'] || '';
+    document.getElementById('editCity').value = r['省份'] || r['城市'] || '';
+    document.getElementById('editValidity').value = r['线索有效性'] || r['有效性'] || '';
+    document.getElementById('editCanWechat').value = r['是否能加上微信'] || '';
+    document.getElementById('editRemark').value = r['备注'] || '';
+    document.getElementById('editContactTime').value = r['二次联系时间'] || '';
+    document.getElementById('editContactRemark').value = r['二次联系备注'] || '';
+    document.getElementById('editCallTime').value = r['最近一次电联时间'] || '';
+    document.getElementById('editVisitTime').value = r['到访时间'] || '';
+    document.getElementById('editSignTime').value = r['签约时间'] || '';
+    document.getElementById('editResult').textContent = '';
+    document.getElementById('editResult').className = 'cost-result';
+    document.getElementById('editModal').className = 'modal show';
+    window.__EDIT_IDX__ = gidx;
+  }
+
+  function closeEdit(){ document.getElementById('editModal').className = 'modal'; }
+
+  function saveEdit(){
+    var gidx = window.__EDIT_IDX__;
+    var r = filtered[gidx];
+    if (!r) { toast('记录不存在', 'err'); return; }
+    var phone = document.getElementById('editPhone').value;
+    var payload = {
+      phone: phone,
+      name: document.getElementById('editName').value,
+      region: document.getElementById('editRegion').value,
+      city: document.getElementById('editCity').value,
+      validity: document.getElementById('editValidity').value,
+      can_wechat: document.getElementById('editCanWechat').value,
+      remark: document.getElementById('editRemark').value,
+      entry_date: r['入库时间'] || r['入库日期'] || '',
+      '二次联系时间': document.getElementById('editContactTime').value,
+      '二次联系备注': document.getElementById('editContactRemark').value,
+      '最近一次电联时间': document.getElementById('editCallTime').value,
+      '到访时间': document.getElementById('editVisitTime').value,
+      '签约时间': document.getElementById('editSignTime').value
+    };
+    var btn = document.getElementById('editSave');
+    btn.disabled = true; btn.textContent = '保存中…';
+    fetch('/api/leads/update', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      btn.disabled = false; btn.textContent = '保存';
+      if (data.success){
+        toast('保存成功', 'ok');
+        r['姓名'] = payload.name;
+        r['所属大区'] = payload.region;
+        r['省份'] = payload.city;
+        r['线索有效性'] = payload.validity;
+        r['是否能加上微信'] = payload.can_wechat;
+        r['备注'] = payload.remark;
+        r['二次联系时间'] = payload['二次联系时间'];
+        r['二次联系备注'] = payload['二次联系备注'];
+        r['最近一次电联时间'] = payload['最近一次电联时间'];
+        r['到访时间'] = payload['到访时间'];
+        r['签约时间'] = payload['签约时间'];
+        renderTable();
+        renderCards();
+        closeEdit();
+      } else {
+        toast(data.message || '保存失败', 'err');
+      }
+    })
+    .catch(function(err){ btn.disabled = false; btn.textContent = '保存'; toast('网络错误', 'err'); console.error(err); });
+  }
+
+  document.getElementById('editModalClose').onclick = closeEdit;
+  document.getElementById('editCancel').onclick = closeEdit;
+  document.getElementById('editSave').onclick = saveEdit;
+  document.getElementById('editModal').onclick = function(e){ if (e.target === this) closeEdit(); };
+
   window.showDetail = showDetail;
   window.deleteLead = deleteLead;
+  window.editLead = editLead;
 
   document.getElementById('prevBtn').onclick = function() {
     if (page > 1) { page--; renderTable(); }
