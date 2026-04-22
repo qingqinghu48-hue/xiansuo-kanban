@@ -413,16 +413,20 @@ def delete_lead():
         data = request.get_json(force=True)
         if not data:
             return jsonify({'success': False, 'message': '请求数据为空'})
+        lead_id = data.get('id')
         phone = str(data.get('phone', '')).strip()
-        if not phone:
-            return jsonify({'success': False, 'message': '手机号不能为空'})
+        if not lead_id and not phone:
+            return jsonify({'success': False, 'message': '请提供id或手机号'})
     except Exception as e:
         return jsonify({'success': False, 'message': '请求解析失败: ' + str(e)})
 
     try:
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
-        c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
+        if lead_id:
+            c.execute('SELECT id, agent FROM new_leads WHERE id = ?', (lead_id,))
+        else:
+            c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
         row = c.fetchone()
 
         if not row:

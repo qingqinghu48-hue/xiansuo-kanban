@@ -1728,27 +1728,41 @@ window.__COST_DAYS__ = [];
 
   function batchDelete() {
     var checks = document.querySelectorAll('.row-check:checked');
+    var ids = [];
     var phones = [];
     checks.forEach(function(ch) {
+      var id = ch.getAttribute('data-id');
       var p = ch.getAttribute('data-phone');
-      if (p && p !== '-') phones.push(p);
+      if (id) {
+        ids.push(parseInt(id));
+      } else if (p && p !== '-') {
+        phones.push(p);
+      }
     });
-    if (!phones.length) { toast('请先选择要删除的线索', 'err'); return; }
-    if (!confirm('确定删除选中的 ' + phones.length + ' 条线索？')) return;
+    var total = ids.length + phones.length;
+    if (!total) { toast('请先选择要删除的线索', 'err'); return; }
+    if (!confirm('确定删除选中的 ' + total + ' 条线索？')) return;
+
+    var payload = {};
+    if (ids.length) payload.ids = ids;
+    if (phones.length) payload.phones = phones;
 
     fetch('/api/leads/batch-delete', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({phones: phones})
+      body: JSON.stringify(payload)
     })
     .then(function(res){ return res.json(); })
     .then(function(data){
       if (data.success) {
         toast(data.message, 'ok');
         // 从filtered中移除已删除的
+        var idSet = {};
+        ids.forEach(function(id){ idSet[id] = true; });
         var phoneSet = {};
         phones.forEach(function(p){ phoneSet[p] = true; });
         filtered = filtered.filter(function(r){
+          if (r.id && idSet[r.id]) return false;
           var p = r['手机号'] || r['手机'] || '';
           return !phoneSet[p];
         });
