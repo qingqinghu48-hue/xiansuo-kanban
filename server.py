@@ -746,7 +746,7 @@ def import_leads():
         c.execute('SELECT phone, platform, entry_date FROM new_leads')
         existing = {row[0]: {'platform': row[1], 'entry_date': row[2]} for row in c.fetchall()}
 
-        added, updated, dup_skip = 0, 0, 0
+        added, updated, dup_skip, skipped = 0, 0, 0, 0
         seen_in_file = set()
 
         for item in parsed:
@@ -778,6 +778,11 @@ def import_leads():
                     item['visit_time'], item['sign_time'], phone))
                 updated += 1
             else:
+                # 招商线索管理表导入时，抖音/小红书的新线索不创建（由渠道表格单独导入）
+                if is_zhaoshang and ('抖音' in platform or '小红书' in platform):
+                    skipped += 1
+                    continue
+
                 # INSERT 新线索（region 加入插入）
                 c.execute('''INSERT INTO new_leads
                     (phone, platform, agent, entry_date, name, city, region, validity,
@@ -796,6 +801,8 @@ def import_leads():
         conn.close()
 
         msg = f'导入完成！新增 {added} 条，更新 {updated} 条'
+        if skipped:
+            msg += f'，抖音/小红书新线索跳过 {skipped} 条（请通过渠道表格导入）'
         if dup_skip:
             msg += f'，Excel内重复跳过 {dup_skip} 条'
         if bad_rows:
