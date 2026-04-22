@@ -1464,11 +1464,19 @@ window.__COST_DAYS__ = [];
     document.getElementById('modal').className = 'modal show';
   }
 
+  function toast(msg, type){
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;z-index:99999;font-size:13px;font-weight:600;color:#fff;' + (type==='ok'?'background:#10b981;':'background:#ef4444;') + 'box-shadow:0 4px 12px rgba(0,0,0,.15);';
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .4s'; setTimeout(function(){ t.remove(); },400); },2500);
+  }
+
   function deleteLead(gidx) {
     var r = filtered[gidx];
-    if (!r) return;
+    if (!r) { toast('记录不存在', 'err'); return; }
     var phone = r['手机号'] || r['手机'];
-    if (!phone || phone === '-') { alert('该记录缺少手机号，无法删除'); return; }
+    if (!phone || phone === '-') { toast('该记录缺少手机号，无法删除', 'err'); return; }
     if (!confirm('确定删除 ' + (r['姓名'] || '') + ' (' + phone + ') 的线索记录？')) return;
     fetch('/api/leads/delete', {
       method: 'POST',
@@ -1483,11 +1491,12 @@ window.__COST_DAYS__ = [];
         renderCards();
         try { drawPlat(); } catch(e){}
         try { drawValid(); } catch(e){}
+        toast('删除成功', 'ok');
       } else {
-        alert(data.message || '删除失败');
+        toast(data.message || '删除失败', 'err');
       }
     })
-    .catch(function(err){ alert('网络错误'); });
+    .catch(function(err){ toast('网络错误，请检查控制台', 'err'); console.error(err); });
   }
 
   function renderTable() {

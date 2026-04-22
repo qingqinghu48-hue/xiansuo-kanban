@@ -391,30 +391,39 @@ def delete_lead():
     if not user:
         return jsonify({'success': False, 'message': '请先登录'}), 401
 
-    data = request.json
-    phone = data.get('phone', '').strip()
+    try:
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'success': False, 'message': '请求数据为空'})
+        phone = str(data.get('phone', '')).strip()
+        if not phone:
+            return jsonify({'success': False, 'message': '手机号不能为空'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '请求解析失败: ' + str(e)})
 
-    conn = sqlite3.connect(str(DB_FILE))
-    c = conn.cursor()
-    c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
-    row = c.fetchone()
+    try:
+        conn = sqlite3.connect(str(DB_FILE))
+        c = conn.cursor()
+        c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
+        row = c.fetchone()
 
-    if not row:
+        if not row:
+            conn.close()
+            return jsonify({'success': False, 'message': '线索不存在或无法删除（仅支持删除手动录入的线索）'})
+
+        lead_id, lead_agent = row
+
+        # 管理员可以删除所有，招商员只能删除自己的
+        if user['role'] != 'admin' and lead_agent != user['name']:
+            conn.close()
+            return jsonify({'success': False, 'message': '无权删除此线索'})
+
+        c.execute('DELETE FROM new_leads WHERE id = ?', (lead_id,))
+        conn.commit()
         conn.close()
-        return jsonify({'success': False, 'message': '线索不存在'})
-
-    lead_id, lead_agent = row
-
-    # 管理员可以删除所有，招商员只能删除自己的
-    if user['role'] != 'admin' and lead_agent != user['name']:
-        conn.close()
-        return jsonify({'success': False, 'message': '无权删除此线索'})
-
-    c.execute('DELETE FROM new_leads WHERE id = ?', (lead_id,))
-    conn.commit()
-    conn.close()
-
-    return jsonify({'success': True, 'message': '删除成功'})
+        return jsonify({'success': True, 'message': '删除成功'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '删除出错: ' + str(e)})
 
 # ─────────────────────────────────────────────
 # 标记新线索为已读
