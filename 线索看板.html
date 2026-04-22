@@ -365,6 +365,23 @@ td{
   transition:background .15s;
 }
 .modal-x:hover{background:#e2e8f0}
+
+/* ── 成本录入 ── */
+.cost-form{display:flex;flex-direction:column;gap:16px}
+.cost-field{display:flex;flex-direction:column;gap:6px}
+.cost-field label{font-size:13px;font-weight:600;color:var(--text-2)}
+.cost-field input,.cost-field select{
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  font-size:14px;
+  background:#fff;
+  color:var(--text);
+}
+.cost-field input:focus,.cost-field select:focus{outline:none;border-color:var(--primary)}
+.cost-result{margin-top:12px;font-size:13px;min-height:20px}
+.cost-result.ok{color:var(--success);font-weight:600}
+.cost-result.err{color:var(--danger);font-weight:600}
 .modal-bd{padding:20px;overflow-y:auto;max-height:calc(85vh - 60px)}
 .detail-row{
   display:flex;padding:11px 0;
@@ -556,6 +573,40 @@ td{
       <button class="modal-x" id="modalClose">&#10005;</button>
     </div>
     <div class="modal-bd" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- 成本录入弹窗 -->
+<div class="modal" id="costModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-hd">
+      <h3>录入抖音营销成本</h3>
+      <button class="modal-x" id="costModalClose">&#10005;</button>
+    </div>
+    <div class="modal-bd" style="padding:24px">
+      <div class="cost-form">
+        <div class="cost-field">
+          <label>日期</label>
+          <input type="date" id="costDate" value="">
+        </div>
+        <div class="cost-field">
+          <label>平台</label>
+          <select id="costPlatform">
+            <option value="抖音">抖音</option>
+            <option value="小红书">小红书</option>
+          </select>
+        </div>
+        <div class="cost-field">
+          <label>消耗金额（元）</label>
+          <input type="number" id="costAmount" placeholder="请输入当日消耗金额" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="cost-result" id="costResult"></div>
+      <div style="margin-top:20px;text-align:right">
+        <button class="btn btn-ghost" id="costCancel">取消</button>
+        <button class="btn btn-pri" id="costSubmit" style="margin-left:8px">确认录入</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1838,6 +1889,97 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
     var txt = document.querySelector('#loading .loading-text');
     if (txt) txt.textContent = '渲染出错，请打开控制台查看：' + e.message;
   }
+
+  // ── 成本录入逻辑 ──
+  (function(){
+    var costModal = document.getElementById('costModal');
+    var btnCost   = document.getElementById('btnCost');
+    var btnClose  = document.getElementById('costModalClose');
+    var btnCancel = document.getElementById('costCancel');
+    var btnSubmit = document.getElementById('costSubmit');
+    var inpDate   = document.getElementById('costDate');
+    var inpPlat   = document.getElementById('costPlatform');
+    var inpAmt    = document.getElementById('costAmount');
+    var resultBox = document.getElementById('costResult');
+
+    function openCost(){
+      costModal.classList.add('show');
+      var today = new Date().toISOString().slice(0,10);
+      inpDate.value = today;
+      inpAmt.value = '';
+      resultBox.textContent = '';
+      resultBox.className = 'cost-result';
+      inpAmt.focus();
+    }
+    function closeCost(){ costModal.classList.remove('show'); }
+
+    if (btnCost)   btnCost.addEventListener('click', openCost);
+    if (btnClose)  btnClose.addEventListener('click', closeCost);
+    if (btnCancel) btnCancel.addEventListener('click', closeCost);
+
+    if (costModal){
+      costModal.addEventListener('click', function(e){ if (e.target === costModal) closeCost(); });
+    }
+
+    if (btnSubmit){
+      btnSubmit.addEventListener('click', function(){
+        var date = inpDate.value;
+        var platform = inpPlat.value;
+        var amount = parseFloat(inpAmt.value);
+        if (!date){ resultBox.textContent = '请选择日期'; resultBox.className = 'cost-result err'; return; }
+        if (isNaN(amount) || amount < 0){ resultBox.textContent = '请输入有效金额'; resultBox.className = 'cost-result err'; return; }
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = '录入中…';
+        resultBox.textContent = '';
+        resultBox.className = 'cost-result';
+
+        fetch('/api/cost/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({cost_date: date, platform: platform, amount: amount})
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '确认录入';
+          if (res.success){
+            resultBox.textContent = res.message;
+            resultBox.className = 'cost-result ok';
+            // 更新本地数据并刷新图表
+            var key = date;
+            if (!COST[key]) COST[key] = {};
+            COST[key].spend = amount;
+            // 重新计算单条成本
+            var dayLeads = 0;
+            for (var i = 0; i < ALL.length; i++){
+              var dt = String(ALL[i]['入库时间'] || '').slice(0,10);
+              if (dt === key && ALL[i]['平台'] === platform) dayLeads++;
+            }
+            COST[key].unit_cost = dayLeads > 0 ? (amount / dayLeads).toFixed(2) : 0;
+            // 确保日期在CDAYS中
+            if (CDAYS.indexOf(key) === -1){
+              CDAYS.push(key);
+              CDAYS.sort();
+            }
+            renderCards();
+            drawSpend();
+            drawUnit();
+            setTimeout(closeCost, 1200);
+          } else {
+            resultBox.textContent = res.message || '录入失败';
+            resultBox.className = 'cost-result err';
+          }
+        })
+        .catch(function(err){
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '确认录入';
+          resultBox.textContent = '网络错误';
+          resultBox.className = 'cost-result err';
+        });
+      });
+    }
+  })();
 })();
 </script>
 </body>
