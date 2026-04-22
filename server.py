@@ -587,17 +587,19 @@ def import_leads():
                 bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '手机号为空'})
                 continue
 
-            # 统一转字符串并提取数字
             s = str(raw).strip()
-            digits = ''.join(filter(str.isdigit, s))
+            if not s or s.lower() == 'nan':
+                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '手机号为空'})
+                continue
 
+            digits = ''.join(filter(str.isdigit, s))
             if len(digits) == 11:
                 phone = digits
             elif len(digits) >= 7:
                 phone = digits  # 座机或其他
             else:
-                bad_rows.append({'row': int(idx)+2, 'raw': s[:20], 'reason': f'提取到{digits}位数字'})
-                continue
+                # 微信号、邮箱等：保留原始值（如 laozhao0068、Jie-HY）
+                phone = s
 
             # 平台
             platform = '抖音'
@@ -613,13 +615,25 @@ def import_leads():
                 if a and a.lower() != 'nan':
                     agent = a
 
-            # 入库日期
-            entry_date = datetime.now().strftime('%Y-%m-%d')
+            # 入库日期：以Excel表格日期为准
+            entry_date = ''
             if date_col and pd.notna(row.get(date_col)):
                 try:
                     entry_date = pd.to_datetime(row[date_col]).strftime('%Y-%m-%d')
                 except:
                     pass
+            # 兜底：尝试其他常见日期列
+            if not entry_date:
+                for fallback_col in ['日期', '时间', '创建日期', '添加日期']:
+                    if fallback_col in cols and pd.notna(row.get(fallback_col)):
+                        try:
+                            entry_date = pd.to_datetime(row[fallback_col]).strftime('%Y-%m-%d')
+                            break
+                        except:
+                            continue
+            # 实在没有日期才用今天
+            if not entry_date:
+                entry_date = datetime.now().strftime('%Y-%m-%d')
 
             parsed.append({
                 'phone': phone,
@@ -633,26 +647,48 @@ def import_leads():
         if not parsed:
             sample = str(df[phone_col].head(3).tolist())
             return jsonify({'success': False,
-                'message': f'未能解析出任何有效手机号。{phone_col}列前3行: {sample}'})
+                'message': f'未能解析出任何有效数据。{phone_col}列前3行: {sample}'})
 
-        print(f"[导入] 解析成功: {len(parsed)} 条, 失败: {len(bad_rows)} 条")
+        print(f"[导入] 解析成功: {len(parsed)} 条, 空值跳过: {len(bad_rows)} 条")
 
         # ── 6) 数据库写入 ──
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
+
+        # 6.1) 清理已有重复：同一phone保留id最小的一条
+        c.execute('SELECT phone, COUNT(*) as cnt FROM new_leads GROUP BY phone HAVING cnt > 1')
+        dup_groups = c.fetchall()
+        dup_cleaned = 0
+        for phone, cnt in dup_groups:
+            c.execute('DELETE FROM new_leads WHERE phone = ? AND id NOT IN (SELECT MIN(id) FROM new_leads WHERE phone = ?)', (phone, phone))
+            dup_cleaned += cnt - 1
+        if dup_cleaned:
+            print(f"[导入] 清理历史重复: {dup_cleaned} 条")
+            conn.commit()
+
+        # 重新加载existing
         c.execute('SELECT phone, platform, entry_date FROM new_leads')
         existing = {row[0]: {'platform': row[1], 'entry_date': row[2]} for row in c.fetchall()}
 
         added, updated, skipped = 0, 0, 0
+        seen_in_file = set()  # Excel内部去重
+
         for item in parsed:
             phone = item['phone']
+
+            # Excel内部去重
+            if phone in seen_in_file:
+                skipped += 1
+                continue
+            seen_in_file.add(phone)
+
             platform = item['platform']
             agent = item['agent']
             entry_date = item['entry_date']
 
             if phone in existing:
                 old = existing[phone]
-                # 入库日期保护
+                # 入库日期保护：招商线索管理表导入时，抖音/小红书平台的入库日期不修改
                 if is_zhaoshang and old['platform'] in ('抖音', '小红书'):
                     entry_date = old['entry_date']
 
