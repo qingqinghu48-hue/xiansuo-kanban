@@ -503,23 +503,21 @@ td{
 
     <!-- 抖音成本看板 -->
     <div class="chart-row-full cost-section">
-      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">抖音</span>
-          营销成本情况
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border-radius:8px;font-size:14px;font-weight:700">抖</span>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">抖音营销成本</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px">每日消耗与单条成本追踪</div>
+          </div>
         </div>
-        <button class="btn btn-ghost" id="btnCost" style="border-color:var(--danger);color:var(--danger);font-size:12px;padding:4px 12px">录入成本</button>
-      </div>
-    <div class="chart-row-full cost-section">
-      <div class="section-title" style="display:flex;align-items:center;gap:10px">
-        <span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">抖音</span>
-        营销成本情况
+        <button class="btn" id="btnCost" style="background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(238,90,90,0.3);transition:all 0.2s">&#128181; 录入成本</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="chart-card">
           <div class="chart-card-head">
             <h3>每日总消耗</h3>
-            <span class="chart-tag">抖音</span>
+            <span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span>
           </div>
           <div class="chart-card-body">
             <canvas id="cvDySpend" style="height:200px"></canvas>
@@ -528,7 +526,7 @@ td{
         <div class="chart-card">
           <div class="chart-card-head">
             <h3>单条线索成本</h3>
-            <span class="chart-tag">抖音</span>
+            <span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span>
           </div>
           <div class="chart-card-body">
             <canvas id="cvDyUnit" style="height:200px"></canvas>
@@ -539,15 +537,20 @@ td{
 
     <!-- 小红书成本看板 -->
     <div class="chart-row-full cost-section">
-      <div class="section-title" style="display:flex;align-items:center;gap:10px">
-        <span style="background:#fce7f3;color:#be185d;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">小红书</span>
-        营销成本情况
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;border-radius:8px;font-size:14px;font-weight:700">红</span>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">小红书营销成本</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px">每日消耗与单条成本追踪</div>
+          </div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="chart-card">
           <div class="chart-card-head">
             <h3>每日总消耗</h3>
-            <span class="chart-tag">小红书</span>
+            <span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span>
           </div>
           <div class="chart-card-body">
             <canvas id="cvXhsSpend" style="height:200px"></canvas>
@@ -556,7 +559,7 @@ td{
         <div class="chart-card">
           <div class="chart-card-head">
             <h3>单条线索成本</h3>
-            <span class="chart-tag">小红书</span>
+            <span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span>
           </div>
           <div class="chart-card-body">
             <canvas id="cvXhsUnit" style="height:200px"></canvas>
