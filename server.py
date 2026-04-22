@@ -435,6 +435,56 @@ def delete_lead():
         return jsonify({'success': False, 'message': '删除出错: ' + str(e)})
 
 # ─────────────────────────────────────────────
+# 批量删除线索
+# ─────────────────────────────────────────────
+@app.route('/api/leads/batch-delete', methods=['POST'])
+def batch_delete_leads():
+    user = session.get('user')
+    if not user:
+        return jsonify({'success': False, 'message': '请先登录'}), 401
+
+    try:
+        data = request.get_json(force=True)
+        phones = data.get('phones', [])
+        if not phones or not isinstance(phones, list):
+            return jsonify({'success': False, 'message': '请提供要删除的手机号列表'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '请求解析失败: ' + str(e)})
+
+    try:
+        conn = sqlite3.connect(str(DB_FILE))
+        c = conn.cursor()
+
+        deleted = 0
+        skipped = 0
+        for phone in phones:
+            phone = str(phone).strip()
+            if not phone:
+                skipped += 1
+                continue
+
+            c.execute('SELECT id, agent FROM new_leads WHERE phone = ?', (phone,))
+            row = c.fetchone()
+            if not row:
+                skipped += 1
+                continue
+
+            lead_id, lead_agent = row
+            # 权限检查
+            if user['role'] != 'admin' and lead_agent != user['name']:
+                skipped += 1
+                continue
+
+            c.execute('DELETE FROM new_leads WHERE id = ?', (lead_id,))
+            deleted += 1
+
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'批量删除完成：成功 {deleted} 条，跳过 {skipped} 条'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '删除出错: ' + str(e)})
+
+# ─────────────────────────────────────────────
 # 标记新线索为已读
 # ─────────────────────────────────────────────
 @app.route('/api/leads/mark_read', methods=['POST'])

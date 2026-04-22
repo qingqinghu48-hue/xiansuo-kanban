@@ -568,12 +568,16 @@ td{
     <div class="table-card">
       <div class="table-card-head">
         <h2>线索明细</h2>
-        <span class="table-badge" id="tableCount">0 条</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="table-badge" id="tableCount">0 条</span>
+          <button id="batchDeleteBtn" class="td-btn" onclick="batchDelete()" style="display:none;background:#fff;color:var(--danger);border-color:var(--danger);font-weight:600">🗑 批量删除</button>
+        </div>
       </div>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
+              <th style="width:36px;text-align:center"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
               <th data-sort="入库日期">入库日期</th>
               <th data-sort="平台">平台</th>
               <th data-sort="姓名">姓名</th>
@@ -1563,16 +1567,18 @@ window.__COST_DAYS__ = [];
     var start = (page - 1) * PS;
     var end = Math.min(start + PS, filtered.length);
     var rows = [];
-    var i, r, idx, dt;
+    var i, r, idx, dt, phone;
     for (i = start; i < end; i++) {
       r = filtered[i];
       idx = i - start;
       dt = String(r['入库时间'] || r['入库日期'] || '-').slice(0, 10);
+      phone = r['手机号'] || r['手机'] || '';
       rows.push('<tr>' +
+        '<td style="text-align:center"><input type="checkbox" class="row-check" data-phone="' + esc(phone) + '" onchange="updateBatchBtn()"></td>' +
         '<td class="td-date">' + esc(dt) + '</td>' +
         '<td><span class="tag" style="background:' + platBg(r['平台']) + ';color:' + platColor(r['平台']) + '">' + esc(r['平台']) + '</span></td>' +
         '<td class="td-num">' + esc(r['姓名'] || '-') + '</td>' +
-        '<td class="td-num">' + esc(r['手机号'] || r['手机'] || '-') + '</td>' +
+        '<td class="td-num">' + esc(phone || '-') + '</td>' +
         '<td>' + esc(r['省份'] || '-') + '</td>' +
         '<td>' + validTag(r['线索有效性'] || r['有效性'] || '') + '</td>' +
         '<td>' + esc(r['所属大区'] || '-') + '</td>' +
@@ -1592,6 +1598,49 @@ window.__COST_DAYS__ = [];
       '第 ' + page + ' / ' + totalPages + ' 页，共 ' + filtered.length + ' 条';
     document.getElementById('prevBtn').disabled = (page <= 1);
     document.getElementById('nextBtn').disabled = (page >= totalPages);
+    document.getElementById('selectAll').checked = false;
+    updateBatchBtn();
+  }
+
+  function toggleSelectAll() {
+    var all = document.getElementById('selectAll').checked;
+    var checks = document.querySelectorAll('.row-check');
+    checks.forEach(function(ch) { ch.checked = all; });
+    updateBatchBtn();
+  }
+
+  function updateBatchBtn() {
+    var checked = document.querySelectorAll('.row-check:checked');
+    var btn = document.getElementById('batchDeleteBtn');
+    btn.style.display = checked.length ? 'inline-block' : 'none';
+    btn.textContent = '🗑 批量删除 (' + checked.length + ')';
+  }
+
+  function batchDelete() {
+    var checks = document.querySelectorAll('.row-check:checked');
+    var phones = [];
+    checks.forEach(function(ch) {
+      var p = ch.getAttribute('data-phone');
+      if (p && p !== '-') phones.push(p);
+    });
+    if (!phones.length) { toast('请先选择要删除的线索', 'err'); return; }
+    if (!confirm('确定删除选中的 ' + phones.length + ' 条线索？')) return;
+
+    fetch('/api/leads/batch-delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phones: phones})
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      if (data.success) {
+        toast(data.message, 'ok');
+        loadData();
+      } else {
+        toast(data.message || '删除失败', 'err');
+      }
+    })
+    .catch(function(err){ toast('删除失败: ' + err, 'err'); });
   }
 
   function editLead(gidx){
