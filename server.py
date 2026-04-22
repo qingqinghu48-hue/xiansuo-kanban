@@ -783,6 +783,141 @@ def import_leads():
         return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
 
 # ─────────────────────────────────────────────
+# 抖音客资批量导入（管理员）
+# ─────────────────────────────────────────────
+@app.route('/api/leads/import-douyin', methods=['POST'])
+def import_douyin_kezi():
+    user = session.get('user')
+    if not user or user['role'] != 'admin':
+        return jsonify({'success': False, 'message': '只有管理员可以导入'}), 401
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': '请选择文件'})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': '请选择文件'})
+
+    try:
+        import pandas as pd
+        from io import BytesIO
+
+        file_bytes = file.read()
+
+        # 读取Excel
+        try:
+            if file.filename.lower().endswith('.xls'):
+                df = pd.read_excel(BytesIO(file_bytes), engine='xlrd')
+            else:
+                df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
+        except Exception as read_err:
+            return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
+
+        if len(df) == 0:
+            return jsonify({'success': False, 'message': 'Excel 文件为空'})
+
+        cols = [str(c).strip() for c in df.columns]
+
+        # 查找对应列
+        def find_col(keywords):
+            for kw in keywords:
+                kw_lower = kw.lower()
+                for col in cols:
+                    if kw_lower in col.lower():
+                        return col
+            return None
+
+        date_col   = find_col(['线索创建时间', '创建时间', '日期', '时间'])
+        name_col   = find_col(['姓名', '名字', '客户姓名'])
+        phone_col  = find_col(['手机号', '手机号码', '电话', '联系电话', '手机'])
+        agent_col  = find_col(['跟进员工', '所属招商', '负责人', '招商员', '员工'])
+        city_col   = find_col(['所在城市', '城市', '省份', '地区'])
+
+        if not phone_col:
+            return jsonify({'success': False, 'message': f'无法识别手机号列。列名: {cols}'})
+
+        # 加载已有手机号（用于去重）
+        conn = sqlite3.connect(str(DB_FILE))
+        c = conn.cursor()
+        c.execute('SELECT phone FROM new_leads')
+        existing_phones = {row[0] for row in c.fetchall()}
+        conn.close()
+
+        def get_val(row, col):
+            if not col:
+                return ''
+            v = row.get(col, '')
+            if pd.isna(v):
+                return ''
+            s = str(v).strip()
+            return s if s.lower() != 'nan' else ''
+
+        def parse_date(row, col):
+            if not col:
+                return ''
+            v = row.get(col)
+            if pd.isna(v):
+                return ''
+            try:
+                return pd.to_datetime(v).strftime('%Y-%m-%d')
+            except:
+                return ''
+
+        added, skipped, bad = 0, 0, 0
+        seen = set()
+
+        conn = sqlite3.connect(str(DB_FILE))
+        c = conn.cursor()
+
+        for idx, row in df.iterrows():
+            raw_phone = get_val(row, phone_col)
+            if not raw_phone:
+                bad += 1
+                continue
+
+            # 提取数字
+            digits = ''.join(filter(str.isdigit, raw_phone))
+            if len(digits) >= 7:
+                phone = digits
+            else:
+                phone = raw_phone
+
+            # 去重：数据库已有 或 Excel内重复
+            if phone in existing_phones or phone in seen:
+                skipped += 1
+                continue
+            seen.add(phone)
+
+            entry_date = parse_date(row, date_col) or datetime.now().strftime('%Y-%m-%d')
+            name = get_val(row, name_col)
+            agent = get_val(row, agent_col) or '郑建军'
+            city = get_val(row, city_col)
+
+            c.execute('''INSERT INTO new_leads
+                (phone, platform, agent, entry_date, name, city, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)''', (
+                phone, '抖音', agent, entry_date, name, city,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ))
+            added += 1
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': f'导入完成！新增 {added} 条，重复跳过 {skipped} 条，无法识别 {bad} 条',
+            'added': added,
+            'skipped': skipped,
+            'bad': bad
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[抖音导入错误] {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
+
+# ─────────────────────────────────────────────
 # 管理员页面（包含线索录入表单）
 # ─────────────────────────────────────────────
 @app.route('/admin', methods=['GET'])
@@ -832,7 +967,7 @@ def admin_page():
                 <a href="/">看板首页</a>
             </div>
         </div>
-        <div class="container">
+        <div class="container" style="margin-bottom:20px">
             <a href="/" class="back-link">← 返回看板</a>
             <h2>录入新线索</h2>
             <form class="form" id="leadForm">
@@ -867,6 +1002,26 @@ def admin_page():
             <div class="message" id="message"></div>
         </div>
 
+        <div class="container" style="margin-top:20px">
+            <h2>📊 抖音客资批量导入</h2>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.7">
+                <div style="font-weight:700;margin-bottom:4px">&#128161; 导入说明</div>
+                <div>• 支持 .xlsx / .xls 格式</div>
+                <div>• 自动识别列：线索创建时间 → 入库日期 | 姓名 → 姓名 | 手机号 → 手机号 | 跟进员工 → 招商员 | 所在城市 → 城市</div>
+                <div>• <b>手机号重复</b> → 直接跳过，不更新不插入</div>
+                <div>• 其他字段信息不填入系统</div>
+            </div>
+            <form id="dyImportForm">
+                <div class="form-group">
+                    <label>选择抖音客资 Excel 文件 <span style="color:#999;font-weight:400">（.xlsx / .xls）</span></label>
+                    <input type="file" id="dyExcelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px">
+                </div>
+                <button type="submit" class="btn" id="dyImportBtn" style="background:linear-gradient(135deg,#10b981,#059669)">导入表格</button>
+            </form>
+            <div class="message" id="dyImportMessage"></div>
+            <div id="dyImportResult" style="margin-top:15px;display:none"></div>
+        </div>
+
         <script>
             document.getElementById('leadForm').onsubmit = async (e) => {
                 e.preventDefault();
@@ -890,12 +1045,12 @@ def admin_page():
                 }
             };
 
-            document.getElementById('importForm').onsubmit = async (e) => {
+            document.getElementById('dyImportForm').onsubmit = async (e) => {
                 e.preventDefault();
-                const fileInput = document.getElementById('excelFile');
-                const btn = document.getElementById('importBtn');
-                const msgBox = document.getElementById('importMessage');
-                const resultBox = document.getElementById('importResult');
+                const fileInput = document.getElementById('dyExcelFile');
+                const btn = document.getElementById('dyImportBtn');
+                const msgBox = document.getElementById('dyImportMessage');
+                const resultBox = document.getElementById('dyImportResult');
 
                 if (!fileInput.files[0]) {
                     msgBox.style.display = 'block';
@@ -904,6 +1059,41 @@ def admin_page():
                     return;
                 }
 
+                btn.disabled = true;
+                btn.textContent = '正在导入...';
+                msgBox.style.display = 'none';
+                resultBox.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const res = await fetch('/api/leads/import-douyin', { method: 'POST', body: formData });
+                    const data = await res.json();
+
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                    msgBox.textContent = data.message;
+
+                    if (data.success) {
+                        fileInput.value = '';
+                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
+                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                        html += '</div>';
+                        resultBox.innerHTML = html;
+                        resultBox.style.display = 'block';
+                    }
+                } catch(err) {
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message error';
+                    msgBox.textContent = '网络错误: ' + err;
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '导入表格';
+                }
+            };
         </script>
     </body>
     </html>
