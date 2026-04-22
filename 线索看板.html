@@ -1511,8 +1511,8 @@ window.__COST_DAYS__ = [];
         '<td>' + esc(r['所属招商'] || '-') + '</td>' +
         '<td>' + jmTag(r['是否能加上微信'] || '') + '</td>' +
         '<td>' +
-          '<button class="td-btn" onclick="parent.showDetail(' + i + ')" style="margin-right:4px">查看</button>' +
-          '<button class="td-btn" onclick="parent.deleteLead(' + i + ')" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>' +
+          '<button class="td-btn" onclick="showDetail(' + i + ')" style="margin-right:4px">查看</button>' +
+          '<button class="td-btn" onclick="deleteLead(' + i + ')" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>' +
         '</td>' +
         '</tr>');
     }
