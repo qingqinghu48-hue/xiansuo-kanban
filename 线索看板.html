@@ -473,6 +473,7 @@ td{
         <button class="btn btn-pri" id="btnFilter">应用筛选</button>
         <button class="btn btn-ghost" id="btnReset">重置</button>
         <button class="btn btn-ghost" id="btnCost" style="margin-left:6px;border-color:var(--danger);color:var(--danger)">录入成本</button>
+        <button class="btn btn-ghost" id="btnImport" style="margin-left:6px;border-color:var(--primary);color:var(--primary)">批量导入</button>
       </div>
     </div>
 
@@ -652,6 +653,40 @@ td{
       <div style="margin-top:16px;text-align:right">
         <button class="btn btn-ghost" id="costCancel">关闭</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 批量导入弹窗 -->
+<div class="modal" id="importModal">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-hd">
+      <h3>Excel 批量导入线索</h3>
+      <button class="modal-x" id="importModalClose">&#10005;</button>
+    </div>
+    <div class="modal-bd" style="padding:24px">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:12px;color:#475569;line-height:1.8">
+        <div style="font-weight:700;color:#1e293b;margin-bottom:6px;font-size:13px">&#128221; 导入规则说明</div>
+        <div style="margin-bottom:6px"><span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-weight:600">招商线索管理表</span></div>
+        <ul style="margin:0 0 8px 16px;padding:0">
+          <li>已存在的抖音/小红书线索 → <b>更新其他信息</b>，入库日期<b>保持不变</b></li>
+          <li>其他平台线索（400线索等）→ 所有信息以导入表为准</li>
+        </ul>
+        <div style="margin-bottom:6px"><span style="background:#fce7f3;color:#be185d;padding:1px 6px;border-radius:4px;font-weight:600">抖音来客客资表</span></div>
+        <ul style="margin:0 0 0 16px;padding:0">
+          <li>按「跟进员工」直接分配账号</li>
+          <li>新线索新增，已存在线索更新全部信息</li>
+        </ul>
+      </div>
+      <div class="cost-field">
+        <label>选择 Excel 文件 <span style="color:var(--text-3);font-weight:400">（.xlsx / .xls）</span></label>
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="padding:8px;border:1px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box">
+      </div>
+      <div style="text-align:right;margin-top:16px">
+        <button class="btn btn-ghost" id="importCancel">取消</button>
+        <button class="btn btn-pri" id="importSubmit" style="margin-left:8px">开始导入</button>
+      </div>
+      <div class="cost-result" id="importResult"></div>
     </div>
   </div>
 </div>
@@ -2114,11 +2149,13 @@ window.__COST_DAYS__ = [];
     if (main) main.style.display = 'block';
     renderAll();
 
-    // 招商员隐藏成本相关按钮和看板
+    // 招商员隐藏成本相关按钮和看板、导入按钮
     var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
     if (!isAdmin) {
       var btnCost = document.getElementById('btnCost');
       if (btnCost) btnCost.style.display = 'none';
+      var btnImport = document.getElementById('btnImport');
+      if (btnImport) btnImport.style.display = 'none';
       document.querySelectorAll('.cost-section').forEach(function(el){ el.style.display = 'none'; });
     }
   } catch(e) {
@@ -2322,6 +2359,75 @@ window.__COST_DAYS__ = [];
           btnSubmit.textContent = '确认录入';
           resultBox.textContent = '请求失败: ' + (err.message || '网络错误');
           resultBox.className = 'cost-result err';
+        });
+      });
+    }
+  })();
+
+  // ── 批量导入逻辑 ──
+  (function(){
+    var importModal = document.getElementById('importModal');
+    var btnImport   = document.getElementById('btnImport');
+    var btnImpClose = document.getElementById('importModalClose');
+    var btnImpCancel= document.getElementById('importCancel');
+    var btnImpSubmit= document.getElementById('importSubmit');
+    var inpFile     = document.getElementById('importFile');
+    var impResult   = document.getElementById('importResult');
+
+    function openImport(){ importModal.classList.add('show'); impResult.textContent = ''; impResult.className = 'cost-result'; }
+    function closeImport(){ importModal.classList.remove('show'); }
+
+    if (btnImport)   btnImport.addEventListener('click', openImport);
+    if (btnImpClose) btnImpClose.addEventListener('click', closeImport);
+    if (btnImpCancel)btnImpCancel.addEventListener('click', closeImport);
+    if (importModal){
+      importModal.addEventListener('click', function(e){ if (e.target === importModal) closeImport(); });
+    }
+
+    if (btnImpSubmit){
+      btnImpSubmit.addEventListener('click', function(){
+        var file = inpFile.files[0];
+        if (!file){ impResult.textContent = '请选择 Excel 文件'; impResult.className = 'cost-result err'; return; }
+
+        btnImpSubmit.disabled = true;
+        btnImpSubmit.textContent = '导入中…';
+        impResult.textContent = '';
+        impResult.className = 'cost-result';
+
+        var formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/leads/import', {
+          method: 'POST',
+          body: formData
+        })
+        .then(function(r){
+          if (!r.ok) {
+            return r.text().then(function(txt){
+              throw new Error('HTTP ' + r.status + ' ' + r.statusText + ': ' + txt.slice(0,200));
+            });
+          }
+          return r.json();
+        })
+        .then(function(res){
+          btnImpSubmit.disabled = false;
+          btnImpSubmit.textContent = '开始导入';
+          if (res.success){
+            impResult.textContent = res.message;
+            impResult.className = 'cost-result ok';
+            inpFile.value = '';
+            // 3秒后刷新页面以显示新数据
+            setTimeout(function(){ location.reload(); }, 1500);
+          } else {
+            impResult.textContent = res.message || '导入失败';
+            impResult.className = 'cost-result err';
+          }
+        })
+        .catch(function(err){
+          btnImpSubmit.disabled = false;
+          btnImpSubmit.textContent = '开始导入';
+          impResult.textContent = '请求失败: ' + (err.message || '网络错误');
+          impResult.className = 'cost-result err';
         });
       });
     }

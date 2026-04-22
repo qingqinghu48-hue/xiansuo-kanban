@@ -505,14 +505,11 @@ def import_leads():
         import pandas as pd
         from io import BytesIO
 
-        # 读取 Excel（先保存文件内容，避免流被消耗）
         file_bytes = file.read()
         df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
 
-        # 调试：记录列名到日志
         print(f"[导入调试] 文件名: {file.filename}, 列名: {list(df.columns)}, 总行数: {len(df)}")
 
-        # 根据文件名判断导入类型
         filename = file.filename
         is_zhaoshang = '招商线索管理表' in filename
         is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
@@ -520,9 +517,12 @@ def import_leads():
         conn = sqlite3.connect(str(DB_FILE))
         c = conn.cursor()
 
-        # 获取已有线索（phone -> platform, entry_date）
-        c.execute('SELECT phone, platform, entry_date FROM new_leads')
-        existing = {row[0]: {'platform': row[1] or '', 'entry_date': row[2] or ''} for row in c.fetchall()}
+        # 获取已有线索全部信息（phone -> 完整记录）
+        c.execute('SELECT * FROM new_leads')
+        cols = [desc[0] for desc in c.description]
+        existing = {}
+        for row in c.fetchall():
+            existing[row[1]] = dict(zip(cols, row))  # phone -> dict
 
         added_count = 0
         updated_count = 0
@@ -530,27 +530,23 @@ def import_leads():
         skip_reasons = []
         today = datetime.now().strftime('%Y-%m-%d')
 
-        # 手机号列名候选（兼容多种命名）
+        # ── 列名候选配置 ──
         phone_cols = ['手机号', '手机号码', '电话', '联系电话', '手机', 'Phone', 'phone']
-        # 平台列名候选
         platform_cols = ['平台', '来源平台', '渠道']
-        # 招商员列名候选
-        agent_cols = ['所属招商', '跟进员工', '招商员', '负责人', '分配']
-        follow_cols = ['跟进员工', '负责人', '所属招商']
-        # 日期列名候选
+        agent_cols_zs = ['所属招商', '跟进员工', '招商员', '负责人', '分配']
+        agent_cols_kz = ['跟进员工', '负责人', '所属招商']
         date_cols = ['入库日期', '入库时间', '录入日期', '日期', '录入时间']
-        # 姓名列名候选
         name_cols = ['姓名', '名字', '客户姓名', '联系人']
-        # 城市列名候选
         city_cols = ['城市', '省份', '地区', '所在城市', '省']
-        # 有效性列名候选
-        validity_cols = ['有效性', '线索有效性', '客户类型', '等级']
-        # 大区列名候选
+        validity_cols = ['线索有效性', '有效性', '客户类型', '等级']
         region_cols = ['所属大区', '大区', '区域', '所属区域']
-        # 能否加微列名候选
-        wechat_cols = ['能否加微', '是否能加上微信', '加微信', '微信']
-        # 备注列名候选
+        wechat_cols = ['是否能加上微信', '能否加微', '加微信', '微信']
         remark_cols = ['备注', '说明', '备注信息']
+        follow_time_cols = ['二次联系时间', '跟进时间', '下次联系时间']
+        follow_note_cols = ['二次联系备注', '跟进备注', '联系备注']
+        call_cols = ['最近一次电联时间', '电联时间', '最近联系时间']
+        visit_cols = ['到访时间', '到店时间', '来访时间']
+        sign_cols = ['签约时间', '成交时间', '签约日期']
 
         def get_val(row, candidates, default=''):
             for col in candidates:
@@ -567,7 +563,6 @@ def import_leads():
                     if isinstance(v, float):
                         if pd.isna(v) or v != v:
                             continue
-                        # 处理 1.3193651186e+10 科学计数法
                         if v > 1e10:
                             return str(int(v))
                         v = str(int(v))
@@ -575,11 +570,19 @@ def import_leads():
                         continue
                     else:
                         v = str(v).strip()
-                    # 清理手机号：去空格、去小数点、取数字
                     v = ''.join(filter(str.isdigit, v))
                     if len(v) >= 7:
                         return v
             return ''
+
+        def parse_date(row, candidates, default=''):
+            for col in candidates:
+                if col in row and pd.notna(row[col]):
+                    try:
+                        return pd.to_datetime(row[col]).strftime('%Y-%m-%d')
+                    except:
+                        pass
+            return default
 
         for idx, row in df.iterrows():
             try:
@@ -590,59 +593,71 @@ def import_leads():
                         skip_reasons.append(f"第{idx+1}行: 无法识别手机号")
                     continue
 
-                # 解析平台
+                # ── 解析所有字段 ──
                 platform = get_val(row, platform_cols, '抖音')
 
-                # 解析招商员
+                # 招商员分配逻辑
                 if is_douyin_kezi:
-                    agent = get_val(row, follow_cols, '郑建军')
+                    # 抖音来客客资表：按"跟进员工"直接分配
+                    agent = get_val(row, agent_cols_kz, '郑建军')
                 else:
-                    agent = get_val(row, ['所属招商', '跟进员工'], '') or get_val(row, follow_cols, '郑建军')
+                    # 招商线索管理表：优先"所属招商"，其次"跟进员工"
+                    agent = get_val(row, ['所属招商'], '') or get_val(row, ['跟进员工'], '') or get_val(row, agent_cols_zs, '郑建军')
                 if not agent:
                     agent = '郑建军'
 
-                # 解析入库日期
-                entry_date = today
-                for col in date_cols:
-                    if col in row and pd.notna(row[col]):
-                        try:
-                            entry_date = pd.to_datetime(row[col]).strftime('%Y-%m-%d')
-                            break
-                        except:
-                            pass
+                # 入库日期
+                entry_date = parse_date(row, date_cols, today)
 
-                # 解析其他字段
+                # 其他字段
                 name = get_val(row, name_cols)
                 city = get_val(row, city_cols)
                 validity = get_val(row, validity_cols)
                 region = get_val(row, region_cols)
                 can_wechat = get_val(row, wechat_cols)
                 remark = get_val(row, remark_cols)
+                follow_time = parse_date(row, follow_time_cols, '')
+                follow_note = get_val(row, follow_note_cols)
+                call_time = parse_date(row, call_cols, '')
+                visit_time = parse_date(row, visit_cols, '')
+                sign_time = parse_date(row, sign_cols, '')
 
                 if phone in existing:
                     # ── 已存在线索：UPDATE ──
                     old = existing[phone]
-                    old_platform = old['platform']
+                    old_platform = old.get('platform', '')
 
-                    # 入库日期更新规则：
-                    # 招商线索管理表模式下，抖音/小红书平台的入库日期不修改
+                    # 入库日期保护规则：
+                    # 招商线索管理表导入时，抖音/小红书平台的入库日期不修改
                     if is_zhaoshang and old_platform in ('抖音', '小红书'):
-                        entry_date = old['entry_date']
+                        entry_date = old.get('entry_date', '') or entry_date
 
                     c.execute('''
                         UPDATE new_leads SET
                             platform = ?, agent = ?, entry_date = ?, name = ?,
-                            city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?
+                            city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
+                            二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
                         WHERE phone = ?
-                    ''', (platform, agent, entry_date, name, city, validity, region, can_wechat, remark, phone))
+                    ''', (
+                        platform, agent, entry_date, name,
+                        city, validity, region, can_wechat, remark,
+                        follow_time, follow_note, call_time, visit_time, sign_time,
+                        phone
+                    ))
                     updated_count += 1
                 else:
                     # ── 新线索：INSERT ──
                     c.execute('''
-                        INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (phone, platform, agent, entry_date, name, city, validity, region, can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                    existing[phone] = {'platform': platform, 'entry_date': entry_date}
+                        INSERT INTO new_leads (
+                            phone, platform, agent, entry_date, name, city, validity, region,
+                            can_wechat, remark, created_at,
+                            二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        phone, platform, agent, entry_date, name, city, validity, region,
+                        can_wechat, remark, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        follow_time, follow_note, call_time, visit_time, sign_time
+                    ))
                     added_count += 1
 
             except Exception as row_err:
@@ -653,7 +668,6 @@ def import_leads():
         conn.commit()
         conn.close()
 
-        # 组装返回消息
         msg_parts = []
         if added_count:
             msg_parts.append(f'新增 {added_count} 条')
