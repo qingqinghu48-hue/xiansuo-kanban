@@ -803,20 +803,23 @@ def import_douyin_kezi():
         from io import BytesIO
 
         file_bytes = file.read()
+        bio = BytesIO(file_bytes)
 
         # 读取Excel（尝试多个sheet，跳过空sheet）
         try:
             if file.filename.lower().endswith('.xls'):
-                xls = pd.ExcelFile(BytesIO(file_bytes), engine='xlrd')
+                engine = 'xlrd'
             else:
-                xls = pd.ExcelFile(BytesIO(file_bytes), engine='openpyxl')
+                engine = 'openpyxl'
+            xls = pd.ExcelFile(bio, engine=engine)
         except Exception as read_err:
             return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
 
         df = None
         for sheet_name in xls.sheet_names:
             try:
-                temp_df = pd.read_excel(BytesIO(file_bytes), sheet_name=sheet_name, engine='xlrd' if file.filename.lower().endswith('.xls') else 'openpyxl')
+                bio.seek(0)
+                temp_df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
                 if len(temp_df) > 0:
                     df = temp_df
                     break
