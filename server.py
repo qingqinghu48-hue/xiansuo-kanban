@@ -836,6 +836,11 @@ def import_douyin_kezi():
                     debug_info.append(f"Sheet {sheet_name} 读取失败: {e2}")
                     continue
 
+        # 跳过空行，重新统计有效数据
+        if df is not None and len(df) > 0:
+            df = df.dropna(how='all')
+            debug_info.append(f"去掉空行后行数={len(df)}")
+
         if df is None or len(df) == 0:
             return jsonify({'success': False, 'message': f'Excel 文件为空。调试: {" | ".join(debug_info)}'})
 
