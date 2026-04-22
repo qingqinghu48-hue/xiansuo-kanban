@@ -472,7 +472,7 @@ td{
         <div style="flex:1"></div>
         <button class="btn btn-pri" id="btnFilter">应用筛选</button>
         <button class="btn btn-ghost" id="btnReset">重置</button>
-        <button class="btn btn-ghost" id="btnCost" style="margin-left:6px;border-color:var(--danger);color:var(--danger)">录入成本</button>
+
       </div>
     </div>
 
@@ -501,20 +501,15 @@ td{
       </div>
     </div>
 
-    <!-- 批量导入入口（仅管理员） -->
-    <div class="chart-row-full cost-section" id="importSection">
-      <div class="section-title" style="display:flex;align-items:center;gap:10px">
-        <span style="background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">导入</span>
-        Excel 批量导入线索
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
-        <input type="file" id="importFileInline" accept=".xlsx,.xls" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff">
-        <button class="btn btn-pri" id="btnImportInline" style="white-space:nowrap">开始导入</button>
-      </div>
-      <div class="cost-result" id="importResultInline" style="margin-top:8px"></div>
-    </div>
-
     <!-- 抖音成本看板 -->
+    <div class="chart-row-full cost-section">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">抖音</span>
+          营销成本情况
+        </div>
+        <button class="btn btn-ghost" id="btnCost" style="border-color:var(--danger);color:var(--danger);font-size:12px;padding:4px 12px">录入成本</button>
+      </div>
     <div class="chart-row-full cost-section">
       <div class="section-title" style="display:flex;align-items:center;gap:10px">
         <span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">抖音</span>
@@ -2387,13 +2382,6 @@ window.__COST_DAYS__ = [];
       });
     }
 
-    // 行内版（营销成本看板上方）
-    var btnImpInline = document.getElementById('btnImportInline');
-    var inpFileInline= document.getElementById('importFileInline');
-    var impResInline = document.getElementById('importResultInline');
-    if (btnImpInline && inpFileInline && impResInline){
-      btnImpInline.addEventListener('click', function(){ doImport(inpFileInline.files[0], btnImpInline, impResInline, inpFileInline); });
-    }
   })();
 })();
 </script>
