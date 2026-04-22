@@ -817,26 +817,27 @@ def import_douyin_kezi():
 
         # 直接读取第一个有数据的sheet
         df = None
+        debug_info = []
         try:
             bio.seek(0)
             df = pd.read_excel(bio, engine=engine)
-            print(f"[抖音导入] 直接读取成功，行数={len(df)}, 列名={list(df.columns)}")
+            debug_info.append(f"直接读取成功，行数={len(df)}, 列名={list(df.columns)}")
         except Exception as e:
-            print(f"[抖音导入] 直接读取失败: {e}")
+            debug_info.append(f"直接读取失败: {e}")
             # 回退：逐个sheet尝试
             for sheet_name in xls.sheet_names:
                 try:
                     bio.seek(0)
                     df = pd.read_excel(bio, sheet_name=sheet_name, engine=engine)
-                    print(f"[抖音导入] Sheet {sheet_name} 读取成功，行数={len(df)}")
+                    debug_info.append(f"Sheet {sheet_name} 读取成功，行数={len(df)}")
                     if len(df) > 0:
                         break
                 except Exception as e2:
-                    print(f"[抖音导入] Sheet {sheet_name} 读取失败: {e2}")
+                    debug_info.append(f"Sheet {sheet_name} 读取失败: {e2}")
                     continue
 
         if df is None or len(df) == 0:
-            return jsonify({'success': False, 'message': f'Excel 文件为空（所有sheet均无数据）。sheet列表: {xls.sheet_names}'})
+            return jsonify({'success': False, 'message': f'Excel 文件为空。调试: {" | ".join(debug_info)}'})
 
         cols = [str(c).strip() for c in df.columns]
 
