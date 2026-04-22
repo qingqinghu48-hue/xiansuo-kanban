@@ -816,6 +816,7 @@ def import_douyin_kezi():
             return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
 
         df = None
+        last_err = ''
         for sheet_name in xls.sheet_names:
             try:
                 bio.seek(0)
@@ -823,11 +824,12 @@ def import_douyin_kezi():
                 if len(temp_df) > 0:
                     df = temp_df
                     break
-            except:
+            except Exception as e:
+                last_err = str(e)
                 continue
 
         if df is None or len(df) == 0:
-            return jsonify({'success': False, 'message': 'Excel 文件为空（所有sheet均无数据）'})
+            return jsonify({'success': False, 'message': f'Excel 文件为空（所有sheet均无数据）。sheet列表: {xls.sheet_names}。最后错误: {last_err}'})
 
         cols = [str(c).strip() for c in df.columns]
 
