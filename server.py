@@ -246,9 +246,15 @@ def add_cost():
     if not user or user['role'] != 'admin':
         return jsonify({'success': False, 'message': '只有管理员可以录入成本'}), 401
     
-    data = request.json
-    cost_date = data.get('cost_date', '').strip()
-    platform = data.get('platform', '').strip()
+    try:
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'success': False, 'message': '请求数据为空'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '请求解析失败: ' + str(e)})
+    
+    cost_date = str(data.get('cost_date', '')).strip()
+    platform = str(data.get('platform', '')).strip()
     amount = data.get('amount', 0)
     unit_cost = data.get('unit_cost', 0)
     
@@ -265,27 +271,29 @@ def add_cost():
     except:
         unit_cost = 0
     
-    conn = sqlite3.connect(str(DB_FILE))
-    c = conn.cursor()
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    # 兼容低版本 SQLite：手动判断更新或插入
-    c.execute('SELECT id FROM cost_data WHERE cost_date = ? AND platform = ?', (cost_date, platform))
-    existing = c.fetchone()
-    if existing:
-        c.execute('''
-            UPDATE cost_data SET amount = ?, unit_cost = ?, created_at = ? WHERE id = ?
-        ''', (amount, unit_cost, now, existing[0]))
-    else:
-        c.execute('''
-            INSERT INTO cost_data (cost_date, platform, amount, unit_cost, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (cost_date, platform, amount, unit_cost, now))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True, 'message': f'{platform} {cost_date} 成本录入成功'})
+    try:
+        conn = sqlite3.connect(str(DB_FILE))
+        c = conn.cursor()
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 兼容低版本 SQLite：手动判断更新或插入
+        c.execute('SELECT id FROM cost_data WHERE cost_date = ? AND platform = ?', (cost_date, platform))
+        existing = c.fetchone()
+        if existing:
+            c.execute('''
+                UPDATE cost_data SET amount = ?, unit_cost = ?, created_at = ? WHERE id = ?
+            ''', (amount, unit_cost, now, existing[0]))
+        else:
+            c.execute('''
+                INSERT INTO cost_data (cost_date, platform, amount, unit_cost, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (cost_date, platform, amount, unit_cost, now))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'{platform} {cost_date} 成本录入成功'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': '录入失败: ' + str(e)})
 
 # ─────────────────────────────────────────────
 # 获取成本数据 API
