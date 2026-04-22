@@ -473,6 +473,7 @@ td{
         <button class="btn btn-pri" id="btnFilter">应用筛选</button>
         <button class="btn btn-ghost" id="btnReset">重置</button>
         <button class="btn" id="btnCost" style="margin-left:6px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border:none;padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(238,90,90,0.3)">&#128181; 录入成本</button>
+        <button class="btn" id="btnImportZs" style="margin-left:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(37,99,235,0.3)">&#128229; 导入招商表</button>
 
       </div>
     </div>
@@ -663,6 +664,32 @@ td{
       <div style="margin-top:16px;text-align:right">
         <button class="btn btn-ghost" id="costCancel">关闭</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 招商线索管理表导入弹窗 -->
+<div class="modal" id="zsImportModal">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-hd">
+      <h3>导入招商线索管理表</h3>
+      <button class="modal-x" id="zsImportModalClose">&#10005;</button>
+    </div>
+    <div class="modal-bd" style="padding:24px">
+      <div class="cost-form" style="margin-bottom:16px">
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:12px;line-height:1.6">
+          <p>请选择 Excel 文件（.xlsx / .xls）</p>
+          <p style="margin-top:4px">支持增量更新：已存在手机号的线索会更新其他信息，抖音/小红书平台的入库日期不会修改。</p>
+        </div>
+        <div class="cost-field">
+          <label>文件</label>
+          <input type="file" id="zsImportFile" accept=".xlsx,.xls">
+        </div>
+        <div style="text-align:right;margin-top:16px">
+          <button class="btn btn-pri" id="zsImportSubmit">开始导入</button>
+        </div>
+      </div>
+      <div class="cost-result" id="zsImportResult"></div>
     </div>
   </div>
 </div>
@@ -2220,6 +2247,8 @@ window.__COST_DAYS__ = [];
     if (!isAdmin) {
       var btnCost = document.getElementById('btnCost');
       if (btnCost) btnCost.style.display = 'none';
+      var btnImportZs = document.getElementById('btnImportZs');
+      if (btnImportZs) btnImportZs.style.display = 'none';
       document.querySelectorAll('.cost-section').forEach(function(el){ el.style.display = 'none'; });
     }
   } catch(e) {
@@ -2475,6 +2504,74 @@ window.__COST_DAYS__ = [];
       });
     }
 
+  })();
+
+  // ── 招商线索管理表导入弹窗逻辑 ──
+  (function(){
+    var modal    = document.getElementById('zsImportModal');
+    var btnOpen  = document.getElementById('btnImportZs');
+    var btnClose = document.getElementById('zsImportModalClose');
+    var btnSubmit= document.getElementById('zsImportSubmit');
+    var inpFile  = document.getElementById('zsImportFile');
+    var resultBox= document.getElementById('zsImportResult');
+
+    function openModal(){ modal.classList.add('show'); resultBox.textContent=''; resultBox.className='cost-result'; }
+    function closeModal(){ modal.classList.remove('show'); }
+
+    if (btnOpen)  btnOpen.addEventListener('click', openModal);
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (modal){
+      modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+    }
+
+    if (btnSubmit){
+      btnSubmit.addEventListener('click', function(){
+        var file = inpFile && inpFile.files[0];
+        if (!file){ resultBox.textContent = '请选择 Excel 文件'; resultBox.className = 'cost-result err'; return; }
+
+        btnSubmit.disabled = true;
+        var oldText = btnSubmit.textContent;
+        btnSubmit.textContent = '导入中…';
+        resultBox.textContent = '';
+        resultBox.className = 'cost-result';
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'zhaoshang');
+
+        fetch('/api/leads/import', {
+          method: 'POST',
+          body: formData
+        })
+        .then(function(r){
+          if (!r.ok) {
+            return r.text().then(function(txt){
+              throw new Error('HTTP ' + r.status + ' ' + r.statusText + ': ' + txt.slice(0,200));
+            });
+          }
+          return r.json();
+        })
+        .then(function(res){
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = oldText;
+          if (res.success){
+            resultBox.textContent = res.message;
+            resultBox.className = 'cost-result ok';
+            if (inpFile) inpFile.value = '';
+            setTimeout(function(){ location.reload(); }, 1500);
+          } else {
+            resultBox.textContent = res.message || '导入失败';
+            resultBox.className = 'cost-result err';
+          }
+        })
+        .catch(function(err){
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = oldText;
+          resultBox.textContent = '请求失败: ' + (err.message || '网络错误');
+          resultBox.className = 'cost-result err';
+        });
+      });
+    }
   })();
 })();
 </script>

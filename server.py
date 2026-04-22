@@ -619,11 +619,12 @@ def import_leads():
             return None
 
         phone_col    = find_col(['手机号', '手机号码', '电话', '联系电话', '手机', 'phone', '客户电话'])
-        platform_col = find_col(['平台', '来源', '渠道', '来源平台'])
+        platform_col = find_col(['平台', '来源', '渠道', '来源平台', '线索来源'])
         agent_col    = find_col(['所属招商', '跟进员工', '负责人', '招商员', '员工', '分配'])
         date_col     = find_col(['入库日期', '录入日期', '日期', '入库时间', '录入时间'])
         name_col     = find_col(['姓名', '名字', '客户姓名', '联系人'])
         city_col     = find_col(['城市', '省份', '地区', '所在城市', '省'])
+        region_col   = find_col(['所属大区', '大区', '区域'])
         validity_col = find_col(['线索有效性', '有效性', '客户类型', '等级'])
         wechat_col   = find_col(['是否能加上微信', '能否加微', '加微信', '微信'])
         remark_col   = find_col(['备注', '说明', '备注信息', '客户情况备注'])
@@ -640,7 +641,7 @@ def import_leads():
         print(f"[导入] 列映射: 手机={phone_col}, 平台={platform_col}, 招商={agent_col}, 日期={date_col}")
 
         # ── 3) 文件类型判断 ──
-        is_zhaoshang = '招商' in filename
+        is_zhaoshang = '招商' in filename or request.form.get('type') == 'zhaoshang'
         is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
 
         # ── 4) 解析所有行 ──
@@ -662,7 +663,13 @@ def import_leads():
             try:
                 return pd.to_datetime(v).strftime('%Y-%m-%d')
             except:
-                return ''
+                pass
+            # 兼容中文日期格式：2026年4月14日
+            s = str(v).strip()
+            m = re.match(r'(\d{4})年(\d{1,2})月(\d{1,2})日', s)
+            if m:
+                return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+            return ''
 
         parsed = []
         bad_rows = []
@@ -709,6 +716,7 @@ def import_leads():
                 'entry_date': entry_date,
                 'name': get_val(row, name_col),
                 'city': get_val(row, city_col),
+                'region': get_val(row, region_col),
                 'validity': get_val(row, validity_col),
                 'can_wechat': get_val(row, wechat_col),
                 'remark': get_val(row, remark_col),
@@ -754,29 +762,29 @@ def import_leads():
 
             if phone in existing:
                 old = existing[phone]
-                # 招商线索管理表导入时，抖音/小红书入库日期不变
-                if is_zhaoshang and old['platform'] in ('抖音', '小红书'):
+                # 招商线索管理表导入时，抖音/小红书入库日期不变（兼容"抖音广告"等变体）
+                if is_zhaoshang and ('抖音' in old['platform'] or '小红书' in old['platform']):
                     entry_date = old['entry_date']
 
-                # UPDATE 全部字段
+                # UPDATE 全部字段（region 加入更新）
                 c.execute('''UPDATE new_leads SET
                     platform = ?, agent = ?, entry_date = ?, name = ?,
-                    city = ?, validity = ?, can_wechat = ?, remark = ?,
+                    city = ?, region = ?, validity = ?, can_wechat = ?, remark = ?,
                     二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
                     WHERE phone = ?''', (
                     platform, agent, entry_date, item['name'],
-                    item['city'], item['validity'], item['can_wechat'], item['remark'],
+                    item['city'], item['region'], item['validity'], item['can_wechat'], item['remark'],
                     item['follow_time'], item['follow_note'], item['call_time'],
                     item['visit_time'], item['sign_time'], phone))
                 updated += 1
             else:
-                # INSERT 新线索
+                # INSERT 新线索（region 加入插入）
                 c.execute('''INSERT INTO new_leads
-                    (phone, platform, agent, entry_date, name, city, validity,
+                    (phone, platform, agent, entry_date, name, city, region, validity,
                      can_wechat, remark, created_at,
                      二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
-                    phone, platform, agent, entry_date, item['name'], item['city'],
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
+                    phone, platform, agent, entry_date, item['name'], item['city'], item['region'],
                     item['validity'], item['can_wechat'], item['remark'],
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     item['follow_time'], item['follow_note'], item['call_time'],
