@@ -988,7 +988,25 @@ def kanban_content():
     pattern = r'window\.__ALL__\s*=\s*\[[\s\S]*?\];'
     replacement = 'window.__ALL__ = ' + json.dumps(filtered, ensure_ascii=False) + ';'
     content = re.sub(pattern, replacement, content, count=1)
-    
+
+    # 注入成本数据（从数据库实时读取）
+    cost_data = load_cost_data()
+    cost_dict = {}
+    for c in cost_data:
+        d = c['date']
+        if d not in cost_dict:
+            cost_dict[d] = {'spend': 0, 'unit_cost': 0, 'leads': 0}
+        cost_dict[d]['spend'] += c['amount']
+    # 计算单条成本
+    for d in cost_dict:
+        day_leads = len([r for r in filtered if str(r.get('入库时间', '')).startswith(d) and r.get('平台') in ('抖音', '小红书')])
+        cost_dict[d]['leads'] = day_leads
+        if day_leads > 0 and cost_dict[d]['spend'] > 0:
+            cost_dict[d]['unit_cost'] = round(cost_dict[d]['spend'] / day_leads, 2)
+    cost_days = sorted(cost_dict.keys())
+    cost_script = 'window.__COST__ = ' + json.dumps(cost_dict, ensure_ascii=False) + ';\nwindow.__COST_DAYS__ = ' + json.dumps(cost_days, ensure_ascii=False) + ';'
+    content = re.sub(r'window\.__COST__\s*=\s*\{[\s\S]*?\};\s*window\.__COST_DAYS__\s*=\s*\[[\s\S]*?\];', cost_script, content, count=1)
+
     # 注入用户信息和未读提醒
     unread_count = 0
     unread_leads = []
