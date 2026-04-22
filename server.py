@@ -510,12 +510,18 @@ def import_leads():
         filename = file.filename
         filename_lower = filename.lower()
 
-        # ── 1) 读取Excel（自动识别引擎）──
+        # ── 1) 读取Excel（按扩展名显式指定引擎，避免pandas默认调用xlrd）──
         try:
-            df = pd.read_excel(BytesIO(file_bytes))
+            if filename_lower.endswith('.xls'):
+                df = pd.read_excel(BytesIO(file_bytes), engine='xlrd')
+            else:
+                df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
         except Exception as read_err:
+            err_msg = str(read_err)
+            if 'not supported' in err_msg.lower():
+                err_msg += '（服务器缺少openpyxl库，请联系管理员安装: pip install openpyxl）'
             return jsonify({'success': False,
-                'message': f'读取Excel失败: {str(read_err)}。建议将文件另存为 .xlsx 格式后重试'})
+                'message': f'读取Excel失败: {err_msg}'})
 
         if len(df) == 0:
             return jsonify({'success': False, 'message': 'Excel 文件为空（0行数据）'})
