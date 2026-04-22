@@ -86,25 +86,33 @@ def load_new_leads():
     
     leads = []
     for row in rows:
+        def clean(val):
+            if val is None:
+                return ''
+            s = str(val)
+            # 去除换行和回车，避免破坏 JSON/JS 格式
+            s = s.replace('\r', ' ').replace('\n', ' ')
+            return s.strip()
+
         leads.append({
             'id': row[0],
-            '手机号': row[1],
-            '平台': row[2],
-            '所属招商': row[3],
-            '录入日期': row[12] if len(row) > 12 and row[12] else '',
-            '姓名': row[4] if len(row) > 4 else '',
-            '省份': row[5] if len(row) > 5 else '',
-            '线索有效性': row[6] if len(row) > 6 else '',
-            '所属大区': row[7] if len(row) > 7 else '',
-            '是否能加上微信': row[8] if len(row) > 8 else '',
-            '备注': row[9] if len(row) > 9 else '',
-            '入库时间': row[12] if len(row) > 12 and row[12] else (row[10][:10] if len(row) > 10 and row[10] else ''),
+            '手机号': clean(row[1]),
+            '平台': clean(row[2]),
+            '所属招商': clean(row[3]),
+            '录入日期': clean(row[12]),
+            '姓名': clean(row[4]),
+            '省份': clean(row[5]),
+            '线索有效性': clean(row[6]),
+            '所属大区': clean(row[7]),
+            '是否能加上微信': clean(row[8]),
+            '备注': clean(row[9]),
+            '入库时间': clean(row[12]) or (clean(row[10])[:10] if len(row) > 10 else ''),
             '是否已读': row[11] if len(row) > 11 else 0,
-            '二次联系时间': row[13] if len(row) > 13 else '',
-            '二次联系备注': row[14] if len(row) > 14 else '',
-            '最近一次电联时间': row[15] if len(row) > 15 else '',
-            '到访时间': row[16] if len(row) > 16 else '',
-            '签约时间': row[17] if len(row) > 17 else '',
+            '二次联系时间': clean(row[13]),
+            '二次联系备注': clean(row[14]),
+            '最近一次电联时间': clean(row[15]),
+            '到访时间': clean(row[16]),
+            '签约时间': clean(row[17]),
             '来源文件': '手动录入'
         })
     return leads
