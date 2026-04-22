@@ -804,17 +804,27 @@ def import_douyin_kezi():
 
         file_bytes = file.read()
 
-        # 读取Excel
+        # 读取Excel（尝试多个sheet，跳过空sheet）
         try:
             if file.filename.lower().endswith('.xls'):
-                df = pd.read_excel(BytesIO(file_bytes), engine='xlrd')
+                xls = pd.ExcelFile(BytesIO(file_bytes), engine='xlrd')
             else:
-                df = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
+                xls = pd.ExcelFile(BytesIO(file_bytes), engine='openpyxl')
         except Exception as read_err:
             return jsonify({'success': False, 'message': f'读取Excel失败: {read_err}'})
 
-        if len(df) == 0:
-            return jsonify({'success': False, 'message': 'Excel 文件为空'})
+        df = None
+        for sheet_name in xls.sheet_names:
+            try:
+                temp_df = pd.read_excel(BytesIO(file_bytes), sheet_name=sheet_name, engine='xlrd' if file.filename.lower().endswith('.xls') else 'openpyxl')
+                if len(temp_df) > 0:
+                    df = temp_df
+                    break
+            except:
+                continue
+
+        if df is None or len(df) == 0:
+            return jsonify({'success': False, 'message': 'Excel 文件为空（所有sheet均无数据）'})
 
         cols = [str(c).strip() for c in df.columns]
 
@@ -834,7 +844,7 @@ def import_douyin_kezi():
         city_col   = find_col(['所在城市', '城市', '省份', '地区'])
 
         if not phone_col:
-            return jsonify({'success': False, 'message': f'无法识别手机号列。列名: {cols}'})
+            return jsonify({'success': False, 'message': f'无法识别手机号列。当前列名: {cols}'})
 
         # 加载已有手机号（用于去重）
         conn = sqlite3.connect(str(DB_FILE))
