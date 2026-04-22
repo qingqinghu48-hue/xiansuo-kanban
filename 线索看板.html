@@ -579,13 +579,15 @@ td{
 
 <!-- 成本录入弹窗 -->
 <div class="modal" id="costModal">
-  <div class="modal-box" style="max-width:420px">
+  <div class="modal-box" style="max-width:520px">
     <div class="modal-hd">
-      <h3>录入抖音营销成本</h3>
+      <h3>录入/管理营销成本</h3>
       <button class="modal-x" id="costModalClose">&#10005;</button>
     </div>
     <div class="modal-bd" style="padding:24px">
-      <div class="cost-form">
+      <!-- 录入表单 -->
+      <div class="cost-form" style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;color:var(--text);margin-bottom:12px;font-size:14px">📥 录入新成本</div>
         <div class="cost-field">
           <label>日期</label>
           <input type="date" id="costDate" value="">
@@ -601,11 +603,22 @@ td{
           <label>消耗金额（元）</label>
           <input type="number" id="costAmount" placeholder="请输入当日消耗金额" step="0.01" min="0">
         </div>
+        <div style="text-align:right;margin-top:12px">
+          <button class="btn btn-pri" id="costSubmit">确认录入</button>
+        </div>
       </div>
+
+      <!-- 已有记录列表 -->
+      <div>
+        <div style="font-weight:700;color:var(--text);margin-bottom:12px;font-size:14px">📋 已有记录 <span style="font-weight:400;color:var(--text-3)">（点击删除可撤销）</span></div>
+        <div id="costList" style="max-height:240px;overflow-y:auto">
+          <div style="color:var(--text-3);font-size:13px;text-align:center;padding:20px">加载中...</div>
+        </div>
+      </div>
+
       <div class="cost-result" id="costResult"></div>
-      <div style="margin-top:20px;text-align:right">
-        <button class="btn btn-ghost" id="costCancel">取消</button>
-        <button class="btn btn-pri" id="costSubmit" style="margin-left:8px">确认录入</button>
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-ghost" id="costCancel">关闭</button>
       </div>
     </div>
   </div>
@@ -1902,6 +1915,72 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
     var inpPlat   = document.getElementById('costPlatform');
     var inpAmt    = document.getElementById('costAmount');
     var resultBox = document.getElementById('costResult');
+    var costList  = document.getElementById('costList');
+
+    function refreshCostList(){
+      if (!costList) return;
+      var html = '<table style="width:100%;font-size:13px;border-collapse:collapse">';
+      html += '<tr style="color:var(--text-3);font-size:12px;text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border)">日期</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">平台</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">金额</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);width:50px"></th></tr>';
+      var hasData = false;
+      for (var i = CDAYS.length - 1; i >= 0; i--){
+        var d = CDAYS[i];
+        var c = COST[d];
+        if (c && c.spend > 0){
+          hasData = true;
+          html += '<tr>';
+          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">' + d + '</td>';
+          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">抖音</td>';
+          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)">¥' + c.spend.toFixed(2) + '</td>';
+          html += '<td style="padding:8px;border-bottom:1px solid var(--border-2)"><button class="cost-del-btn" data-date="' + d + '" data-plat="抖音" style="padding:2px 8px;font-size:11px;color:var(--danger);border:1px solid var(--danger);background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
+          html += '</tr>';
+        }
+      }
+      if (!hasData){
+        html = '<div style="color:var(--text-3);font-size:13px;text-align:center;padding:20px">暂无成本记录</div>';
+      } else {
+        html += '</table>';
+      }
+      costList.innerHTML = html;
+
+      // 绑定删除按钮
+      var delBtns = costList.querySelectorAll('.cost-del-btn');
+      for (var j = 0; j < delBtns.length; j++){
+        delBtns[j].addEventListener('click', function(){
+          var delDate = this.getAttribute('data-date');
+          var delPlat = this.getAttribute('data-plat');
+          if (!confirm('确定删除 ' + delDate + ' ' + delPlat + ' 的成本记录？')) return;
+          fetch('/api/cost/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({cost_date: delDate, platform: delPlat})
+          })
+          .then(function(r){ return r.json(); })
+          .then(function(res){
+            if (res.success){
+              // 删除本地数据
+              if (COST[delDate]){
+                delete COST[delDate];
+                var idx = CDAYS.indexOf(delDate);
+                if (idx > -1) CDAYS.splice(idx, 1);
+              }
+              refreshCostList();
+              renderCards();
+              drawSpend();
+              drawUnit();
+              resultBox.textContent = res.message;
+              resultBox.className = 'cost-result ok';
+            } else {
+              resultBox.textContent = res.message || '删除失败';
+              resultBox.className = 'cost-result err';
+            }
+          })
+          .catch(function(err){
+            resultBox.textContent = '网络错误';
+            resultBox.className = 'cost-result err';
+          });
+        });
+      }
+    }
 
     function openCost(){
       costModal.classList.add('show');
@@ -1910,6 +1989,7 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
       inpAmt.value = '';
       resultBox.textContent = '';
       resultBox.className = 'cost-result';
+      refreshCostList();
       inpAmt.focus();
     }
     function closeCost(){ costModal.classList.remove('show'); }
@@ -1966,7 +2046,8 @@ window.__COST_DAYS__ = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", 
             renderCards();
             drawSpend();
             drawUnit();
-            setTimeout(closeCost, 1200);
+            refreshCostList();
+            inpAmt.value = '';
           } else {
             resultBox.textContent = res.message || '录入失败';
             resultBox.className = 'cost-result err';

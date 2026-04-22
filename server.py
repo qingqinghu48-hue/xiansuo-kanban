@@ -282,6 +282,34 @@ def get_cost():
     return jsonify({'cost_data': cost_data})
 
 # ─────────────────────────────────────────────
+# 删除成本记录 API（管理员）
+# ─────────────────────────────────────────────
+@app.route('/api/cost/delete', methods=['POST'])
+def delete_cost():
+    user = session.get('user')
+    if not user or user['role'] != 'admin':
+        return jsonify({'success': False, 'message': '只有管理员可以删除成本'}), 401
+    
+    data = request.json
+    cost_date = data.get('cost_date', '').strip()
+    platform = data.get('platform', '').strip()
+    
+    if not cost_date or not platform:
+        return jsonify({'success': False, 'message': '请提供日期和平台'})
+    
+    conn = sqlite3.connect(str(DB_FILE))
+    c = conn.cursor()
+    c.execute('DELETE FROM cost_data WHERE cost_date = ? AND platform = ?', (cost_date, platform))
+    deleted = c.rowcount
+    conn.commit()
+    conn.close()
+    
+    if deleted > 0:
+        return jsonify({'success': True, 'message': f'已删除 {platform} {cost_date} 的成本记录'})
+    else:
+        return jsonify({'success': False, 'message': '未找到该记录'})
+
+# ─────────────────────────────────────────────
 # 招商员更新线索详情
 # ─────────────────────────────────────────────
 @app.route('/api/leads/update', methods=['POST'])
