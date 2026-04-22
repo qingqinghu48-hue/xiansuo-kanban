@@ -641,7 +641,10 @@ def import_leads():
         print(f"[导入] 列映射: 手机={phone_col}, 平台={platform_col}, 招商={agent_col}, 日期={date_col}")
 
         # ── 3) 文件类型判断 ──
-        is_zhaoshang = '招商' in filename or request.form.get('type') == 'zhaoshang'
+        req_type = request.form.get('type', '')
+        is_zhaoshang = '招商' in filename or req_type == 'zhaoshang'
+        is_douyin_channel = req_type == 'douyin'
+        is_xhs_channel = req_type == 'xiaohongshu'
         is_douyin_kezi = '客资' in filename or ('抖音' in filename and not is_zhaoshang)
 
         # ── 4) 解析所有行 ──
@@ -762,6 +765,11 @@ def import_leads():
 
             if phone in existing:
                 old = existing[phone]
+                # 抖音/小红书渠道导入时，已存在的线索直接跳过（由管理表维护）
+                if is_douyin_channel or is_xhs_channel:
+                    skipped += 1
+                    continue
+
                 # 招商线索管理表导入时，抖音/小红书入库日期不变（兼容"抖音广告"等变体）
                 if is_zhaoshang and ('抖音' in old['platform'] or '小红书' in old['platform']):
                     entry_date = old['entry_date']
@@ -802,7 +810,10 @@ def import_leads():
 
         msg = f'导入完成！新增 {added} 条，更新 {updated} 条'
         if skipped:
-            msg += f'，抖音/小红书新线索跳过 {skipped} 条（请通过渠道表格导入）'
+            if is_douyin_channel or is_xhs_channel:
+                msg += f'，已存在线索跳过 {skipped} 条'
+            else:
+                msg += f'，抖音/小红书新线索跳过 {skipped} 条（请通过渠道表格导入）'
         if dup_skip:
             msg += f'，Excel内重复跳过 {dup_skip} 条'
         if bad_rows:
