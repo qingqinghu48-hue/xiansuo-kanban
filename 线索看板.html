@@ -1635,7 +1635,18 @@ window.__COST_DAYS__ = [];
     .then(function(data){
       if (data.success) {
         toast(data.message, 'ok');
-        loadData();
+        // 从filtered中移除已删除的
+        var phoneSet = {};
+        phones.forEach(function(p){ phoneSet[p] = true; });
+        filtered = filtered.filter(function(r){
+          var p = r['手机号'] || r['手机'] || '';
+          return !phoneSet[p];
+        });
+        page = 1;
+        renderTable();
+        renderCards();
+        try { drawPlat(); } catch(e){}
+        try { drawValid(); } catch(e){}
       } else {
         toast(data.message || '删除失败', 'err');
       }
