@@ -1373,14 +1373,14 @@ def admin_page():
                 let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
                 html += '<tr style="background:#f5f5f5"><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">日期</th><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">平台</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">总消耗</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">单条成本</th><th style="padding:10px;text-align:center;border-bottom:1px solid #e0e0e0">操作</th></tr>';
                 records.forEach(r => {
+                    var safeDate = String(r.date).replace(/'/g, "\\'");
+                    var safePlat = String(r.platform).replace(/'/g, "\\'");
                     html += '<tr>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + r.date + '</td>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + r.platform + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + safeDate + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + safePlat + '</td>';
                     html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.amount > 0 ? '¥' + r.amount.toFixed(2) : '-') + '</td>';
                     html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.unit_cost > 0 ? '¥' + r.unit_cost.toFixed(2) : '-') + '</td>';
-                    var delDate = r.date.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                    var delPlat = r.platform.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                    html += "<td style='padding:10px;border-bottom:1px solid #e0e0e0;text-align:center'><button onclick='delCost(\"" + delDate + "\", \"" + delPlat + "\")' style='padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer'>删除</button></td>";
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:center"><button onclick="delCost(\'' + safeDate + '\',\'' + safePlat + '\')" style="padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
                     html += '</tr>';
                 });
                 html += '</table>';
