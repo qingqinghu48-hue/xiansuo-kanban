@@ -1190,22 +1190,22 @@ def admin_page():
                 <div class="card">
                     <h3>💰 录入成本</h3>
                     <p style="color:#666;font-size:13px;margin-bottom:12px">录入抖音/小红书每日营销成本</p>
-                    <button class="card-btn orange" onclick="openCostModal()">打开成本录入</button>
+                    <button type="button" class="card-btn orange" onclick="openCostModal()">打开成本录入</button>
                 </div>
                 <div class="card">
                     <h3>📥 导入招商表</h3>
                     <p style="color:#666;font-size:13px;margin-bottom:12px">批量导入招商线索管理表</p>
-                    <button class="card-btn blue" onclick="openZsImportModal()">打开导入窗口</button>
+                    <button type="button" class="card-btn blue" onclick="openZsImportModal()">打开导入窗口</button>
                 </div>
                 <div class="card">
                     <h3>🔥 导入抖音客资</h3>
                     <p style="color:#666;font-size:13px;margin-bottom:12px">批量导入抖音渠道线索</p>
-                    <button class="card-btn red" onclick="openDyImportModal()">打开导入窗口</button>
+                    <button type="button" class="card-btn red" onclick="openDyImportModal()">打开导入窗口</button>
                 </div>
                 <div class="card">
                     <h3>💖 导入小红书</h3>
                     <p style="color:#666;font-size:13px;margin-bottom:12px">批量导入小红书渠道线索</p>
-                    <button class="card-btn pink" onclick="openXhsImportModal()">打开导入窗口</button>
+                    <button type="button" class="card-btn pink" onclick="openXhsImportModal()">打开导入窗口</button>
                 </div>
             </div>
         </div>
@@ -1273,7 +1273,7 @@ def admin_page():
 
                 <div class="message" id="costMessage" style="margin-top:15px"></div>
                 <div style="display:flex;justify-content:flex-end;margin-top:16px">
-                    <button type="button" class="card-btn" style="background:#6b7280" onclick="closeCostModal()">关闭</button>
+                    <button type="button" class="card-btn" style="background:#6b7280" onclick="closeCostModal(); return false;">关闭</button>
                 </div>
             </div>
         </div>
