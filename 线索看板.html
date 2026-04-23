@@ -767,6 +767,8 @@ td{
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="cost-field"><label>客户姓名</label><input type="text" id="editName"></div>
         <div class="cost-field"><label>客户电话</label><input type="text" id="editPhone" readonly style="background:var(--surface2);color:var(--text-3)"></div>
+        <div class="cost-field"><label>线索平台</label><input type="text" id="editPlatform"></div>
+        <div class="cost-field"><label>入库日期</label><input type="date" id="editEntryDate"></div>
         <div class="cost-field"><label>所属大区</label><input type="text" id="editRegion"></div>
         <div class="cost-field"><label>所属城市</label><input type="text" id="editCity"></div>
         <div class="cost-field" style="grid-column:1/-1">
@@ -1831,8 +1833,15 @@ window.__COST_DAYS__ = [];
   function editLead(gidx){
     var r = filtered[gidx];
     if (!r) { toast('记录不存在', 'err'); return; }
+    var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
     document.getElementById('editPhone').value = r['手机号'] || r['手机'] || '';
     document.getElementById('editName').value = r['姓名'] || '';
+    document.getElementById('editPlatform').value = r['平台'] || '';
+    var entryDate = String(r['入库时间'] || r['入库日期'] || '').slice(0, 10);
+    document.getElementById('editEntryDate').value = entryDate;
+    document.getElementById('editEntryDate').readOnly = !isAdmin;
+    document.getElementById('editEntryDate').style.background = isAdmin ? '#fff' : 'var(--surface2)';
+    document.getElementById('editEntryDate').style.color = isAdmin ? 'var(--text)' : 'var(--text-3)';
     document.getElementById('editRegion').value = r['所属大区'] || '';
     document.getElementById('editCity').value = r['省份'] || r['城市'] || '';
     document.getElementById('editValidity').value = r['线索有效性'] || r['有效性'] || '';
@@ -1856,15 +1865,17 @@ window.__COST_DAYS__ = [];
     var r = filtered[gidx];
     if (!r) { toast('记录不存在', 'err'); return; }
     var phone = document.getElementById('editPhone').value;
+    var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
     var payload = {
       phone: phone,
       name: document.getElementById('editName').value,
+      platform: document.getElementById('editPlatform').value,
+      entry_date: isAdmin ? document.getElementById('editEntryDate').value : (r['入库时间'] || r['入库日期'] || ''),
       region: document.getElementById('editRegion').value,
       city: document.getElementById('editCity').value,
       validity: document.getElementById('editValidity').value,
       can_wechat: document.getElementById('editCanWechat').value,
       remark: document.getElementById('editRemark').value,
-      entry_date: r['入库时间'] || r['入库日期'] || '',
       '二次联系时间': document.getElementById('editContactTime').value,
       '二次联系备注': document.getElementById('editContactRemark').value,
       '最近一次电联时间': document.getElementById('editCallTime').value,
@@ -1884,6 +1895,8 @@ window.__COST_DAYS__ = [];
       if (data.success){
         toast('保存成功', 'ok');
         r['姓名'] = payload.name;
+        r['平台'] = payload.platform;
+        r['入库时间'] = payload.entry_date;
         r['所属大区'] = payload.region;
         r['省份'] = payload.city;
         r['线索有效性'] = payload.validity;
@@ -1896,6 +1909,7 @@ window.__COST_DAYS__ = [];
         r['签约时间'] = payload['签约时间'];
         renderTable();
         renderCards();
+        try { drawPlat(); } catch(e){}
         closeEdit();
       } else {
         toast(data.message || '保存失败', 'err');

@@ -384,27 +384,45 @@ def update_lead():
         conn.close()
         return jsonify({'success': False, 'message': '无权修改此线索'})
 
-    # 更新所有字段
-    c.execute('''
-        UPDATE new_leads SET
-            name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
-            entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
-        WHERE id = ?
-    ''', (
-        data.get('name', ''),
-        data.get('city', ''),
-        data.get('validity', ''),
-        data.get('region', ''),
-        data.get('can_wechat', ''),
-        data.get('remark', ''),
-        data.get('entry_date', ''),
-        data.get('二次联系时间', ''),
-        data.get('二次联系备注', ''),
-        data.get('最近一次电联时间', ''),
-        data.get('到访时间', ''),
-        data.get('签约时间', ''),
-        lead_id
-    ))
+    # 基础字段（所有用户可修改）
+    name = data.get('name', '')
+    city = data.get('city', '')
+    validity = data.get('validity', '')
+    region = data.get('region', '')
+    can_wechat = data.get('can_wechat', '')
+    remark = data.get('remark', '')
+    entry_date = data.get('entry_date', '')
+    contact_time = data.get('二次联系时间', '')
+    contact_remark = data.get('二次联系备注', '')
+    call_time = data.get('最近一次电联时间', '')
+    visit_time = data.get('到访时间', '')
+    sign_time = data.get('签约时间', '')
+    platform = data.get('platform', '')
+
+    # 管理员可修改平台和入库日期，普通招商员保留原值
+    if user['role'] == 'admin':
+        update_sql = '''
+            UPDATE new_leads SET
+                name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
+                platform = ?, entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
+            WHERE id = ?
+        '''
+        update_params = (name, city, validity, region, can_wechat, remark, platform, entry_date, contact_time, contact_remark, call_time, visit_time, sign_time, lead_id)
+    else:
+        # 保留原平台和入库日期
+        c.execute('SELECT platform, entry_date FROM new_leads WHERE id = ?', (lead_id,))
+        orig = c.fetchone()
+        orig_platform = orig[0] if orig else ''
+        orig_entry_date = orig[1] if orig else ''
+        update_sql = '''
+            UPDATE new_leads SET
+                name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
+                二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
+            WHERE id = ?
+        '''
+        update_params = (name, city, validity, region, can_wechat, remark, contact_time, contact_remark, call_time, visit_time, sign_time, lead_id)
+
+    c.execute(update_sql, update_params)
     conn.commit()
     conn.close()
 
