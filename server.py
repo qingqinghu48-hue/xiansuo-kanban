@@ -757,7 +757,7 @@ def import_leads():
 
             parsed.append({
                 'phone': phone,
-                'platform': get_val(row, platform_col) or '抖音',
+                'platform': '小红书' if is_xhs_channel else (get_val(row, platform_col) or '抖音'),
                 'agent': agent,
                 'entry_date': entry_date,
                 'name': get_val(row, name_col),
