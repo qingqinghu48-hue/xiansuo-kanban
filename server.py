@@ -1181,30 +1181,69 @@ def admin_page():
 
         <!-- 成本录入弹窗 -->
         <div id="costModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
-            <div style="background:white;border-radius:12px;padding:30px;width:500px;max-width:90%">
-                <h3 style="margin-bottom:20px">💰 录入成本</h3>
-                <form id="costForm">
-                    <div class="form-group" style="margin-bottom:15px">
-                        <label>日期</label>
-                        <input type="date" id="costDate" required value="''' + datetime.now().strftime('%Y-%m-%d') + '''">
+            <div style="background:white;border-radius:12px;padding:30px;width:580px;max-width:95%;max-height:90vh;overflow-y:auto">
+                <h3 style="margin-bottom:20px">💰 录入/管理营销成本</h3>
+
+                <!-- 每日总消耗录入 -->
+                <div style="background:#eff6ff;border-radius:10px;padding:16px;margin-bottom:16px">
+                    <div style="font-weight:700;color:#1d4ed8;margin-bottom:12px">💰 录入每日总消耗</div>
+                    <form id="costForm">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                            <div class="form-group">
+                                <label style="font-size:13px;color:#666">日期</label>
+                                <input type="date" id="costDate" required value="''' + datetime.now().strftime('%Y-%m-%d') + '''" style="padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:13px;color:#666">平台</label>
+                                <select id="costPlatform" required style="padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                                    <option value="抖音">抖音</option>
+                                    <option value="小红书">小红书</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:13px;color:#666">总消耗（元）</label>
+                                <input type="number" id="costAmount" required placeholder="输入金额" step="0.01" style="padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                            </div>
+                        </div>
+                        <button type="submit" class="card-btn orange" style="width:100%">确认录入</button>
+                    </form>
+                </div>
+
+                <!-- 单条线索成本录入 -->
+                <div style="background:#fff7ed;border-radius:10px;padding:16px;margin-bottom:16px">
+                    <div style="font-weight:700;color:#c2410c;margin-bottom:12px">📊 录入单条线索成本</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                        <div class="form-group">
+                            <label style="font-size:13px;color:#666">日期</label>
+                            <input type="date" id="costUnitDate" value="''' + datetime.now().strftime('%Y-%m-%d') + '''" style="padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:13px;color:#666">平台</label>
+                            <select id="costUnitPlatform" style="padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                                <option value="抖音">抖音</option>
+                                <option value="小红书">小红书</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:13px;color:#666">单条成本（元/条）</label>
+                            <input type="number" id="costUnit" placeholder="手动指定" step="0.01" style="padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                        </div>
                     </div>
-                    <div class="form-group" style="margin-bottom:15px">
-                        <label>平台</label>
-                        <select id="costPlatform" required>
-                            <option value="抖音">抖音</option>
-                            <option value="小红书">小红书</option>
-                        </select>
+                    <button type="button" onclick="submitUnitCost()" class="card-btn" style="width:100%;background:#c2410c">录入单条成本</button>
+                </div>
+
+                <!-- 历史记录 -->
+                <div style="margin-top:16px">
+                    <div style="font-weight:700;color:#333;margin-bottom:10px">🗑 删除历史记录</div>
+                    <div id="costHistory" style="border:1px solid #e0e0e0;border-radius:8px;max-height:200px;overflow-y:auto">
+                        <div style="color:#999;text-align:center;padding:20px">加载中...</div>
                     </div>
-                    <div class="form-group" style="margin-bottom:15px">
-                        <label>消耗金额（元）</label>
-                        <input type="number" id="costAmount" required placeholder="请输入金额">
-                    </div>
-                    <div style="display:flex;gap:10px;margin-top:20px">
-                        <button type="submit" class="card-btn orange" style="flex:1">提交</button>
-                        <button type="button" class="card-btn" style="flex:1;background:#6b7280" onclick="closeCostModal()">取消</button>
-                    </div>
-                </form>
+                </div>
+
                 <div class="message" id="costMessage" style="margin-top:15px"></div>
+                <div style="display:flex;justify-content:flex-end;margin-top:16px">
+                    <button type="button" class="card-btn" style="background:#6b7280" onclick="closeCostModal()">关闭</button>
+                </div>
             </div>
         </div>
 
@@ -1275,7 +1314,10 @@ def admin_page():
         </div>
 
         <script>
-        function openCostModal() { document.getElementById('costModal').style.display = 'flex'; }
+        function openCostModal() {
+            document.getElementById('costModal').style.display = 'flex';
+            loadCostHistory();
+        }
         function closeCostModal() { document.getElementById('costModal').style.display = 'none'; }
         function openZsImportModal() { document.getElementById('zsImportModal').style.display = 'flex'; }
         function closeZsImportModal() { document.getElementById('zsImportModal').style.display = 'none'; }
@@ -1284,7 +1326,92 @@ def admin_page():
         function openXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'flex'; }
         function closeXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'none'; }
 
-        // 成本录入提交
+        // 加载成本历史记录
+        async function loadCostHistory() {
+            try {
+                const res = await fetch('/api/cost');
+                const data = await res.json();
+                const container = document.getElementById('costHistory');
+                const records = data.cost_data || [];
+
+                if (records.length === 0) {
+                    container.innerHTML = '<div style="color:#999;text-align:center;padding:20px">暂无成本记录</div>';
+                    return;
+                }
+
+                let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+                html += '<tr style="background:#f5f5f5"><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">日期</th><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">平台</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">总消耗</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">单条成本</th><th style="padding:10px;text-align:center;border-bottom:1px solid #e0e0e0">操作</th></tr>';
+                records.forEach(r => {
+                    html += '<tr>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + r.date + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + r.platform + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.amount > 0 ? '¥' + r.amount.toFixed(2) : '-') + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.unit_cost > 0 ? '¥' + r.unit_cost.toFixed(2) : '-') + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:center"><button onclick="deleteCost(\'' + r.date + '\', \'' + r.platform + '\')" style="padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
+                    html += '</tr>';
+                });
+                html += '</table>';
+                container.innerHTML = html;
+            } catch (err) {
+                document.getElementById('costHistory').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px">加载失败</div>';
+            }
+        }
+
+        // 删除成本记录
+        async function deleteCost(date, platform) {
+            if (!confirm('确定删除 ' + date + ' ' + platform + ' 的成本记录？')) return;
+            try {
+                const res = await fetch('/api/cost/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cost_date: date, platform: platform})
+                });
+                const data = await res.json();
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.textContent = data.message;
+                if (data.success) loadCostHistory();
+            } catch (err) {
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message error';
+                msg.textContent = '删除失败';
+            }
+        }
+
+        // 单条线索成本录入
+        async function submitUnitCost() {
+            const date = document.getElementById('costUnitDate').value;
+            const platform = document.getElementById('costUnitPlatform').value;
+            const unitCost = parseFloat(document.getElementById('costUnit').value);
+            if (!date) { alert('请选择日期'); return; }
+            if (isNaN(unitCost) || unitCost < 0) { alert('请输入有效的单条成本'); return; }
+
+            try {
+                const res = await fetch('/api/cost/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cost_date: date, platform: platform, amount: 0, unit_cost: unitCost})
+                });
+                const data = await res.json();
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.textContent = data.success ? '单条成本录入成功' : data.message;
+                if (data.success) {
+                    document.getElementById('costUnit').value = '';
+                    loadCostHistory();
+                }
+            } catch (err) {
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message error';
+                msg.textContent = '录入失败';
+            }
+        }
+
+        // 每日总消耗录入提交
         document.getElementById('costForm').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/api/cost/add', {
@@ -1301,6 +1428,7 @@ def admin_page():
             msg.style.display = 'block';
             msg.className = 'message ' + (data.success ? 'success' : 'error');
             msg.textContent = data.message;
+            if (data.success) loadCostHistory();
         };
 
         // 招商表导入提交
