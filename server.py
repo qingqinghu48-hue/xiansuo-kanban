@@ -78,11 +78,22 @@ def load_users():
     with open(USERS_FILE, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
-# 加载原始线索数据
+# 加载原始线索数据（自动去重，以手机号为主键）
 def load_data():
     if DATA_FILE.exists():
         with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+        # 去重：保留每个手机号的第一条记录
+        seen = {}
+        result = []
+        for r in data:
+            phone = str(r.get('手机号', '') or r.get('手机', '')).strip()
+            if phone and phone not in seen:
+                seen[phone] = True
+                result.append(r)
+        if len(result) < len(data):
+            print(f"[去重] 原始数据 {len(data)} 条，去重后 {len(result)} 条")
+        return result
     return []
 
 # 加载新录入线索
