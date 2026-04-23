@@ -1683,8 +1683,14 @@ window.__COST_DAYS__ = [];
       idx = i - start;
       dt = String(r['入库时间'] || r['入库日期'] || '-').slice(0, 10);
       phone = r['手机号'] || r['手机'] || '';
-      rows.push('<tr>' +
-        '<td style="text-align:center"><input type="checkbox" class="row-check" data-phone="' + esc(phone) + '" onchange="updateBatchBtn()"></td>' +
+      var isGuestRow = window.CURRENT_USER && window.CURRENT_USER.role === 'guest';
+      var actionCell = isGuestRow
+        ? '<button class="td-btn" onclick="showDetail(' + i + ')">查看</button>'
+        : '<button class="td-btn" onclick="showDetail(' + i + ')" style="margin-right:4px">查看</button>' +
+          '<button class="td-btn" onclick="editLead(' + i + ')" style="margin-right:4px;background:#fff;color:var(--primary);border-color:var(--primary)">编辑</button>' +
+          '<button class="td-btn" onclick="deleteLead(' + i + ')" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>';
+      var checkCell = isGuestRow ? '' : '<td style="text-align:center"><input type="checkbox" class="row-check" data-phone="' + esc(phone) + '" onchange="updateBatchBtn()"></td>';
+      rows.push('<tr>' + checkCell +
         '<td class="td-date">' + esc(dt) + '</td>' +
         '<td><span class="tag" style="background:' + platBg(r['平台']) + ';color:' + platColor(r['平台']) + '">' + esc(r['平台']) + '</span></td>' +
         '<td class="td-num">' + esc(r['姓名'] || '-') + '</td>' +
@@ -1694,11 +1700,7 @@ window.__COST_DAYS__ = [];
         '<td>' + esc(r['所属大区'] || '-') + '</td>' +
         '<td>' + esc(r['所属招商'] || '-') + '</td>' +
         '<td>' + jmTag(r['是否能加上微信'] || '') + '</td>' +
-        '<td>' +
-          '<button class="td-btn" onclick="showDetail(' + i + ')" style="margin-right:4px">查看</button>' +
-          '<button class="td-btn" onclick="editLead(' + i + ')" style="margin-right:4px;background:#fff;color:var(--primary);border-color:var(--primary)">编辑</button>' +
-          '<button class="td-btn" onclick="deleteLead(' + i + ')" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>' +
-        '</td>' +
+        '<td>' + actionCell + '</td>' +
         '</tr>');
     }
     tbody.innerHTML = rows.join('');
@@ -2310,8 +2312,9 @@ window.__COST_DAYS__ = [];
     if (main) main.style.display = 'block';
     renderAll();
 
-    // 招商员隐藏成本相关按钮和看板、导入区域
+    // 非管理员隐藏成本/导入/编辑/删除相关按钮
     var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
+    var isGuest = window.CURRENT_USER && window.CURRENT_USER.role === 'guest';
     if (!isAdmin) {
       var btnCost = document.getElementById('btnCost');
       if (btnCost) btnCost.style.display = 'none';
@@ -2322,6 +2325,13 @@ window.__COST_DAYS__ = [];
       var btnImportXhs = document.getElementById('btnImportXhs');
       if (btnImportXhs) btnImportXhs.style.display = 'none';
       document.querySelectorAll('.cost-section').forEach(function(el){ el.style.display = 'none'; });
+      // 游客额外隐藏批量删除按钮和表头复选框
+      if (isGuest) {
+        var batchBtn = document.getElementById('batchDeleteBtn');
+        if (batchBtn) batchBtn.style.display = 'none';
+        var selectAllTh = document.querySelector('th input#selectAll');
+        if (selectAllTh) selectAllTh.parentElement.style.display = 'none';
+      }
     }
   } catch(e) {
     clearTimeout(timer);
