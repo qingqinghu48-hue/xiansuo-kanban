@@ -48,9 +48,22 @@ def init_db():
             remark TEXT DEFAULT '',
             created_at TEXT NOT NULL,
             is_read INTEGER DEFAULT 0,
+            xhs_account TEXT DEFAULT '',
+            lead_type TEXT DEFAULT '',
             UNIQUE(phone)
         )
     ''')
+    # 添加新字段（如果不存在）
+    try:
+        c.execute('ALTER TABLE new_leads ADD COLUMN xhs_account TEXT DEFAULT ""')
+    except:
+        pass
+    try:
+        c.execute('ALTER TABLE new_leads ADD COLUMN lead_type TEXT DEFAULT ""')
+    except:
+        pass
+    conn.commit()
+    conn.close()
     # 线索成本表
     c.execute('''
         CREATE TABLE IF NOT EXISTS cost_data (
@@ -125,6 +138,8 @@ def load_new_leads():
             '最近一次电联时间': _clean_val(row[15]),
             '到访时间': _clean_val(row[16]),
             '签约时间': _clean_val(row[17]),
+            '小红书账号': _clean_val(row[18]) if len(row) > 18 else '',
+            '线索类型': _clean_val(row[19]) if len(row) > 19 else '',
             '来源文件': '手动录入'
         })
     return leads
@@ -409,16 +424,19 @@ def update_lead():
     visit_time = data.get('到访时间', '')
     sign_time = data.get('签约时间', '')
     platform = data.get('platform', '')
+    xhs_account = data.get('xhs_account', '')
+    lead_type = data.get('lead_type', '')
 
     # 管理员可修改平台和入库日期，普通招商员保留原值
     if user['role'] == 'admin':
         update_sql = '''
             UPDATE new_leads SET
                 name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
-                platform = ?, entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
+                platform = ?, entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
+                xhs_account = ?, lead_type = ?
             WHERE id = ?
         '''
-        update_params = (name, city, validity, region, can_wechat, remark, platform, entry_date, contact_time, contact_remark, call_time, visit_time, sign_time, lead_id)
+        update_params = (name, city, validity, region, can_wechat, remark, platform, entry_date, contact_time, contact_remark, call_time, visit_time, sign_time, xhs_account, lead_type, lead_id)
     else:
         # 保留原平台和入库日期
         c.execute('SELECT platform, entry_date FROM new_leads WHERE id = ?', (lead_id,))
@@ -428,10 +446,11 @@ def update_lead():
         update_sql = '''
             UPDATE new_leads SET
                 name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
-                二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
+                二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
+                xhs_account = ?, lead_type = ?
             WHERE id = ?
         '''
-        update_params = (name, city, validity, region, can_wechat, remark, contact_time, contact_remark, call_time, visit_time, sign_time, lead_id)
+        update_params = (name, city, validity, region, can_wechat, remark, contact_time, contact_remark, call_time, visit_time, sign_time, xhs_account, lead_type, lead_id)
 
     c.execute(update_sql, update_params)
     conn.commit()

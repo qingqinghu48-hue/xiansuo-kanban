@@ -798,6 +798,15 @@ td{
         <div class="cost-field"><label>客户电话</label><input type="text" id="editPhone" readonly style="background:var(--surface2);color:var(--text-3)"></div>
         <div class="cost-field"><label>线索平台</label><input type="text" id="editPlatform"></div>
         <div class="cost-field"><label>入库日期</label><input type="date" id="editEntryDate"></div>
+        <div class="cost-field"><label>小红书账号</label><input type="text" id="editXhsAccount" placeholder="请输入小红书账号"></div>
+        <div class="cost-field">
+          <label>线索类型</label>
+          <select id="editLeadType">
+            <option value="">请选择</option>
+            <option value="广告线索">广告线索</option>
+            <option value="自然流线索">自然流线索</option>
+          </select>
+        </div>
         <div class="cost-field"><label>所属大区</label><input type="text" id="editRegion"></div>
         <div class="cost-field"><label>所属城市</label><input type="text" id="editCity"></div>
         <div class="cost-field" style="grid-column:1/-1">
@@ -1915,6 +1924,8 @@ window.__COST_DAYS__ = [];
     document.getElementById('editEntryDate').style.color = isAdmin ? 'var(--text)' : 'var(--text-3)';
     document.getElementById('editRegion').value = r['所属大区'] || '';
     document.getElementById('editCity').value = r['省份'] || r['城市'] || '';
+    document.getElementById('editXhsAccount').value = r['小红书账号'] || '';
+    document.getElementById('editLeadType').value = r['线索类型'] || '';
     document.getElementById('editValidity').value = r['线索有效性'] || r['有效性'] || '';
     document.getElementById('editCanWechat').value = r['是否能加上微信'] || '';
     document.getElementById('editRemark').value = r['备注'] || '';
@@ -1944,6 +1955,8 @@ window.__COST_DAYS__ = [];
       entry_date: isAdmin ? document.getElementById('editEntryDate').value : (r['入库时间'] || r['入库日期'] || ''),
       region: document.getElementById('editRegion').value,
       city: document.getElementById('editCity').value,
+      xhs_account: document.getElementById('editXhsAccount').value,
+      lead_type: document.getElementById('editLeadType').value,
       validity: document.getElementById('editValidity').value,
       can_wechat: document.getElementById('editCanWechat').value,
       remark: document.getElementById('editRemark').value,
