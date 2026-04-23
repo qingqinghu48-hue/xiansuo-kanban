@@ -1141,6 +1141,287 @@ def admin_page():
         </style>
     </head>
     <body>
+        <script>
+        // 弹窗控制函数
+        function openCostModal() {
+            document.getElementById('costModal').style.display = 'flex';
+            loadCostHistory();
+        }
+        function closeCostModal() { document.getElementById('costModal').style.display = 'none'; }
+        function openZsImportModal() { document.getElementById('zsImportModal').style.display = 'flex'; }
+        function closeZsImportModal() { document.getElementById('zsImportModal').style.display = 'none'; }
+        function openDyImportModal() { document.getElementById('dyImportModal').style.display = 'flex'; }
+        function closeDyImportModal() { document.getElementById('dyImportModal').style.display = 'none'; }
+        function openXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'flex'; }
+        function closeXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'none'; }
+
+        // 加载成本历史记录
+        async function loadCostHistory() {
+            try {
+                const res = await fetch('/api/cost');
+                const data = await res.json();
+                const container = document.getElementById('costHistory');
+                const records = data.cost_data || [];
+
+                if (records.length === 0) {
+                    container.innerHTML = '<div style="color:#999;text-align:center;padding:20px">暂无成本记录</div>';
+                    return;
+                }
+
+                let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+                html += '<tr style="background:#f5f5f5"><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">日期</th><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">平台</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">总消耗</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">单条成本</th><th style="padding:10px;text-align:center;border-bottom:1px solid #e0e0e0">操作</th></tr>';
+                records.forEach(r => {
+                    var safeDate = String(r.date).replace(/'/g, "\\'");
+                    var safePlat = String(r.platform).replace(/'/g, "\\'");
+                    html += '<tr>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + safeDate + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + safePlat + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.amount > 0 ? '¥' + r.amount.toFixed(2) : '-') + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.unit_cost > 0 ? '¥' + r.unit_cost.toFixed(2) : '-') + '</td>';
+                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:center"><button onclick="delCost(\'' + safeDate + '\',\'' + safePlat + '\')" style="padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
+                    html += '</tr>';
+                });
+                html += '</table>';
+                container.innerHTML = html;
+            } catch (err) {
+                document.getElementById('costHistory').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px">加载失败</div>';
+            }
+        }
+
+        // 删除成本记录
+        async function delCost(date, platform) {
+            if (!confirm('确定删除 ' + date + ' ' + platform + ' 的成本记录？')) return;
+            try {
+                const res = await fetch('/api/cost/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cost_date: date, platform: platform})
+                });
+                const data = await res.json();
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.textContent = data.message;
+                if (data.success) loadCostHistory();
+            } catch (err) {
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message error';
+                msg.textContent = '删除失败';
+            }
+        }
+
+        // 单条线索成本录入
+        async function submitUnitCost() {
+            const date = document.getElementById('costUnitDate').value;
+            const platform = document.getElementById('costUnitPlatform').value;
+            const unitCost = parseFloat(document.getElementById('costUnit').value);
+            if (!date) { alert('请选择日期'); return; }
+            if (isNaN(unitCost) || unitCost < 0) { alert('请输入有效的单条成本'); return; }
+
+            try {
+                const res = await fetch('/api/cost/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cost_date: date, platform: platform, amount: 0, unit_cost: unitCost})
+                });
+                const data = await res.json();
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.textContent = data.success ? '单条成本录入成功' : data.message;
+                if (data.success) {
+                    document.getElementById('costUnit').value = '';
+                    loadCostHistory();
+                }
+            } catch (err) {
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message error';
+                msg.textContent = '录入失败';
+            }
+        }
+
+        // DOM 加载完成后绑定事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 每日总消耗录入提交
+            document.getElementById('costForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('/api/cost/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        cost_date: document.getElementById('costDate').value,
+                        platform: document.getElementById('costPlatform').value,
+                        amount: parseFloat(document.getElementById('costAmount').value)
+                    })
+                });
+                const data = await res.json();
+                const msg = document.getElementById('costMessage');
+                msg.style.display = 'block';
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.textContent = data.message;
+                if (data.success) loadCostHistory();
+            };
+
+            // 招商表导入提交
+            document.getElementById('zsImportForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('zsExcelFile');
+                const msgBox = document.getElementById('zsImportMessage');
+                const resultBox = document.getElementById('zsImportResult');
+                if (!fileInput.files[0]) { alert('请选择文件'); return; }
+                msgBox.style.display = 'none'; resultBox.style.display = 'none';
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('type', 'zhaoshang');
+                try {
+                    const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                    msgBox.textContent = data.message;
+                    if (data.success) {
+                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                        html += '<div style="background:#cff4fc;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#0c5460">' + (data.updated || 0) + '</div><div style="font-size:13px;color:#0c5460">更新</div></div>';
+                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">跳过</div></div>';
+                        html += '</div>';
+                        resultBox.innerHTML = html; resultBox.style.display = 'block';
+                    }
+                } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
+            };
+
+            // 抖音导入提交
+            document.getElementById('dyImportForm2').onsubmit = async (e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('dyExcelFile2');
+                const msgBox = document.getElementById('dyImportMessage2');
+                const resultBox = document.getElementById('dyImportResult2');
+                if (!fileInput.files[0]) { alert('请选择文件'); return; }
+                msgBox.style.display = 'none'; resultBox.style.display = 'none';
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                try {
+                    const res = await fetch('/api/leads/import-douyin', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                    msgBox.textContent = data.message;
+                    if (data.success) {
+                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
+                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                        html += '</div>';
+                        resultBox.innerHTML = html; resultBox.style.display = 'block';
+                    }
+                } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
+            };
+
+            // 小红书导入提交
+            document.getElementById('xhsImportForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('xhsExcelFile');
+                const msgBox = document.getElementById('xhsImportMessage');
+                const resultBox = document.getElementById('xhsImportResult');
+                if (!fileInput.files[0]) { alert('请选择文件'); return; }
+                msgBox.style.display = 'none'; resultBox.style.display = 'none';
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('type', 'xiaohongshu');
+                try {
+                    const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                    msgBox.textContent = data.message;
+                    if (data.success) {
+                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
+                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                        html += '</div>';
+                        resultBox.innerHTML = html; resultBox.style.display = 'block';
+                    }
+                } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
+            };
+
+            // 线索录入表单提交
+            document.getElementById('leadForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('/api/leads/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        phone: document.getElementById('phone').value,
+                        platform: document.getElementById('platform').value,
+                        entry_date: document.getElementById('entry_date').value,
+                        agent: document.getElementById('agent').value
+                    })
+                });
+                const data = await res.json();
+                const msg = document.getElementById('message');
+                msg.style.display = 'block';
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.textContent = data.message;
+                if (data.success) {
+                    document.getElementById('phone').value = '';
+                }
+            };
+
+            // 抖音批量导入表单提交
+            document.getElementById('dyImportForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('dyExcelFile');
+                const btn = document.getElementById('dyImportBtn');
+                const msgBox = document.getElementById('dyImportMessage');
+                const resultBox = document.getElementById('dyImportResult');
+
+                if (!fileInput.files[0]) {
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message error';
+                    msgBox.textContent = '请选择Excel文件';
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = '正在导入...';
+                msgBox.style.display = 'none';
+                resultBox.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const res = await fetch('/api/leads/import-douyin', { method: 'POST', body: formData });
+                    const data = await res.json();
+
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                    msgBox.textContent = data.message;
+
+                    if (data.success) {
+                        fileInput.value = '';
+                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
+                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                        html += '</div>';
+                        resultBox.innerHTML = html;
+                        resultBox.style.display = 'block';
+                    }
+                } catch(err) {
+                    msgBox.style.display = 'block';
+                    msgBox.className = 'message error';
+                    msgBox.textContent = '网络错误: ' + err;
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '导入表格';
+                }
+            };
+        });
+        </script>
         <div class="header">
             <h1>📝 线索录入 - 管理后台</h1>
             <div class="nav">
@@ -1344,210 +1625,6 @@ def admin_page():
             </div>
         </div>
 
-        <script>
-        function openCostModal() {
-            document.getElementById('costModal').style.display = 'flex';
-            loadCostHistory();
-        }
-        function closeCostModal() { document.getElementById('costModal').style.display = 'none'; }
-        function openZsImportModal() { document.getElementById('zsImportModal').style.display = 'flex'; }
-        function closeZsImportModal() { document.getElementById('zsImportModal').style.display = 'none'; }
-        function openDyImportModal() { document.getElementById('dyImportModal').style.display = 'flex'; }
-        function closeDyImportModal() { document.getElementById('dyImportModal').style.display = 'none'; }
-        function openXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'flex'; }
-        function closeXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'none'; }
-
-        // 加载成本历史记录
-        async function loadCostHistory() {
-            try {
-                const res = await fetch('/api/cost');
-                const data = await res.json();
-                const container = document.getElementById('costHistory');
-                const records = data.cost_data || [];
-
-                if (records.length === 0) {
-                    container.innerHTML = '<div style="color:#999;text-align:center;padding:20px">暂无成本记录</div>';
-                    return;
-                }
-
-                let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-                html += '<tr style="background:#f5f5f5"><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">日期</th><th style="padding:10px;text-align:left;border-bottom:1px solid #e0e0e0">平台</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">总消耗</th><th style="padding:10px;text-align:right;border-bottom:1px solid #e0e0e0">单条成本</th><th style="padding:10px;text-align:center;border-bottom:1px solid #e0e0e0">操作</th></tr>';
-                records.forEach(r => {
-                    var safeDate = String(r.date).replace(/'/g, "\\'");
-                    var safePlat = String(r.platform).replace(/'/g, "\\'");
-                    html += '<tr>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + safeDate + '</td>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + safePlat + '</td>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.amount > 0 ? '¥' + r.amount.toFixed(2) : '-') + '</td>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.unit_cost > 0 ? '¥' + r.unit_cost.toFixed(2) : '-') + '</td>';
-                    html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:center"><button onclick="delCost(\'' + safeDate + '\',\'' + safePlat + '\')" style="padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer">删除</button></td>';
-                    html += '</tr>';
-                });
-                html += '</table>';
-                container.innerHTML = html;
-            } catch (err) {
-                document.getElementById('costHistory').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px">加载失败</div>';
-            }
-        }
-
-        // 删除成本记录
-        async function delCost(date, platform) {
-            if (!confirm('确定删除 ' + date + ' ' + platform + ' 的成本记录？')) return;
-            try {
-                const res = await fetch('/api/cost/delete', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({cost_date: date, platform: platform})
-                });
-                const data = await res.json();
-                const msg = document.getElementById('costMessage');
-                msg.style.display = 'block';
-                msg.className = 'message ' + (data.success ? 'success' : 'error');
-                msg.textContent = data.message;
-                if (data.success) loadCostHistory();
-            } catch (err) {
-                const msg = document.getElementById('costMessage');
-                msg.style.display = 'block';
-                msg.className = 'message error';
-                msg.textContent = '删除失败';
-            }
-        }
-
-        // 单条线索成本录入
-        async function submitUnitCost() {
-            const date = document.getElementById('costUnitDate').value;
-            const platform = document.getElementById('costUnitPlatform').value;
-            const unitCost = parseFloat(document.getElementById('costUnit').value);
-            if (!date) { alert('请选择日期'); return; }
-            if (isNaN(unitCost) || unitCost < 0) { alert('请输入有效的单条成本'); return; }
-
-            try {
-                const res = await fetch('/api/cost/add', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({cost_date: date, platform: platform, amount: 0, unit_cost: unitCost})
-                });
-                const data = await res.json();
-                const msg = document.getElementById('costMessage');
-                msg.style.display = 'block';
-                msg.className = 'message ' + (data.success ? 'success' : 'error');
-                msg.textContent = data.success ? '单条成本录入成功' : data.message;
-                if (data.success) {
-                    document.getElementById('costUnit').value = '';
-                    loadCostHistory();
-                }
-            } catch (err) {
-                const msg = document.getElementById('costMessage');
-                msg.style.display = 'block';
-                msg.className = 'message error';
-                msg.textContent = '录入失败';
-            }
-        }
-
-        // 每日总消耗录入提交
-        document.getElementById('costForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/cost/add', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    cost_date: document.getElementById('costDate').value,
-                    platform: document.getElementById('costPlatform').value,
-                    amount: parseFloat(document.getElementById('costAmount').value)
-                })
-            });
-            const data = await res.json();
-            const msg = document.getElementById('costMessage');
-            msg.style.display = 'block';
-            msg.className = 'message ' + (data.success ? 'success' : 'error');
-            msg.textContent = data.message;
-            if (data.success) loadCostHistory();
-        };
-
-        // 招商表导入提交
-        document.getElementById('zsImportForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('zsExcelFile');
-            const msgBox = document.getElementById('zsImportMessage');
-            const resultBox = document.getElementById('zsImportResult');
-            if (!fileInput.files[0]) { alert('请选择文件'); return; }
-            msgBox.style.display = 'none'; resultBox.style.display = 'none';
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('type', 'zhaoshang');
-            try {
-                const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
-                const data = await res.json();
-                msgBox.style.display = 'block';
-                msgBox.className = 'message ' + (data.success ? 'success' : 'error');
-                msgBox.textContent = data.message;
-                if (data.success) {
-                    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
-                    html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
-                    html += '<div style="background:#cff4fc;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#0c5460">' + (data.updated || 0) + '</div><div style="font-size:13px;color:#0c5460">更新</div></div>';
-                    html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">跳过</div></div>';
-                    html += '</div>';
-                    resultBox.innerHTML = html; resultBox.style.display = 'block';
-                }
-            } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
-        };
-
-        // 抖音导入提交
-        document.getElementById('dyImportForm2').onsubmit = async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('dyExcelFile2');
-            const msgBox = document.getElementById('dyImportMessage2');
-            const resultBox = document.getElementById('dyImportResult2');
-            if (!fileInput.files[0]) { alert('请选择文件'); return; }
-            msgBox.style.display = 'none'; resultBox.style.display = 'none';
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            try {
-                const res = await fetch('/api/leads/import-douyin', { method: 'POST', body: formData });
-                const data = await res.json();
-                msgBox.style.display = 'block';
-                msgBox.className = 'message ' + (data.success ? 'success' : 'error');
-                msgBox.textContent = data.message;
-                if (data.success) {
-                    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
-                    html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
-                    html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
-                    html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
-                    html += '</div>';
-                    resultBox.innerHTML = html; resultBox.style.display = 'block';
-                }
-            } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
-        };
-
-        // 小红书导入提交
-        document.getElementById('xhsImportForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('xhsExcelFile');
-            const msgBox = document.getElementById('xhsImportMessage');
-            const resultBox = document.getElementById('xhsImportResult');
-            if (!fileInput.files[0]) { alert('请选择文件'); return; }
-            msgBox.style.display = 'none'; resultBox.style.display = 'none';
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('type', 'xiaohongshu');
-            try {
-                const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
-                const data = await res.json();
-                msgBox.style.display = 'block';
-                msgBox.className = 'message ' + (data.success ? 'success' : 'error');
-                msgBox.textContent = data.message;
-                if (data.success) {
-                    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
-                    html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
-                    html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
-                    html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
-                    html += '</div>';
-                    resultBox.innerHTML = html; resultBox.style.display = 'block';
-                }
-            } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
-        };
-        </script>
-
         <div class="container" style="margin-top:20px">
             <h2>📊 抖音客资批量导入</h2>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.7">
@@ -1567,80 +1644,6 @@ def admin_page():
             <div class="message" id="dyImportMessage"></div>
             <div id="dyImportResult" style="margin-top:15px;display:none"></div>
         </div>
-
-        <script>
-            document.getElementById('leadForm').onsubmit = async (e) => {
-                e.preventDefault();
-                const res = await fetch('/api/leads/add', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        phone: document.getElementById('phone').value,
-                        platform: document.getElementById('platform').value,
-                        entry_date: document.getElementById('entry_date').value,
-                        agent: document.getElementById('agent').value
-                    })
-                });
-                const data = await res.json();
-                const msg = document.getElementById('message');
-                msg.style.display = 'block';
-                msg.className = 'message ' + (data.success ? 'success' : 'error');
-                msg.textContent = data.message;
-                if (data.success) {
-                    document.getElementById('phone').value = '';
-                }
-            };
-
-            document.getElementById('dyImportForm').onsubmit = async (e) => {
-                e.preventDefault();
-                const fileInput = document.getElementById('dyExcelFile');
-                const btn = document.getElementById('dyImportBtn');
-                const msgBox = document.getElementById('dyImportMessage');
-                const resultBox = document.getElementById('dyImportResult');
-
-                if (!fileInput.files[0]) {
-                    msgBox.style.display = 'block';
-                    msgBox.className = 'message error';
-                    msgBox.textContent = '请选择Excel文件';
-                    return;
-                }
-
-                btn.disabled = true;
-                btn.textContent = '正在导入...';
-                msgBox.style.display = 'none';
-                resultBox.style.display = 'none';
-
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-
-                try {
-                    const res = await fetch('/api/leads/import-douyin', { method: 'POST', body: formData });
-                    const data = await res.json();
-
-                    msgBox.style.display = 'block';
-                    msgBox.className = 'message ' + (data.success ? 'success' : 'error');
-                    msgBox.textContent = data.message;
-
-                    if (data.success) {
-                        fileInput.value = '';
-                        let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
-                        html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
-                        html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
-                        html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
-                        html += '</div>';
-                        resultBox.innerHTML = html;
-                        resultBox.style.display = 'block';
-                    }
-                } catch(err) {
-                    msgBox.style.display = 'block';
-                    msgBox.className = 'message error';
-                    msgBox.textContent = '网络错误: ' + err;
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = '导入表格';
-                }
-            };
-        </script>
     </body>
     </html>
     '''
