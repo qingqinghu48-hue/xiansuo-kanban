@@ -624,7 +624,7 @@ td{
   <div class="modal-box">
     <div class="modal-hd">
       <h3>线索详情</h3>
-      <button class="modal-x" id="modalClose">&#10005;</button>
+      <button type="button" class="modal-x" id="modalClose">&#10005;</button>
     </div>
     <div class="modal-bd" id="modalBody"></div>
   </div>
@@ -1654,12 +1654,33 @@ window.__COST_DAYS__ = [];
   document.getElementById('de').onchange = doFilter;
 
   // 弹窗
+  var scrollPos = 0;
   document.getElementById('modalClose').onclick = function(e) {
     e.preventDefault();
+    e.stopPropagation();
     document.getElementById('modal').className = 'modal';
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + scrollPos + 'px';
+    setTimeout(function() {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      window.scrollTo(0, scrollPos);
+    }, 10);
   };
   document.getElementById('modal').onclick = function(e) {
-    if (e.target === this) { e.preventDefault(); this.className = 'modal'; }
+    if (e.target === this) {
+      e.preventDefault();
+      e.stopPropagation();
+      scrollPos = window.pageYOffset || document.documentElement.scrollTop;
+      this.className = 'modal';
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + scrollPos + 'px';
+      setTimeout(function() {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollPos);
+      }, 10);
+    }
   };
 
   // 平台颜色（固定调色板，支持任意平台名）
