@@ -629,43 +629,71 @@ td{
 
 <!-- 成本录入弹窗 -->
 <div class="modal" id="costModal">
-  <div class="modal-box" style="max-width:520px">
+  <div class="modal-box" style="max-width:580px">
     <div class="modal-hd">
       <h3>录入/管理营销成本</h3>
       <button class="modal-x" id="costModalClose">&#10005;</button>
     </div>
     <div class="modal-bd" style="padding:24px">
-      <!-- 录入表单 -->
-      <div class="cost-form" style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
-        <div style="font-weight:700;color:var(--text);margin-bottom:12px;font-size:14px">📥 录入新成本</div>
-        <div class="cost-field">
-          <label>日期</label>
-          <input type="date" id="costDate" value="">
+
+      <!-- 每日总消耗录入 -->
+      <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
+        <div style="font-weight:700;color:var(--primary);margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">💰</span> 录入每日总消耗
         </div>
-        <div class="cost-field">
-          <label>平台</label>
-          <select id="costPlatform">
-            <option value="抖音">抖音</option>
-            <option value="小红书">小红书</option>
-          </select>
-        </div>
-        <div class="cost-field">
-          <label>消耗金额（元）</label>
-          <input type="number" id="costAmount" placeholder="请输入当日消耗金额" step="0.01" min="0">
-        </div>
-        <div class="cost-field">
-          <label>单条线索成本（元/条）<span style="color:var(--text-3);font-weight:400"> — 选填，不填则自动计算</span></label>
-          <input type="number" id="costUnit" placeholder="留空自动按当日线索数计算" step="0.01" min="0">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="cost-field">
+            <label>日期</label>
+            <input type="date" id="costDate" value="">
+          </div>
+          <div class="cost-field">
+            <label>平台</label>
+            <select id="costPlatform">
+              <option value="抖音">抖音</option>
+              <option value="小红书">小红书</option>
+            </select>
+          </div>
+          <div class="cost-field">
+            <label>总消耗（元）</label>
+            <input type="number" id="costAmount" placeholder="输入金额" step="0.01" min="0">
+          </div>
         </div>
         <div style="text-align:right;margin-top:12px">
           <button class="btn btn-pri" id="costSubmit">确认录入</button>
         </div>
       </div>
 
+      <!-- 单条线索成本录入 -->
+      <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#fff7ed;border-radius:8px;border:1px solid #fed7aa">
+        <div style="font-weight:700;color:#c2410c;margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">📊</span> 录入单条线索成本
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="cost-field">
+            <label>日期</label>
+            <input type="date" id="costUnitDate" value="">
+          </div>
+          <div class="cost-field">
+            <label>平台</label>
+            <select id="costUnitPlatform">
+              <option value="抖音">抖音</option>
+              <option value="小红书">小红书</option>
+            </select>
+          </div>
+          <div class="cost-field">
+            <label>单条成本（元/条）</label>
+            <input type="number" id="costUnit" placeholder="手动指定" step="0.01" min="0">
+          </div>
+        </div>
+        <div style="text-align:right;margin-top:12px">
+          <button class="btn" id="costUnitSubmit" style="background:#c2410c;color:#fff;border-color:#c2410c">录入单条成本</button>
+        </div>
+      </div>
+
       <!-- 已有记录列表 -->
       <div>
-        <div style="font-weight:700;color:var(--text);margin-bottom:12px;font-size:14px">📋 已有记录 <span style="font-weight:400;color:var(--text-3)">（点击删除可撤销）</span></div>
-        <div id="costList" style="max-height:240px;overflow-y:auto">
+        <div style="font-weight:700;color:var(--text);margin-bottom:12px;font-size:14px">🗑 删除历史记录</div>
+        <div id="costList" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
           <div style="color:var(--text-3);font-size:13px;text-align:center;padding:20px">加载中...</div>
         </div>
       </div>
@@ -2527,6 +2555,11 @@ window.__COST_DAYS__ = [];
       inpDate.value = today;
       inpAmt.value = '';
       if (inpUnit) inpUnit.value = '';
+      // 单条成本初始化
+      var inpUnitDate = document.getElementById('costUnitDate');
+      var inpUnitPlat = document.getElementById('costUnitPlatform');
+      if (inpUnitDate) inpUnitDate.value = today;
+      if (inpUnitPlat) inpUnitPlat.value = '抖音';
       resultBox.textContent = '';
       resultBox.className = 'cost-result';
       refreshCostList();
@@ -2540,6 +2573,55 @@ window.__COST_DAYS__ = [];
 
     if (costModal){
       costModal.addEventListener('click', function(e){ if (e.target === costModal) closeCost(); });
+    }
+
+    // 单条线索成本录入
+    var btnUnitSubmit = document.getElementById('costUnitSubmit');
+    var inpUnitDate = document.getElementById('costUnitDate');
+    var inpUnitPlat = document.getElementById('costUnitPlatform');
+    if (btnUnitSubmit){
+      btnUnitSubmit.addEventListener('click', function(){
+        var date = inpUnitDate.value;
+        var platform = inpUnitPlat.value;
+        var unitCost = parseFloat(inpUnit.value);
+        if (!date){ resultBox.textContent = '请选择日期'; resultBox.className = 'cost-result err'; return; }
+        if (isNaN(unitCost) || unitCost < 0){ resultBox.textContent = '请输入有效的单条成本'; resultBox.className = 'cost-result err'; return; }
+
+        btnUnitSubmit.disabled = true;
+        btnUnitSubmit.textContent = '录入中…';
+
+        fetch('/api/cost/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({cost_date: date, platform: platform, amount: 0, unit_cost: unitCost})
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          btnUnitSubmit.disabled = false;
+          btnUnitSubmit.textContent = '录入单条成本';
+          if (res.success){
+            resultBox.textContent = '单条成本录入成功';
+            resultBox.className = 'cost-result ok';
+            if (!COST_BY_PLAT[platform]) COST_BY_PLAT[platform] = {};
+            COST_BY_PLAT[platform][date] = {spend: 0, unit_cost: unitCost, leads: 0};
+            rebuildDays();
+            renderCards();
+            drawDySpend(); drawDyUnit();
+            drawXhsSpend(); drawXhsUnit();
+            refreshCostList();
+            inpUnit.value = '';
+          } else {
+            resultBox.textContent = res.message || '录入失败';
+            resultBox.className = 'cost-result err';
+          }
+        })
+        .catch(function(err){
+          btnUnitSubmit.disabled = false;
+          btnUnitSubmit.textContent = '录入单条成本';
+          resultBox.textContent = '请求失败: ' + err.message;
+          resultBox.className = 'cost-result err';
+        });
+      });
     }
 
     if (btnSubmit){
