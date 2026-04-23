@@ -647,6 +647,7 @@ def import_leads():
         call_time_col    = find_col(['最近一次电联时间', '电联时间', '最近联系时间'])
         visit_time_col   = find_col(['到访时间', '到店时间', '来访时间'])
         sign_time_col    = find_col(['签约时间', '成交时间', '签约日期'])
+        source_col       = find_col(['线索来源', '来源', '流量来源'])
 
         if not phone_col:
             return jsonify({'success': False,
@@ -726,9 +727,27 @@ def import_leads():
             else:
                 agent = get_val(row, find_col(['所属招商'])) or get_val(row, find_col(['跟进员工'])) or get_val(row, agent_col) or '郑建军'
 
+            # 根据线索来源设置精确的平台分类
+            source = get_val(row, source_col)
+            platform_raw = get_val(row, platform_col) or '抖音'
+            # 如果线索来源包含"抖音广告"，平台设为"抖音广告"
+            if '抖音广告' in source:
+                platform = '抖音广告'
+            # 如果线索来源包含"小红书广告"，平台设为"小红书广告"
+            elif '小红书广告' in source:
+                platform = '小红书广告'
+            # 如果线索来源包含"小红书"且不包含"广告"，平台设为"小红书"
+            elif '小红书' in source and '广告' not in source:
+                platform = '小红书'
+            # 如果线索来源包含"抖音"且不包含"广告"，平台设为"抖音"
+            elif '抖音' in source and '广告' not in source and '抖音广告' not in source:
+                platform = '抖音'
+            else:
+                platform = platform_raw
+
             parsed.append({
                 'phone': phone,
-                'platform': get_val(row, platform_col) or '抖音',
+                'platform': platform,
                 'agent': agent,
                 'entry_date': entry_date,
                 'name': get_val(row, name_col),
