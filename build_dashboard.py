@@ -317,10 +317,28 @@ print(f"小红书客资补充字段：{xhs_count} 条已匹配")
 pass
 
 # ─────────────────────────────────────────────
-# F. 最终输出
+# F. 最终输出（确保去重）
 # ─────────────────────────────────────────────
-RECORDS = list(PHONE_REC.values())
+# 再次去重：按手机号保留第一条（优先保留更完整的记录）
+seen = {}
+for r in PHONE_REC.values():
+    phone = r.get('手机号', '').strip()
+    if phone not in seen:
+        seen[phone] = r
+    else:
+        # 已有记录，合并非空字段
+        for k, v in r.items():
+            if v and not seen[phone].get(k):
+                seen[phone][k] = v
+
+RECORDS = list(seen.values())
 RECORDS.sort(key=lambda x: x['入库时间'], reverse=True)
+
+# 验证去重
+phones_all = [r.get('手机号','') for r in RECORDS]
+phones_unique = len(set(phones_all))
+if phones_unique < len(RECORDS):
+    print(f"[去重] 去重前 {len(RECORDS)} 条，去重后 {phones_unique} 条")
 
 by_plat = {}
 for r in RECORDS:
