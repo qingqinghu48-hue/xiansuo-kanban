@@ -2009,10 +2009,10 @@ window.__COST_DAYS__ = [];
     .catch(function(err){ btn.disabled = false; btn.textContent = '保存'; toast('网络错误', 'err'); console.error(err); });
   }
 
-  document.getElementById('editModalClose').onclick = closeEdit;
-  document.getElementById('editCancel').onclick = closeEdit;
+  document.getElementById('editModalClose').onclick = function(e){ e.preventDefault(); closeEdit(); };
+  document.getElementById('editCancel').onclick = function(e){ e.preventDefault(); closeEdit(); };
   document.getElementById('editSave').onclick = saveEdit;
-  document.getElementById('editModal').onclick = function(e){ if (e.target === this) closeEdit(); };
+  document.getElementById('editModal').onclick = function(e){ if (e.target === this) { e.preventDefault(); closeEdit(); } };
 
   window.showDetail = showDetail;
   window.deleteLead = deleteLead;
@@ -2616,11 +2616,11 @@ window.__COST_DAYS__ = [];
     function closeCost(){ costModal.classList.remove('show'); }
 
     if (btnCost)   btnCost.addEventListener('click', openCost);
-    if (btnClose)  btnClose.addEventListener('click', closeCost);
-    if (btnCancel) btnCancel.addEventListener('click', closeCost);
+    if (btnClose)  btnClose.addEventListener('click', function(e){ e.preventDefault(); closeCost(); });
+    if (btnCancel) btnCancel.addEventListener('click', function(e){ e.preventDefault(); closeCost(); });
 
     if (costModal){
-      costModal.addEventListener('click', function(e){ if (e.target === costModal) closeCost(); });
+      costModal.addEventListener('click', function(e){ if (e.target === costModal) { e.preventDefault(); closeCost(); } });
     }
 
     // 单条线索成本录入
@@ -2800,9 +2800,9 @@ window.__COST_DAYS__ = [];
     function closeModal(){ modal.classList.remove('show'); }
 
     if (btnOpen)  btnOpen.addEventListener('click', openModal);
-    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnClose) btnClose.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
     if (modal){
-      modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+      modal.addEventListener('click', function(e){ if (e.target === modal) { e.preventDefault(); closeModal(); } });
     }
 
     if (btnSubmit){
@@ -2868,9 +2868,9 @@ window.__COST_DAYS__ = [];
     function closeModal(){ if(modal){ modal.classList.remove('show'); } }
 
     if (btnOpen)  btnOpen.addEventListener('click', openModal);
-    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnClose) btnClose.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
     if (modal){
-      modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+      modal.addEventListener('click', function(e){ if (e.target === modal) { e.preventDefault(); closeModal(); } });
     }
 
     if (btnSubmit){
