@@ -472,10 +472,7 @@ td{
         <div style="flex:1"></div>
         <button class="btn btn-pri" id="btnFilter">应用筛选</button>
         <button class="btn btn-ghost" id="btnReset">重置</button>
-        <button class="btn" id="btnCost" style="margin-left:6px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border:none;padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(238,90,90,0.3)">&#128181; 录入成本</button>
-        <button class="btn" id="btnImportZs" style="margin-left:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(37,99,235,0.3)">&#128229; 导入招商表</button>
-        <button class="btn" id="btnImportDy" style="margin-left:6px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border:none;padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(238,90,90,0.3)">&#128293; 导入抖音</button>
-        <button class="btn" id="btnImportXhs" style="margin-left:6px;background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;border:none;padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(236,72,153,0.3)">&#128150; 导入小红书</button>
+        <!-- 录入成本和导入按钮已移至 /admin 管理后台 -->
 
       </div>
     </div>
@@ -2312,18 +2309,10 @@ window.__COST_DAYS__ = [];
     if (main) main.style.display = 'block';
     renderAll();
 
-    // 非管理员隐藏成本/导入/编辑/删除相关按钮
+    // 非管理员隐藏成本看板和操作按钮
     var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
     var isGuest = window.CURRENT_USER && window.CURRENT_USER.role === 'guest';
     if (!isAdmin) {
-      var btnCost = document.getElementById('btnCost');
-      if (btnCost) btnCost.style.display = 'none';
-      var btnImportZs = document.getElementById('btnImportZs');
-      if (btnImportZs) btnImportZs.style.display = 'none';
-      var btnImportDy = document.getElementById('btnImportDy');
-      if (btnImportDy) btnImportDy.style.display = 'none';
-      var btnImportXhs = document.getElementById('btnImportXhs');
-      if (btnImportXhs) btnImportXhs.style.display = 'none';
       document.querySelectorAll('.cost-section').forEach(function(el){ el.style.display = 'none'; });
       // 游客额外隐藏批量删除按钮和表头复选框
       if (isGuest) {

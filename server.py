@@ -1069,6 +1069,15 @@ def admin_page():
             .message.success { background: #d4edda; color: #155724; }
             .message.error { background: #f8d7da; color: #721c24; }
             .back-link { display: inline-block; margin-bottom: 20px; color: #667eea; text-decoration: none; }
+            .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+            .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .card h3 { font-size: 16px; color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+            .card-btn { display: inline-block; padding: 12px 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; }
+            .card-btn:hover { opacity: 0.9; }
+            .card-btn.green { background: linear-gradient(135deg, #10b981, #059669); }
+            .card-btn.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+            .card-btn.pink { background: linear-gradient(135deg, #ec4899, #be185d); }
+            .card-btn.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
         </style>
     </head>
     <body>
@@ -1113,6 +1122,241 @@ def admin_page():
             </form>
             <div class="message" id="message"></div>
         </div>
+
+        <!-- 快速功能入口 -->
+        <div class="container">
+            <h2>⚡ 快速功能</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <h3>💰 录入成本</h3>
+                    <p style="color:#666;font-size:13px;margin-bottom:12px">录入抖音/小红书每日营销成本</p>
+                    <button class="card-btn orange" onclick="openCostModal()">打开成本录入</button>
+                </div>
+                <div class="card">
+                    <h3>📥 导入招商表</h3>
+                    <p style="color:#666;font-size:13px;margin-bottom:12px">批量导入招商线索管理表</p>
+                    <button class="card-btn blue" onclick="openZsImportModal()">打开导入窗口</button>
+                </div>
+                <div class="card">
+                    <h3>🔥 导入抖音客资</h3>
+                    <p style="color:#666;font-size:13px;margin-bottom:12px">批量导入抖音渠道线索</p>
+                    <button class="card-btn red" onclick="openDyImportModal()">打开导入窗口</button>
+                </div>
+                <div class="card">
+                    <h3>💖 导入小红书</h3>
+                    <p style="color:#666;font-size:13px;margin-bottom:12px">批量导入小红书渠道线索</p>
+                    <button class="card-btn pink" onclick="openXhsImportModal()">打开导入窗口</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成本录入弹窗 -->
+        <div id="costModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+            <div style="background:white;border-radius:12px;padding:30px;width:500px;max-width:90%">
+                <h3 style="margin-bottom:20px">💰 录入成本</h3>
+                <form id="costForm">
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>日期</label>
+                        <input type="date" id="costDate" required value="''' + datetime.now().strftime('%Y-%m-%d') + '''">
+                    </div>
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>平台</label>
+                        <select id="costPlatform" required>
+                            <option value="抖音">抖音</option>
+                            <option value="小红书">小红书</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>消耗金额（元）</label>
+                        <input type="number" id="costAmount" required placeholder="请输入金额">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px">
+                        <button type="submit" class="card-btn orange" style="flex:1">提交</button>
+                        <button type="button" class="card-btn" style="flex:1;background:#6b7280" onclick="closeCostModal()">取消</button>
+                    </div>
+                </form>
+                <div class="message" id="costMessage" style="margin-top:15px"></div>
+            </div>
+        </div>
+
+        <!-- 招商表导入弹窗 -->
+        <div id="zsImportModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+            <div style="background:white;border-radius:12px;padding:30px;width:500px;max-width:90%">
+                <h3 style="margin-bottom:20px">📥 导入招商表</h3>
+                <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:15px;font-size:13px;color:#0369a1">
+                    支持增量更新：已存在手机号的线索会更新其他信息，抖音/小红书平台的入库日期不会修改。
+                </div>
+                <form id="zsImportForm">
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>选择 Excel 文件</label>
+                        <input type="file" id="zsExcelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px;width:100%">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px">
+                        <button type="submit" class="card-btn blue" style="flex:1">导入</button>
+                        <button type="button" class="card-btn" style="flex:1;background:#6b7280" onclick="closeZsImportModal()">取消</button>
+                    </div>
+                </form>
+                <div class="message" id="zsImportMessage" style="margin-top:15px"></div>
+                <div id="zsImportResult" style="margin-top:15px"></div>
+            </div>
+        </div>
+
+        <!-- 抖音导入弹窗 -->
+        <div id="dyImportModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+            <div style="background:white;border-radius:12px;padding:30px;width:500px;max-width:90%">
+                <h3 style="margin-bottom:20px">🔥 导入抖音客资</h3>
+                <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:15px;font-size:13px;color:#0369a1">
+                    只导入新线索：已存在手机号的线索会跳过，不更新已有数据。
+                </div>
+                <form id="dyImportForm2">
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>选择 Excel 文件</label>
+                        <input type="file" id="dyExcelFile2" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px;width:100%">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px">
+                        <button type="submit" class="card-btn red" style="flex:1">导入</button>
+                        <button type="button" class="card-btn" style="flex:1;background:#6b7280" onclick="closeDyImportModal()">取消</button>
+                    </div>
+                </form>
+                <div class="message" id="dyImportMessage2" style="margin-top:15px"></div>
+                <div id="dyImportResult2" style="margin-top:15px"></div>
+            </div>
+        </div>
+
+        <!-- 小红书导入弹窗 -->
+        <div id="xhsImportModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+            <div style="background:white;border-radius:12px;padding:30px;width:500px;max-width:90%">
+                <h3 style="margin-bottom:20px">💖 导入小红书</h3>
+                <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:15px;font-size:13px;color:#0369a1">
+                    只导入新线索：已存在手机号的线索会跳过，不更新已有数据。
+                </div>
+                <form id="xhsImportForm">
+                    <div class="form-group" style="margin-bottom:15px">
+                        <label>选择 Excel 文件</label>
+                        <input type="file" id="xhsExcelFile" accept=".xlsx,.xls" required style="padding:8px;border:2px solid #e0e0e0;border-radius:8px;width:100%">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px">
+                        <button type="submit" class="card-btn pink" style="flex:1">导入</button>
+                        <button type="button" class="card-btn" style="flex:1;background:#6b7280" onclick="closeXhsImportModal()">取消</button>
+                    </div>
+                </form>
+                <div class="message" id="xhsImportMessage" style="margin-top:15px"></div>
+                <div id="xhsImportResult" style="margin-top:15px"></div>
+            </div>
+        </div>
+
+        <script>
+        function openCostModal() { document.getElementById('costModal').style.display = 'flex'; }
+        function closeCostModal() { document.getElementById('costModal').style.display = 'none'; }
+        function openZsImportModal() { document.getElementById('zsImportModal').style.display = 'flex'; }
+        function closeZsImportModal() { document.getElementById('zsImportModal').style.display = 'none'; }
+        function openDyImportModal() { document.getElementById('dyImportModal').style.display = 'flex'; }
+        function closeDyImportModal() { document.getElementById('dyImportModal').style.display = 'none'; }
+        function openXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'flex'; }
+        function closeXhsImportModal() { document.getElementById('xhsImportModal').style.display = 'none'; }
+
+        // 成本录入提交
+        document.getElementById('costForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/cost/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    cost_date: document.getElementById('costDate').value,
+                    platform: document.getElementById('costPlatform').value,
+                    amount: parseFloat(document.getElementById('costAmount').value)
+                })
+            });
+            const data = await res.json();
+            const msg = document.getElementById('costMessage');
+            msg.style.display = 'block';
+            msg.className = 'message ' + (data.success ? 'success' : 'error');
+            msg.textContent = data.message;
+        };
+
+        // 招商表导入提交
+        document.getElementById('zsImportForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('zsExcelFile');
+            const msgBox = document.getElementById('zsImportMessage');
+            const resultBox = document.getElementById('zsImportResult');
+            if (!fileInput.files[0]) { alert('请选择文件'); return; }
+            msgBox.style.display = 'none'; resultBox.style.display = 'none';
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('type', 'zhaoshang');
+            try {
+                const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
+                const data = await res.json();
+                msgBox.style.display = 'block';
+                msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                msgBox.textContent = data.message;
+                if (data.success) {
+                    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                    html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                    html += '<div style="background:#cff4fc;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#0c5460">' + (data.updated || 0) + '</div><div style="font-size:13px;color:#0c5460">更新</div></div>';
+                    html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">跳过</div></div>';
+                    html += '</div>';
+                    resultBox.innerHTML = html; resultBox.style.display = 'block';
+                }
+            } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
+        };
+
+        // 抖音导入提交
+        document.getElementById('dyImportForm2').onsubmit = async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('dyExcelFile2');
+            const msgBox = document.getElementById('dyImportMessage2');
+            const resultBox = document.getElementById('dyImportResult2');
+            if (!fileInput.files[0]) { alert('请选择文件'); return; }
+            msgBox.style.display = 'none'; resultBox.style.display = 'none';
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            try {
+                const res = await fetch('/api/leads/import-douyin', { method: 'POST', body: formData });
+                const data = await res.json();
+                msgBox.style.display = 'block';
+                msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                msgBox.textContent = data.message;
+                if (data.success) {
+                    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                    html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                    html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
+                    html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                    html += '</div>';
+                    resultBox.innerHTML = html; resultBox.style.display = 'block';
+                }
+            } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
+        };
+
+        // 小红书导入提交
+        document.getElementById('xhsImportForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('xhsExcelFile');
+            const msgBox = document.getElementById('xhsImportMessage');
+            const resultBox = document.getElementById('xhsImportResult');
+            if (!fileInput.files[0]) { alert('请选择文件'); return; }
+            msgBox.style.display = 'none'; resultBox.style.display = 'none';
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('type', 'xiaohongshu');
+            try {
+                const res = await fetch('/api/leads/import', { method: 'POST', body: formData });
+                const data = await res.json();
+                msgBox.style.display = 'block';
+                msgBox.className = 'message ' + (data.success ? 'success' : 'error');
+                msgBox.textContent = data.message;
+                if (data.success) {
+                    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">';
+                    html += '<div style="background:#d4edda;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#155724">' + (data.added || 0) + '</div><div style="font-size:13px;color:#155724">新增</div></div>';
+                    html += '<div style="background:#fff3cd;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#856404">' + (data.skipped || 0) + '</div><div style="font-size:13px;color:#856404">重复跳过</div></div>';
+                    html += '<div style="background:#f8d7da;border-radius:10px;padding:15px;text-align:center"><div style="font-size:24px;font-weight:700;color:#721c24">' + (data.bad || 0) + '</div><div style="font-size:13px;color:#721c24">无法识别</div></div>';
+                    html += '</div>';
+                    resultBox.innerHTML = html; resultBox.style.display = 'block';
+                }
+            } catch(err) { msgBox.style.display = 'block'; msgBox.className = 'message error'; msgBox.textContent = '网络错误'; }
+        };
+        </script>
 
         <div class="container" style="margin-top:20px">
             <h2>📊 抖音客资批量导入</h2>
