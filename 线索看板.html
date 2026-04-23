@@ -471,6 +471,8 @@ td{
         <select class="filter-select" id="fp"><option value="">全部平台</option></select>
         <span class="filter-label">有效性</span>
         <select class="filter-select" id="fv"><option value="">全部状态</option><option>意向客户</option><option>一般客户</option><option>未联系上</option><option>普通线索</option><option>无意向客户</option><option>无效线索</option></select>
+        <span class="filter-label">线索类型</span>
+        <select class="filter-select" id="flt"><option value="">全部类型</option><option>广告线索</option><option>自然流线索</option></select>
         <span class="filter-label">大区</span>
         <select class="filter-select" id="fr"><option value="">全部大区</option></select>
         <span class="filter-label">招商员</span>
@@ -1560,6 +1562,7 @@ window.__COST_DAYS__ = [];
       de: document.getElementById('de').value,
       fp: document.getElementById('fp').value,
       fv: document.getElementById('fv').value,
+      flt: document.getElementById('flt').value,
       fr: document.getElementById('fr').value,
       fs: document.getElementById('fs').value,
       fk: document.getElementById('fk').value
@@ -1576,6 +1579,7 @@ window.__COST_DAYS__ = [];
       if (state.de) document.getElementById('de').value = state.de;
       if (state.fp) document.getElementById('fp').value = state.fp;
       if (state.fv) document.getElementById('fv').value = state.fv;
+      if (state.flt) document.getElementById('flt').value = state.flt;
       if (state.fr) document.getElementById('fr').value = state.fr;
       if (state.fs) document.getElementById('fs').value = state.fs;
       if (state.fk) document.getElementById('fk').value = state.fk;
@@ -1587,6 +1591,7 @@ window.__COST_DAYS__ = [];
     var de = document.getElementById('de').value;
     var fp = document.getElementById('fp').value;
     var fv = document.getElementById('fv').value;
+    var flt = document.getElementById('flt').value;
     var fr = document.getElementById('fr').value;
     var fs = document.getElementById('fs').value;
     var fk = (document.getElementById('fk').value || '').trim().toLowerCase();
@@ -1599,6 +1604,7 @@ window.__COST_DAYS__ = [];
       if (dt && dt > de) continue;
       if (fp && r['平台'] !== fp) continue;
       if (fv && r['线索有效性'] !== fv && r['有效性'] !== fv) continue;
+      if (flt && r['线索类型'] !== flt) continue;
       if (fr && r['所属大区'] !== fr) continue;
       if (fs && r['所属招商'] !== fs) continue;
       if (fk) {
@@ -1638,6 +1644,7 @@ window.__COST_DAYS__ = [];
     document.getElementById('de').value = '2026-04-30';
     document.getElementById('fp').value = '';
     document.getElementById('fv').value = '';
+    document.getElementById('flt').value = '';
     document.getElementById('fr').value = '';
     document.getElementById('fs').value = '';
     document.getElementById('fk').value = '';
