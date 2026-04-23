@@ -159,6 +159,16 @@ def login():
             }
             return jsonify({'success': True, 'name': agent['name'], 'role': 'agent'})
     
+    # 游客账号登录
+    guest = users.get('guest')
+    if guest and username == guest['username'] and password == guest['password']:
+        session['user'] = {
+            'username': username,
+            'name': guest['name'],
+            'role': 'guest'
+        }
+        return jsonify({'success': True, 'name': guest['name'], 'role': 'guest'})
+    
     return jsonify({'success': False, 'message': '用户名或密码错误'})
 
 @app.route('/api/logout', methods=['POST'])
@@ -185,8 +195,8 @@ def get_leads():
     records = load_data()
     new_leads = load_new_leads()
     
-    # 管理员看全部
-    if user['role'] == 'admin':
+    # 管理员和游客看全部
+    if user['role'] == 'admin' or user['role'] == 'guest':
         all_records = records + new_leads
         return jsonify({'records': all_records, 'total': len(all_records), 'new_leads_count': len(new_leads)})
     
@@ -1373,8 +1383,8 @@ def kanban_content():
     records = load_data()
     new_leads = load_new_leads()
     
-    # 根据用户角色过滤数据
-    if user['role'] == 'admin':
+    # 根据用户角色过滤数据（管理员和游客看全部）
+    if user['role'] == 'admin' or user['role'] == 'guest':
         filtered = records + new_leads
     else:
         agent_name = user['name']
