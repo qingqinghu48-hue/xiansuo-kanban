@@ -1378,7 +1378,9 @@ def admin_page():
                     html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0">' + r.platform + '</td>';
                     html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.amount > 0 ? '¥' + r.amount.toFixed(2) : '-') + '</td>';
                     html += '<td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right">' + (r.unit_cost > 0 ? '¥' + r.unit_cost.toFixed(2) : '-') + '</td>';
-                    html += "<td style='padding:10px;border-bottom:1px solid #e0e0e0;text-align:center'><button onclick=\"deleteCost('" + r.date + "', '" + r.platform + "')\" style='padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer'>删除</button></td>";
+                    var delDate = r.date.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    var delPlat = r.platform.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    html += "<td style='padding:10px;border-bottom:1px solid #e0e0e0;text-align:center'><button onclick='delCost(\"" + delDate + "\", \"" + delPlat + "\")' style='padding:4px 10px;font-size:12px;color:#ef4444;border:1px solid #ef4444;background:#fff;border-radius:4px;cursor:pointer'>删除</button></td>";
                     html += '</tr>';
                 });
                 html += '</table>';
@@ -1389,7 +1391,7 @@ def admin_page():
         }
 
         // 删除成本记录
-        async function deleteCost(date, platform) {
+        async function delCost(date, platform) {
             if (!confirm('确定删除 ' + date + ' ' + platform + ' 的成本记录？')) return;
             try {
                 const res = await fetch('/api/cost/delete', {
