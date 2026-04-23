@@ -580,6 +580,7 @@ td{
         <h2>线索明细</h2>
         <div style="display:flex;align-items:center;gap:12px">
           <span class="table-badge" id="tableCount">0 条</span>
+          <button class="td-btn" onclick="downloadExcel()" style="background:#10b981">📥 下载Excel</button>
           <button id="batchDeleteBtn" class="td-btn" onclick="batchDelete()" style="display:none;background:#fff;color:var(--danger);border-color:var(--danger);font-weight:600">🗑 批量删除</button>
         </div>
       </div>
@@ -1806,6 +1807,33 @@ window.__COST_DAYS__ = [];
       renderTable();
     }
   };
+
+  // 下载Excel
+  function downloadExcel() {
+    var rows = document.querySelectorAll('#tbody tr');
+    if (rows.length === 0) {
+      alert('没有数据可下载');
+      return;
+    }
+    var csvContent = '\uFEFF'; // BOM for Excel
+    csvContent += '入库日期,平台,姓名,手机号,城市,有效性,所属大区,所属招商,能否加微\n';
+    rows.forEach(function(row) {
+      var cells = row.querySelectorAll('td');
+      if (cells.length >= 9) {
+        var rowData = [];
+        for (var i = 1; i < cells.length - 1; i++) { // skip checkbox and action column
+          var text = cells[i].textContent.trim().replace(/"/g, '""');
+          rowData.push('"' + text + '"');
+        }
+        csvContent += rowData.join(',') + '\n';
+      }
+    });
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = '线索明细_' + new Date().toISOString().slice(0,10) + '.csv';
+    link.click();
+  }
 
   function toggleSelectAll() {
     var all = document.getElementById('selectAll').checked;
