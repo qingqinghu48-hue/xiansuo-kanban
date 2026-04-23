@@ -22,14 +22,27 @@ def fix_platform():
     for row in c.fetchall():
         print(f"  {row[0]}: {row[1]}条")
     
-    # 把"抖音广告"改为"抖音"
+    # 1. 把"抖音广告"改为"抖音"
     c.execute("UPDATE new_leads SET platform = '抖音' WHERE platform = '抖音广告'")
-    changed = c.rowcount
+    changed1 = c.rowcount
+    
+    # 2. 删除平台名异常（包含特殊字符或长度过长的记录）
+    # 这些是错误数据，需要删除
+    c.execute("SELECT phone, platform FROM new_leads WHERE LENGTH(platform) > 20 OR platform LIKE '%🤔%' OR platform LIKE '%？%'")
+    bad_records = c.fetchall()
+    if bad_records:
+        print(f"\n发现 {len(bad_records)} 条异常记录：")
+        for phone, plat in bad_records:
+            print(f"  手机: {phone}, 平台: {plat}")
+        # 删除这些异常记录
+        c.execute("DELETE FROM new_leads WHERE LENGTH(platform) > 20 OR platform LIKE '%🤔%' OR platform LIKE '%？%'")
+        changed2 = c.rowcount
+        print(f"\n已删除 {changed2} 条异常记录")
     
     conn.commit()
     conn.close()
     
-    print(f"\n已修改 {changed} 条记录的 platform 从 '抖音广告' 改为 '抖音'")
+    print(f"\n已将 {changed1} 条'抖音广告'改为'抖音'")
     print("\n修复后请重启服务：pkill -f 'python3 server.py' && nohup python3 server.py > server.log 2>&1 &")
 
 if __name__ == '__main__':
