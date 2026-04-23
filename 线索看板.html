@@ -1449,6 +1449,21 @@ window.__COST_DAYS__ = [];
     return;
   }
 
+  // 前端兜底去重：以手机号为主键，保留第一条
+  var seen = {};
+  var dupCount = 0;
+  ALL = ALL.filter(function(r) {
+    var phone = String(r['手机号'] || r['手机'] || '').trim();
+    if (!phone || phone === 'undefined') return true;
+    if (!seen[phone]) {
+      seen[phone] = true;
+      return true;
+    }
+    dupCount++;
+    return false;
+  });
+  if (dupCount > 0) console.log('[去重] 前端过滤重复 ' + dupCount + ' 条');
+
   var utEl = document.getElementById('updateTime');
   if (utEl) utEl.textContent = '更新时间：' + new Date().toLocaleString('zh-CN');
 
