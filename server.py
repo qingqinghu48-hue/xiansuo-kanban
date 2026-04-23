@@ -1482,7 +1482,28 @@ def kanban_content():
     
     return content
 
+# ─────────────────────────────────────────────
+# 启动时修复平台分类
+# ─────────────────────────────────────────────
+def fix_platform_classification():
+    """启动时将'抖音广告'改为'抖音'"""
+    try:
+        conn = sqlite3.connect(str(DB_FILE))
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM new_leads WHERE platform = '抖音广告'")
+        count = c.fetchone()[0]
+        if count > 0:
+            c.execute("UPDATE new_leads SET platform = '抖音' WHERE platform = '抖音广告'")
+            conn.commit()
+            print(f"[启动修复] 已将 {count} 条'抖音广告'改为'抖音'")
+        conn.close()
+    except Exception as e:
+        print(f"[启动修复] 修复平台分类失败: {e}")
+
 if __name__ == '__main__':
+    # 启动时自动修复平台分类
+    fix_platform_classification()
+    
     print("=" * 50)
     print("🔐 线索看板服务 v2 启动中...")
     print("📍 访问地址: http://localhost:5001")
