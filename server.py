@@ -680,9 +680,13 @@ def import_leads():
             return None
 
         phone_col    = find_col(['手机号', '手机号码', '电话', '联系电话', '手机', 'phone', '客户电话'])
+        weixin_col   = find_col(['微信号', '微信', '微信账号'])
         platform_col = find_col(['平台', '来源', '渠道', '来源平台', '线索来源'])
         agent_col    = find_col(['所属招商', '跟进员工', '负责人', '招商员', '员工', '分配'])
-        date_col     = find_col(['入库日期', '录入日期', '日期', '入库时间', '录入时间'])
+        date_col     = find_col(['入库日期', '录入日期', '日期', '入库时间', '录入时间', '线索生成时间'])
+        # 小红书客资专用列
+        xhs_account_col = find_col(['归属账号', '小红书账号', '账号'])
+        lead_type_col   = find_col(['流量类型', '线索类型', '类型'])
         name_col     = find_col(['姓名', '名字', '客户姓名', '联系人'])
         city_col     = find_col(['城市', '省份', '地区', '所在城市', '省'])
         region_col   = find_col(['所属大区', '大区', '区域'])
@@ -738,22 +742,24 @@ def import_leads():
         parsed = []
         bad_rows = []
         for idx, row in df.iterrows():
-            raw = row.get(phone_col, '')
-            if pd.isna(raw):
-                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '联系方式为空'})
+            # 小红书客资导入：优先手机号，没有则取微信号
+            raw = row.get(phone_col, '') if phone_col else ''
+            weixin_raw = row.get(weixin_col, '') if weixin_col else ''
+            
+            phone = ''
+            if pd.notna(raw) and str(raw).strip() and str(raw).lower() != 'nan':
+                s = str(raw).strip()
+                digits = ''.join(filter(str.isdigit, s))
+                if len(digits) >= 7:
+                    phone = digits
+                elif len(s) >= 5:  # 可能是微信号
+                    phone = s
+            elif pd.notna(weixin_raw) and str(weixin_raw).strip() and str(weixin_raw).lower() != 'nan':
+                phone = str(weixin_raw).strip()
+            
+            if not phone:
+                bad_rows.append({'row': int(idx)+2, 'raw': str(raw), 'reason': '联系方式为空'})
                 continue
-            s = str(raw).strip()
-            if not s or s.lower() == 'nan':
-                bad_rows.append({'row': int(idx)+2, 'raw': '空值', 'reason': '联系方式为空'})
-                continue
-
-            digits = ''.join(filter(str.isdigit, s))
-            if len(digits) == 11:
-                phone = digits
-            elif len(digits) >= 7:
-                phone = digits
-            else:
-                phone = s  # 微信号保留
 
             # 入库日期：以Excel表格为准
             entry_date = parse_date(row, date_col)
@@ -789,6 +795,9 @@ def import_leads():
                 'call_time': parse_date(row, call_time_col),
                 'visit_time': parse_date(row, visit_time_col),
                 'sign_time': parse_date(row, sign_time_col),
+                # 小红书客资专用字段
+                'xhs_account': get_val(row, xhs_account_col) if is_xhs_channel else '',
+                'lead_type': get_val(row, lead_type_col) if is_xhs_channel else '',
             })
 
         if not parsed:
@@ -839,12 +848,14 @@ def import_leads():
                 c.execute('''UPDATE new_leads SET
                     platform = ?, agent = ?, entry_date = ?, name = ?,
                     city = ?, region = ?, validity = ?, can_wechat = ?, remark = ?,
-                    二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?
+                    二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
+                    xhs_account = ?, lead_type = ?
                     WHERE phone = ?''', (
                     platform, agent, entry_date, item['name'],
                     item['city'], item['region'], item['validity'], item['can_wechat'], item['remark'],
                     item['follow_time'], item['follow_note'], item['call_time'],
-                    item['visit_time'], item['sign_time'], phone))
+                    item['visit_time'], item['sign_time'],
+                    item['xhs_account'], item['lead_type'], phone))
                 updated += 1
             else:
                 # 招商线索管理表导入时，抖音/小红书的新线索不创建（由渠道表格单独导入）
@@ -856,13 +867,15 @@ def import_leads():
                 c.execute('''INSERT INTO new_leads
                     (phone, platform, agent, entry_date, name, city, region, validity,
                      can_wechat, remark, created_at,
-                     二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
+                     二次联系时间, 二次联系备注, 最近一次电联时间, 到访时间, 签约时间,
+                     xhs_account, lead_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
                     phone, platform, agent, entry_date, item['name'], item['city'], item['region'],
                     item['validity'], item['can_wechat'], item['remark'],
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     item['follow_time'], item['follow_note'], item['call_time'],
-                    item['visit_time'], item['sign_time']))
+                    item['visit_time'], item['sign_time'],
+                    item['xhs_account'], item['lead_type']))
                 added += 1
                 existing[phone] = {'platform': platform, 'entry_date': entry_date}
 
