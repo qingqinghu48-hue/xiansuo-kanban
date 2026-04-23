@@ -330,6 +330,16 @@ td{
 }
 .pager-btns button:hover:not(:disabled){background:var(--primary);color:#fff;border-color:var(--primary)}
 .pager-btns button:disabled{opacity:.4;cursor:not-allowed}
+.page-nums{display:flex;gap:4px;flex-wrap:wrap;max-width:240px;justify-content:center}
+.page-num{
+  min-width:32px;height:32px;line-height:32px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:#fff;cursor:pointer;font-size:13px;color:var(--text-2);
+  text-align:center;padding:0 6px;
+  transition:all .15s;
+}
+.page-num:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.page-num.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
 /* ── 弹窗 ── */
 .modal{
@@ -597,6 +607,7 @@ td{
         <div class="pager-info" id="pgInfo">-</div>
         <div class="pager-btns">
           <button id="prevBtn">&#8249;</button>
+          <div class="page-nums" id="pageNums"></div>
           <button id="nextBtn">&#8250;</button>
         </div>
       </div>
@@ -1709,7 +1720,47 @@ window.__COST_DAYS__ = [];
     document.getElementById('nextBtn').disabled = (page >= totalPages);
     document.getElementById('selectAll').checked = false;
     updateBatchBtn();
+    renderPageNums(page, totalPages);
   }
+
+  function renderPageNums(cur, total) {
+    var el = document.getElementById('pageNums');
+    if (!el) return;
+    if (total <= 1) { el.innerHTML = ''; return; }
+    var html = [];
+    var maxShow = 7;
+    var half = Math.floor(maxShow / 2);
+    var start, end;
+    if (total <= maxShow) {
+      start = 1; end = total;
+    } else {
+      start = Math.max(1, cur - half);
+      end = Math.min(total, cur + half);
+      if (cur <= half) { end = maxShow; }
+      if (cur > total - half) { start = total - maxShow + 1; }
+    }
+    if (start > 1) {
+      html.push('<button class="page-num" onclick="goPage(1)">1</button>');
+      if (start > 2) html.push('<span style="color:var(--text-3);line-height:32px">…</span>');
+    }
+    for (var i = start; i <= end; i++) {
+      var cls = i === cur ? 'page-num active' : 'page-num';
+      html.push('<button class="' + cls + '" onclick="goPage(' + i + ')">' + i + '</button>');
+    }
+    if (end < total) {
+      if (end < total - 1) html.push('<span style="color:var(--text-3);line-height:32px">…</span>');
+      html.push('<button class="page-num" onclick="goPage(' + total + ')">' + total + '</button>');
+    }
+    el.innerHTML = html.join('');
+  }
+
+  window.goPage = function(p) {
+    var totalPages = Math.max(1, Math.ceil(filtered.length / PS));
+    if (p >= 1 && p <= totalPages) {
+      page = p;
+      renderTable();
+    }
+  };
 
   function toggleSelectAll() {
     var all = document.getElementById('selectAll').checked;
