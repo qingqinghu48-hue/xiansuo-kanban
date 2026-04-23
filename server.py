@@ -63,7 +63,6 @@ def init_db():
     except:
         pass
     conn.commit()
-    conn.close()
     # 线索成本表
     c.execute('''
         CREATE TABLE IF NOT EXISTS cost_data (
