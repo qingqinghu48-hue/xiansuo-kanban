@@ -62,7 +62,10 @@ export default {
     })
   },
   importFile(type, formData) {
-    return fetch(API_BASE + '/api/import/' + type, {
+    const map = { zs: 'zhaoshang', dy: 'douyin', xhs: 'xiaohongshu' }
+    const endpoint = type === 'dy' ? '/api/leads/import-douyin' : '/api/leads/import'
+    if (type !== 'dy') formData.append('type', map[type] || type)
+    return fetch(API_BASE + endpoint, {
       method: 'POST',
       credentials: 'include',
       body: formData
