@@ -182,12 +182,20 @@ async function doBatchDelete(rows) {
 }
 
 function onEditSaved(payload) {
-  const phone = payload.phone
-  const idx = allData.value.findIndex(x => (x['手机号']||x['手机']) === phone)
+  const phoneStr = String(payload.phone || '').trim()
+
+  const idx = allData.value.findIndex(x => getPhone(x) === phoneStr)
   if (idx >= 0) {
     Object.keys(payload).forEach(k => { if (k !== 'phone') allData.value[idx][k] = payload[k] })
+    // 如果手机号改了，同步更新
+    if (payload['手机号'] !== undefined) allData.value[idx]['手机号'] = payload['手机号']
+    allData.value = [...allData.value]
   }
-  onFilter(getCurrentFilter())
+
+  const fIdx = filtered.value.findIndex(x => getPhone(x) === phoneStr)
+  if (fIdx >= 0) {
+    filtered.value = [...filtered.value]
+  }
 }
 
 function getCurrentFilter() {
