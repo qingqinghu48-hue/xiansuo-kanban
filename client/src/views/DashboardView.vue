@@ -79,8 +79,8 @@ const isGuest = computed(() => userInfo.value.role === 'guest')
 onMounted(async () => {
   try {
     const [leadsRes, userRes] = await Promise.all([api.getLeads(), api.getCurrentUser()])
-    if (leadsRes.data) allData.value = dedup(leadsRes.data)
-    else if (Array.isArray(leadsRes)) allData.value = dedup(leadsRes)
+    const records = leadsRes.records || leadsRes.data || (Array.isArray(leadsRes) ? leadsRes : [])
+    allData.value = dedup(records)
     const user = userRes.user || userRes
     if (user.role) {
       userInfo.value = user
@@ -96,8 +96,8 @@ onMounted(async () => {
       try { const c = await api.getCost(); costData.value = c || [] } catch(e) {}
     }
     // 检查未读新线索
-    if (!isAdmin.value && leadsRes.new_count) {
-      unreadCount.value = leadsRes.new_count
+    if (!isAdmin.value && (leadsRes.new_leads_count || leadsRes.new_count)) {
+      unreadCount.value = leadsRes.new_leads_count || leadsRes.new_count || 0
       notifyVisible.value = true
     }
   } catch(e) {
