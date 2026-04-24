@@ -38,10 +38,10 @@
             <td>{{ r['所属招商'] || '-' }}</td>
             <td v-html="jmTag(r['是否能加上微信'])"></td>
             <td>
-              <button class="td-btn" @click="$emit('detail', r)" style="margin-right:4px">查看</button>
+              <button class="td-btn" @click="onDetail(r)" style="margin-right:4px">查看</button>
               <template v-if="!isGuest">
-                <button class="td-btn" @click="$emit('edit', r)" style="margin-right:4px;background:#fff;color:var(--primary);border-color:var(--primary)">编辑</button>
-                <button class="td-btn" @click="$emit('delete', r)" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>
+                <button class="td-btn" @click="onEdit(r)" style="margin-right:4px;background:#fff;color:var(--primary);border-color:var(--primary)">编辑</button>
+                <button class="td-btn" @click="onDelete(r)" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>
               </template>
             </td>
           </tr>
@@ -174,6 +174,9 @@ function toggleSelectAll() {
   if (selectAll.value) selected.value = [...pageData.value]
   else selected.value = []
 }
+function onDetail(r) { emit('detail', r) }
+function onEdit(r) { emit('edit', r) }
+function onDelete(r) { emit('delete', r) }
 function batchDelete() {
   if (!selected.value.length) return
   emit('batchDelete', [...selected.value])

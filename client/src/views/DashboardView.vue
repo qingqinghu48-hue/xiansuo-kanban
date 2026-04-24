@@ -147,30 +147,32 @@ function showToast(msg, type) {
 function openDetail(r) { detailRecord.value = r; detailVisible.value = true }
 function openEdit(r) { editRecord.value = r; editVisible.value = true }
 
+function getPhone(r) { return String(r['手机号'] || r['手机'] || '').trim() }
+
 async function doDelete(r) {
-  const phone = r['手机号'] || r['手机']
+  const phone = getPhone(r)
   if (!phone || phone === '-') { showToast('该记录缺少手机号，无法删除', 'err'); return }
   if (!confirm('确定删除 ' + (r['姓名'] || '') + ' (' + phone + ') 的线索记录？')) return
   try {
     const data = await api.deleteLead(phone)
     if (data.success) {
-      allData.value = allData.value.filter(x => (x['手机号']||x['手机']) !== phone)
-      onFilter(getCurrentFilter())
+      allData.value = allData.value.filter(x => getPhone(x) !== phone)
+      filtered.value = filtered.value.filter(x => getPhone(x) !== phone)
       showToast('删除成功', 'ok')
     } else { showToast(data.message || '删除失败', 'err') }
   } catch(e) { showToast('网络错误', 'err') }
 }
 
 async function doBatchDelete(rows) {
-  const phones = rows.map(r => r['手机号'] || r['手机']).filter(p => p && p !== '-')
+  const phones = rows.map(r => getPhone(r)).filter(p => p && p !== '-')
   if (!phones.length) { showToast('请先选择要删除的线索', 'err'); return }
   if (!confirm('确定删除选中的 ' + phones.length + ' 条线索？')) return
   try {
     const data = await api.batchDelete({ phones })
     if (data.success) {
       const set = new Set(phones)
-      allData.value = allData.value.filter(x => !set.has(x['手机号'] || x['手机']))
-      onFilter(getCurrentFilter())
+      allData.value = allData.value.filter(x => !set.has(getPhone(x)))
+      filtered.value = filtered.value.filter(x => !set.has(getPhone(x)))
       showToast(data.message || '删除成功', 'ok')
     } else { showToast(data.message || '删除失败', 'err') }
   } catch(e) { showToast('删除失败', 'err') }
