@@ -80,8 +80,9 @@ onMounted(async () => {
     const [leadsRes, userRes] = await Promise.all([api.getLeads(), api.getCurrentUser()])
     if (leadsRes.data) allData.value = dedup(leadsRes.data)
     else if (Array.isArray(leadsRes)) allData.value = dedup(leadsRes)
-    if (userRes.role) {
-      userInfo.value = userRes
+    const user = userRes.user || userRes
+    if (user.role) {
+      userInfo.value = user
       if (!isAdmin.value) {
         // 非admin只显示自己的线索（如果有分配）
         // 但原逻辑是guest/agent都通过后端过滤，这里先保留全部

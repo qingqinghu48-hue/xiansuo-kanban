@@ -120,7 +120,8 @@ const today = new Date().toISOString().slice(0,10)
 onMounted(async () => {
   try {
     const data = await api.getCurrentUser()
-    if (data.role) userInfo.value = data
+    const user = data.user || data
+    if (user.role) userInfo.value = user
     else window.location.href = '/login'
   } catch(e) { window.location.href = '/login' }
   loadCost()
