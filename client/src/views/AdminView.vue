@@ -98,6 +98,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api.js'
 import CostModal from '../components/CostModal.vue'
 import ImportModals from '../components/ImportModals.vue'
@@ -107,6 +108,7 @@ const showCost = ref(false)
 const showNewLead = ref(false)
 const importRef = ref(null)
 const costData = ref([])
+const router = useRouter()
 
 const today = new Date().toISOString().slice(0,10)
 const newLead = ref({ phone: '', platform: '', entry_date: today, agent: '' })
@@ -119,8 +121,8 @@ onMounted(async () => {
     const data = await api.getCurrentUser()
     const user = data.user || data
     if (user.role) userInfo.value = user
-    else window.location.href = '/login'
-  } catch(e) { window.location.href = '/login' }
+    else router.push('/login')
+  } catch(e) { router.push('/login') }
   loadCost()
   loadAgents()
 })

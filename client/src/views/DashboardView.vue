@@ -11,7 +11,7 @@
         </div>
       </div>
       <div class="topbar-right" style="display:flex;align-items:center;gap:12px">
-        <a v-if="isAdmin" href="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">📝 录入线索</a>
+        <router-link v-if="isAdmin" to="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">📝 录入线索</router-link>
         <span>{{ userInfo.name || userInfo.username || '-' }}</span>
         <button class="btn btn-ghost" @click="doLogout" style="font-size:12px;padding:4px 10px">退出登录</button>
       </div>
@@ -48,6 +48,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api.js'
 import FilterBar from '../components/FilterBar.vue'
 import KpiCards from '../components/KpiCards.vue'
@@ -61,6 +62,7 @@ const filtered = ref([])
 const costData = ref([])
 const userInfo = ref({})
 const loading = ref(true)
+const router = useRouter()
 
 const detailVisible = ref(false)
 const detailRecord = ref({})
@@ -89,7 +91,7 @@ onMounted(async () => {
         // 但原逻辑是guest/agent都通过后端过滤，这里先保留全部
       }
     } else {
-      window.location.href = '/login'
+      router.push('/login')
       return
     }
     if (isAdmin.value) {
@@ -163,7 +165,7 @@ function getPhone(r) { return String(r['手机号'] || r['手机'] || '').trim()
 
 async function doLogout() {
   try { await api.logout() } catch(e) {}
-  window.location.href = '/login'
+  router.push('/login')
 }
 
 async function doDelete(r) {
