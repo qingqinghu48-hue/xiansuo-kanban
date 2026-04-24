@@ -77,6 +77,9 @@ export default {
       body: JSON.stringify(data)
     })
   },
+  logout() {
+    return request('/api/logout', { method: 'POST' })
+  },
   login(data) {
     return request('/api/login', {
       method: 'POST',

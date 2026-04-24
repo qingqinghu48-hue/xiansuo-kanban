@@ -12,8 +12,8 @@
       </div>
       <div class="topbar-right" style="display:flex;align-items:center;gap:12px">
         <a v-if="isAdmin" href="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">📝 录入线索</a>
-        <a v-if="isAdmin" href="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">管理后台</a>
         <span>{{ userInfo.name || userInfo.username || '-' }}</span>
+        <button class="btn btn-ghost" @click="doLogout" style="font-size:12px;padding:4px 10px">退出登录</button>
       </div>
     </div>
 
@@ -151,6 +151,11 @@ function openDetail(r) { detailRecord.value = r; detailVisible.value = true }
 function openEdit(r) { editRecord.value = r; editVisible.value = true }
 
 function getPhone(r) { return String(r['手机号'] || r['手机'] || '').trim() }
+
+async function doLogout() {
+  try { await api.logout() } catch(e) {}
+  window.location.href = '/login'
+}
 
 async function doDelete(r) {
   const phone = getPhone(r)
