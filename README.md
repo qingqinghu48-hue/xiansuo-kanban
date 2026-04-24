@@ -4,13 +4,14 @@
 
 ## 功能特性
 
-- **线索导入**：支持招商线索管理表、抖音来客客资表批量导入
+- **线索导入**：支持招商线索管理表、抖音来客客资表、小红书客资表批量导入
   - 智能识别 Excel 列（手机号、平台、招商员、入库日期等）
   - 招商线索管理表：已存在线索更新全部字段（抖音/小红书入库日期受保护）
   - 抖音客资表：按跟进员工分配到对应账号
   - Excel 内部重复自动跳过
   - 完整字段：姓名、城市、有效性、能否加微信、备注、二次联系时间/备注、电联时间、到访时间、签约时间
-- **批量删除**：多选后统一删除
+- **线索明细**：查看、编辑、删除、批量删除、下载 Excel
+- **成本录入**：抖音/小红书每日营销成本录入与查看
 - **权限控制**：管理员可操作所有数据，普通员工只能操作自己的线索
 - **数据同步**：自动监听 `leads.db` / `users.yaml` 变化并同步到 GitHub
 
@@ -18,11 +19,12 @@
 
 ```
 线索看板/
-├── server.py              # 后端 API 服务
-├── 线索看板.html           # 前端页面
-├── build_dashboard.py     # 看板数据构建
-├── check_data.py          # 数据检查脚本
-├── auto_sync.sh           # 自动同步脚本
+├── server.py              # 后端 API 服务（Flask）
+├── 线索看板.html           # 前端页面（看板内容）
+├── build_dashboard.py     # 看板数据构建脚本
+├── sync.sh                # 数据同步脚本
+├── DEPLOY.md              # 部署操作指南
+├── requirements.txt       # Python 依赖
 └── README.md              # 本文件
 ```
 
@@ -30,17 +32,23 @@
 
 | 版本 | 日期 | 更新内容 |
 |------|------|---------|
+| 4.24.001 | 2026-04-24 | 修复JS引号转义语法错误、IIFE函数未暴露到全局、XSS防护、列索引改用列名查询、清理无用代码 |
+| 4.22.018 | 2026-04-22 | 成本录入功能、admin页面no-cache、快速功能4个弹窗 |
 | 4.22.003 | 2026-04-22 | 导入API v3完整字段版；新增城市/有效性/能否加微信/备注等完整字段 |
 | 4.22.002 | 2026-04-22 | 批量删除功能；修复xlrd 2.0+不支持xlsx问题 |
 
 ## 快速开始
 
 ```bash
-pip install flask flask-cors pandas openpyxl
+pip install -r requirements.txt
 python server.py
 ```
 
-访问 `http://localhost:5000`
+访问 `http://localhost:5001`
+
+## 部署指南
+
+详见 [DEPLOY.md](./DEPLOY.md)
 
 ## 目录规范
 
@@ -48,7 +56,7 @@ python server.py
 - 响应式布局
 - 做好版本管理，支持回滚
 - 修改后验证结果
-- **更新代码正确方式**：`git checkout origin/main -- 文件名` 而非 `git reset --hard`（后者会覆盖 leads.db 导致数据丢失）
+- **更新代码正确方式**：`git checkout origin/main -- 文件名` 而非 `git reset --hard`（后者会覆盖 leads.db 导致数据丢失！）
 
 ## GitHub
 

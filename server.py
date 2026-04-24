@@ -1,6 +1,6 @@
 """
 线索看板后端服务 v2
-版本: 4.22.018
+版本: 4.24.001
 - 用户认证和数据 API
 - 线索分配功能
 """
@@ -18,6 +18,14 @@ def _clean_val(val):
     s = str(val)
     s = s.replace('\r', ' ').replace('\n', ' ')
     return s.strip()
+
+def _html_escape(val):
+    """HTML 转义，防止 XSS"""
+    if val is None:
+        return ''
+    s = str(val)
+    s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+    return s
 
 app = Flask(__name__)
 app.secret_key = 'xiansuo-kanban-secret-key-2024'
@@ -56,11 +64,11 @@ def init_db():
     # 添加新字段（如果不存在）
     try:
         c.execute('ALTER TABLE new_leads ADD COLUMN xhs_account TEXT DEFAULT ""')
-    except:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute('ALTER TABLE new_leads ADD COLUMN lead_type TEXT DEFAULT ""')
-    except:
+    except sqlite3.OperationalError:
         pass
     conn.commit()
     # 线索成本表
@@ -111,6 +119,7 @@ def load_data():
 # 加载新录入线索
 def load_new_leads():
     conn = sqlite3.connect(str(DB_FILE))
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute('SELECT * FROM new_leads ORDER BY created_at DESC')
     rows = c.fetchall()
@@ -119,26 +128,26 @@ def load_new_leads():
     leads = []
     for row in rows:
         leads.append({
-            'id': row[0],
-            '手机号': _clean_val(row[1]),
-            '平台': _clean_val(row[2]),
-            '所属招商': _clean_val(row[3]),
-            '录入日期': _clean_val(row[12]),
-            '姓名': _clean_val(row[4]),
-            '省份': _clean_val(row[5]),
-            '线索有效性': _clean_val(row[6]),
-            '所属大区': _clean_val(row[7]),
-            '是否能加上微信': _clean_val(row[8]),
-            '备注': _clean_val(row[9]),
-            '入库时间': _clean_val(row[12]) or (_clean_val(row[10])[:10] if len(row) > 10 else ''),
-            '是否已读': row[11] if len(row) > 11 else 0,
-            '二次联系时间': _clean_val(row[13]),
-            '二次联系备注': _clean_val(row[14]),
-            '最近一次电联时间': _clean_val(row[15]),
-            '到访时间': _clean_val(row[16]),
-            '签约时间': _clean_val(row[17]),
-            '小红书账号': _clean_val(row[18]) if len(row) > 18 else '',
-            '线索类型': _clean_val(row[19]) if len(row) > 19 else '',
+            'id': row['id'],
+            '手机号': _clean_val(row['phone']),
+            '平台': _clean_val(row['platform']),
+            '所属招商': _clean_val(row['agent']),
+            '录入日期': _clean_val(row['entry_date']),
+            '姓名': _clean_val(row['name']),
+            '省份': _clean_val(row['city']),
+            '线索有效性': _clean_val(row['validity']),
+            '所属大区': _clean_val(row['region']),
+            '是否能加上微信': _clean_val(row['can_wechat']),
+            '备注': _clean_val(row['remark']),
+            '入库时间': (_clean_val(row['created_at']) or '')[:10],
+            '是否已读': row['is_read'] if 'is_read' in row.keys() else 0,
+            '二次联系时间': _clean_val(row['二次联系时间']) if '二次联系时间' in row.keys() else '',
+            '二次联系备注': _clean_val(row['二次联系备注']) if '二次联系备注' in row.keys() else '',
+            '最近一次电联时间': _clean_val(row['最近一次电联时间']) if '最近一次电联时间' in row.keys() else '',
+            '到访时间': _clean_val(row['到访时间']) if '到访时间' in row.keys() else '',
+            '签约时间': _clean_val(row['签约时间']) if '签约时间' in row.keys() else '',
+            '小红书账号': _clean_val(row['xhs_account']) if 'xhs_account' in row.keys() else '',
+            '线索类型': _clean_val(row['lead_type']) if 'lead_type' in row.keys() else '',
             '来源文件': '手动录入'
         })
     return leads
@@ -308,12 +317,12 @@ def add_cost():
     
     try:
         amount = float(amount)
-    except:
+    except (ValueError, TypeError):
         return jsonify({'success': False, 'message': '金额格式错误'})
     
     try:
         unit_cost = float(unit_cost) if unit_cost else 0
-    except:
+    except (ValueError, TypeError):
         unit_cost = 0
     
     try:
@@ -730,7 +739,7 @@ def import_leads():
                 return ''
             try:
                 return pd.to_datetime(v).strftime('%Y-%m-%d')
-            except:
+            except (ValueError, TypeError):
                 pass
             # 兼容中文日期格式：2026年4月14日
             s = str(v).strip()
@@ -1032,7 +1041,7 @@ def import_douyin_kezi():
                 return ''
             try:
                 return pd.to_datetime(v).strftime('%Y-%m-%d')
-            except:
+            except (ValueError, TypeError):
                 return ''
 
         added, skipped, bad = 0, 0, 0
@@ -1456,7 +1465,7 @@ def admin_page():
                     <label>分配给 *</label>
                     <select id="agent" required>
                         <option value="">请选择招商员</option>
-                        ''' + '\n'.join([f'<option value="{a}">{a}</option>' for a in agents]) + '''
+                        ''' + '\n'.join([f'<option value="{_html_escape(a)}">{_html_escape(a)}</option>' for a in agents]) + '''
                     </select>
                 </div>
                 <button type="submit" class="btn">录入线索</button>
@@ -1697,7 +1706,7 @@ def index():
         <div class="header">
             <h1>📊 线索看板</h1>
             <div class="user-info">
-                <span>👤 ''' + user_name + ''' (''' + role_text + ''')</span>
+                <span>👤 ''' + _html_escape(user_name) + ''' (''' + _html_escape(role_text) + ''')</span>
                 <div class="nav-links">
                     ''' + ('<a href="/admin">📝 录入线索</a>' if user['role'] == 'admin' else '') + '''
                 </div>
@@ -1894,6 +1903,7 @@ def kanban_content():
             <div id="alertList"></div>
         </div>
         <script>
+            function _esc(s){ s=s==null?'':String(s); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
             (function() {
                 var leads = window.UNREAD_LEADS || [];
                 var count = window.UNREAD_COUNT || 0;
@@ -1901,7 +1911,7 @@ def kanban_content():
                     var alertDiv = document.getElementById('leadAlert');
                     var listDiv = document.getElementById('alertList');
                     leads.forEach(function(lead) {
-                        listDiv.innerHTML += '<div style="background:rgba(255,255,255,0.2);padding:8px 10px;border-radius:6px;margin-top:8px;font-size:13px;">📱 ' + lead['手机号'] + '<br><span style="font-size:12px;">平台: ' + lead['平台'] + ' | ' + lead['入库时间'] + '</span></div>';
+                        listDiv.innerHTML += '<div style="background:rgba(255,255,255,0.2);padding:8px 10px;border-radius:6px;margin-top:8px;font-size:13px;">📱 ' + _esc(lead['手机号']) + '<br><span style="font-size:12px;">平台: ' + _esc(lead['平台']) + ' | ' + _esc(lead['入库时间']) + '</span></div>';
                     });
                     alertDiv.style.display = 'block';
                     document.getElementById('alertClose').onclick = function() {
