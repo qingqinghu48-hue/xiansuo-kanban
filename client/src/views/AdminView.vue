@@ -58,40 +58,36 @@
         </div>
         <div class="modal-bd" style="padding:20px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="cost-field"><label>客户姓名</label><input type="text" v-model="newLead['姓名']"></div>
-            <div class="cost-field"><label>客户电话</label><input type="text" v-model="newLead['手机号']"></div>
-            <div class="cost-field"><label>线索平台</label><input type="text" v-model="newLead['平台']"></div>
-            <div class="cost-field"><label>入库日期</label><input type="date" v-model="newLead['入库日期']"></div>
-            <div class="cost-field"><label>所属大区</label><input type="text" v-model="newLead['所属大区']"></div>
-            <div class="cost-field"><label>所属城市</label><input type="text" v-model="newLead['省份']"></div>
             <div class="cost-field" style="grid-column:1/-1">
-              <label>线索有效性</label>
-              <select v-model="newLead['线索有效性']">
+              <label>手机号 *</label>
+              <input type="text" v-model="newLead.phone" placeholder="请输入手机号">
+            </div>
+            <div class="cost-field">
+              <label>线索平台 *</label>
+              <select v-model="newLead.platform">
                 <option value="">请选择</option>
-                <option>意向客户</option>
-                <option>一般客户</option>
-                <option>未联系上</option>
-                <option>普通线索</option>
-                <option>无意向客户</option>
-                <option>无效线索</option>
+                <option>400线索</option>
+                <option>小红书</option>
+                <option>转介绍</option>
+                <option>豆包</option>
+                <option>其他</option>
               </select>
             </div>
-            <div class="cost-field" style="grid-column:1/-1">
-              <label>能否加上微信</label>
-              <select v-model="newLead['是否能加上微信']">
-                <option value="">请选择</option>
-                <option>是</option>
-                <option>否</option>
-              </select>
+            <div class="cost-field">
+              <label>录入日期 *</label>
+              <input type="date" v-model="newLead.entry_date">
             </div>
             <div class="cost-field" style="grid-column:1/-1">
-              <label>客户情况备注</label>
-              <textarea v-model="newLead['备注']" rows="3" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-xs);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+              <label>分配给 *</label>
+              <select v-model="newLead.agent">
+                <option value="">请选择招商员</option>
+                <option v-for="a in agents" :key="a" :value="a">{{ a }}</option>
+              </select>
             </div>
           </div>
           <div style="text-align:right;margin-top:16px">
             <button class="btn btn-ghost" @click="showNewLead = false">取消</button>
-            <button class="btn btn-pri" style="margin-left:8px" @click="submitNewLead">保存</button>
+            <button class="btn btn-pri" style="margin-left:8px" @click="submitNewLead">录入线索</button>
           </div>
           <div :class="['cost-result', newResultType]">{{ newResult }}</div>
         </div>
@@ -112,10 +108,11 @@ const showNewLead = ref(false)
 const importRef = ref(null)
 const costData = ref([])
 
-const newLead = ref({ '入库日期': today })
+const today = new Date().toISOString().slice(0,10)
+const newLead = ref({ phone: '', platform: '', entry_date: today, agent: '' })
 const newResult = ref('')
 const newResultType = ref('')
-const today = new Date().toISOString().slice(0,10)
+const agents = ref([])
 
 onMounted(async () => {
   try {
@@ -125,17 +122,47 @@ onMounted(async () => {
     else window.location.href = '/login'
   } catch(e) { window.location.href = '/login' }
   loadCost()
+  loadAgents()
 })
 
 async function loadCost() {
   try { const data = await api.getCost(); costData.value = data || [] } catch(e) {}
 }
 
-async function submitNewLead() {
+async function loadAgents() {
   try {
-    const data = await api.updateLead({ ...newLead.value, action: 'create' })
-    if (data.success) { newResult.value = '录入成功'; newResultType.value = 'ok'; newLead.value = {} }
-    else { newResult.value = data.message || '录入失败'; newResultType.value = 'err' }
+    const res = await api.getLeads()
+    const records = res.records || res
+    const set = new Set()
+    records.forEach(r => {
+      const a = r['所属招商'] || r['跟进员工']
+      if (a) set.add(a)
+    })
+    agents.value = Array.from(set).sort()
+  } catch(e) {}
+}
+
+async function submitNewLead() {
+  if (!newLead.value.phone || !newLead.value.platform || !newLead.value.agent) {
+    newResult.value = '请填写完整信息'
+    newResultType.value = 'err'
+    return
+  }
+  try {
+    const data = await api.addLead({
+      phone: newLead.value.phone,
+      platform: newLead.value.platform,
+      agent: newLead.value.agent,
+      entry_date: newLead.value.entry_date || today
+    })
+    if (data.success) {
+      newResult.value = '线索录入成功'
+      newResultType.value = 'ok'
+      newLead.value = { phone: '', platform: '', entry_date: today, agent: '' }
+    } else {
+      newResult.value = data.message || '录入失败'
+      newResultType.value = 'err'
+    }
   } catch(e) { newResult.value = '网络错误'; newResultType.value = 'err' }
 }
 </script>

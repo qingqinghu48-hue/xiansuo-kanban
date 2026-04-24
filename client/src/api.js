@@ -68,6 +68,12 @@ export default {
       body: formData
     }).then(r => r.json())
   },
+  addLead(data) {
+    return request('/api/leads/add', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
   login(data) {
     return request('/api/login', {
       method: 'POST',
