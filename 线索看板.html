@@ -1713,7 +1713,7 @@ window.__COST_DAYS__ = [];
     return '<span style="color:#94a3b8">—</span>';
   }
 
-  function showDetail(gidx) {
+  window.showDetail = function showDetail(gidx) {
     var r = filtered[gidx];
     if (!r) return;
     var html = '';
@@ -1737,7 +1737,7 @@ window.__COST_DAYS__ = [];
     setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .4s'; setTimeout(function(){ t.remove(); },400); },2500);
   }
 
-  function deleteLead(gidx) {
+  window.deleteLead = function deleteLead(gidx) {
     var r = filtered[gidx];
     if (!r) { toast('记录不存在', 'err'); return; }
     var phone = r['手机号'] || r['手机'];
@@ -1846,8 +1846,8 @@ window.__COST_DAYS__ = [];
     }
   };
 
-  // 下载Excel
-  function downloadExcel() {
+  // 下载Excel - 挂载到全局以供 onclick 调用
+  window.downloadExcel = function downloadExcel() {
     var rows = document.querySelectorAll('#tbody tr');
     if (rows.length === 0) {
       alert('没有数据可下载');
@@ -1873,7 +1873,7 @@ window.__COST_DAYS__ = [];
     link.click();
   }
 
-  function toggleSelectAll() {
+  window.toggleSelectAll = function toggleSelectAll() {
     var all = document.getElementById('selectAll').checked;
     var checks = document.querySelectorAll('.row-check');
     checks.forEach(function(ch) { ch.checked = all; });
@@ -1887,7 +1887,7 @@ window.__COST_DAYS__ = [];
     btn.textContent = '🗑 批量删除 (' + checked.length + ')';
   }
 
-  function batchDelete() {
+  window.batchDelete = function batchDelete() {
     var checks = document.querySelectorAll('.row-check:checked');
     var ids = [];
     var phones = [];
@@ -1939,7 +1939,7 @@ window.__COST_DAYS__ = [];
     .catch(function(err){ toast('删除失败: ' + err, 'err'); });
   }
 
-  function editLead(gidx){
+  window.editLead = function editLead(gidx){
     var r = filtered[gidx];
     if (!r) { toast('记录不存在', 'err'); return; }
     var isAdmin = window.CURRENT_USER && window.CURRENT_USER.role === 'admin';
