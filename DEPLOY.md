@@ -16,28 +16,49 @@ git commit -m "描述修改内容"
 git push
 ```
 
-### 2. 服务器拉取并重启（逐条执行！）
+### 2. 服务器拉取并重启
 
-**第一步：拉取最新代码**
+**推荐方式：用重启脚本（避免SSH卡住）**
+```bash
+# 一条命令完成拉取+重启
+ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 'cat > /tmp/restart.sh << "EOF"
+#!/bin/bash
+cd /www/xiansuo-kanban
+git fetch origin && git reset --hard origin/main
+kill -9 $(pgrep -f "python3 server") 2>/dev/null
+sleep 1
+nohup python3 server.py > server.log 2>&1 &
+echo restarted
+EOF
+chmod +x /tmp/restart.sh && bash /tmp/restart.sh'
+```
+
+**或者分步执行：**
+
+第一步：拉取最新代码
 ```bash
 ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "cd /www/xiansuo-kanban && git fetch origin && git reset --hard origin/main"
 ```
 
-**第二步：杀掉旧进程**
+第二步：杀掉旧进程
 ```bash
 ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "pkill -9 -f 'python3 server.py'"
 ```
 
-**第三步：启动新进程**
+第三步：启动新进程（用脚本方式避免SSH卡住）
 ```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "cd /www/xiansuo-kanban && setsid python3 server.py > server.log 2>&1 < /dev/null &"
+ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 'cat > /tmp/restart.sh << "EOF"
+#!/bin/bash
+cd /www/xiansuo-kanban
+nohup python3 server.py > server.log 2>&1 &
+echo restarted
+EOF
+chmod +x /tmp/restart.sh && bash /tmp/restart.sh'
 ```
 
-> ⚠️ **注意**：第三步启动后 SSH 可能不会自动返回，按 Ctrl+C 即可，服务已在后台运行。
-
-**第四步：验证服务（另开终端）**
+第四步：验证服务
 ```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "ps aux | grep server.py | grep -v grep"
+ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "pgrep -f 'python3 server' && tail -3 /www/xiansuo-kanban/server.log"
 ```
 
 ## 二、一键部署脚本
