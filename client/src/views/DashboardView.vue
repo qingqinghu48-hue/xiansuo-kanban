@@ -11,6 +11,7 @@
         </div>
       </div>
       <div class="topbar-right" style="display:flex;align-items:center;gap:12px">
+        <router-link v-if="isAdmin" to="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">📝 录入线索</router-link>
         <router-link v-if="isAdmin" to="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">管理后台</router-link>
         <span>{{ userInfo.name || userInfo.username || '-' }}</span>
       </div>
