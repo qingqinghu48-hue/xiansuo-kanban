@@ -184,9 +184,10 @@ function batchDelete() {
   selectAll.value = false
 }
 function downloadExcel() {
-  if (!pageData.value.length) { alert('没有数据可下载'); return }
+  const data = sorted.value
+  if (!data.length) { alert('没有数据可下载'); return }
   let csv = '\uFEFF入库日期,平台,姓名,手机号,城市,有效性,所属大区,所属招商,能否加微\n'
-  pageData.value.forEach(r => {
+  data.forEach(r => {
     const row = [
       fmtDate(r), r['平台']||'', r['姓名']||'', r['手机号']||r['手机']||'', r['省份']||'',
       r['线索有效性']||r['有效性']||'', r['所属大区']||'', r['所属招商']||'', r['是否能加上微信']||''
