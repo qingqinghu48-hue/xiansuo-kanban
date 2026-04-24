@@ -3,6 +3,7 @@ const API_BASE = ''
 async function request(url, options = {}) {
   const res = await fetch(API_BASE + url, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers
@@ -63,6 +64,7 @@ export default {
   importFile(type, formData) {
     return fetch(API_BASE + '/api/import/' + type, {
       method: 'POST',
+      credentials: 'include',
       body: formData
     }).then(r => r.json())
   },
