@@ -8,7 +8,7 @@
       <div class="modal-bd" style="padding:20px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="cost-field"><label>客户姓名</label><input type="text" v-model="form['姓名']"></div>
-          <div class="cost-field"><label>客户电话</label><input type="text" v-model="form['手机号']" readonly style="background:var(--surface2);color:var(--text-3)"></div>
+          <div class="cost-field"><label>客户电话</label><input type="text" v-model="form['手机号']"></div>
           <div class="cost-field"><label>线索平台</label><input type="text" v-model="form['平台']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
           <div class="cost-field"><label>入库日期</label><input type="date" v-model="form['入库日期']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
           <div class="cost-field"><label>小红书账号</label><input type="text" v-model="form['小红书账号']" placeholder="请输入小红书账号"></div>

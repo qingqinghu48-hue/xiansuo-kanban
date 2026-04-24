@@ -168,23 +168,32 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
   const xhsAccount = data.xhs_account || '';
   const leadType = data.lead_type || '';
 
+  // 如果修改了手机号，检查是否与其他记录冲突
+  const newPhone = data['手机号'] || data.phone || '';
+  if (newPhone && newPhone !== phone) {
+    const dup = db.prepare('SELECT id FROM new_leads WHERE phone = ?').get(newPhone);
+    if (dup) {
+      return res.json({ success: false, message: '已有重复线索，更新失败' });
+    }
+  }
+
   if (user.role === 'admin') {
     db.prepare(`UPDATE new_leads SET
-      name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
+      phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
       platform = ?, entry_date = ?, \u4e8c\u6b21\u8054\u7cfb\u65f6\u95f4 = ?, \u4e8c\u6b21\u8054\u7cfb\u5907\u6ce8 = ?, \u6700\u8fd1\u4e00\u6b21\u7535\u8054\u65f6\u95f4 = ?, \u5230\u8bbf\u65f6\u95f4 = ?, \u7b7e\u7ea6\u65f6\u95f4 = ?,
       xhs_account = ?, lead_type = ?
       WHERE id = ?`).run(
-      name, city, validity, region, canWechat, remark,
+      newPhone || phone, name, city, validity, region, canWechat, remark,
       platform, entryDate, contactTime, contactRemark, callTime, visitTime, signTime,
       xhsAccount, leadType, leadId
     );
   } else {
     db.prepare(`UPDATE new_leads SET
-      name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
+      phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
       \u4e8c\u6b21\u8054\u7cfb\u65f6\u95f4 = ?, \u4e8c\u6b21\u8054\u7cfb\u5907\u6ce8 = ?, \u6700\u8fd1\u4e00\u6b21\u7535\u8054\u65f6\u95f4 = ?, \u5230\u8bbf\u65f6\u95f4 = ?, \u7b7e\u7ea6\u65f6\u95f4 = ?,
       xhs_account = ?, lead_type = ?
       WHERE id = ?`).run(
-      name, city, validity, region, canWechat, remark,
+      newPhone || phone, name, city, validity, region, canWechat, remark,
       contactTime, contactRemark, callTime, visitTime, signTime,
       xhsAccount, leadType, leadId
     );
