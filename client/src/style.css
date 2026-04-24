@@ -248,6 +248,14 @@ td{
 .page-num:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 .page-num.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
+.filter-tag{
+  display:inline-block;padding:3px 10px;border-radius:var(--radius-xs);
+  font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);
+  cursor:pointer;transition:all .15s;user-select:none;
+}
+.filter-tag:hover{border-color:var(--primary);color:var(--primary)}
+.filter-tag.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
 .modal{
   display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;
   backdrop-filter:blur(4px);align-items:center;justify-content:center;

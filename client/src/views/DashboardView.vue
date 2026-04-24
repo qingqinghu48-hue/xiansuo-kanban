@@ -120,8 +120,14 @@ function dedup(arr) {
   return res
 }
 
+function splitRegions(val) {
+  if (!val) return []
+  return String(val).split(/[,，、]\s*/).map(s => s.trim()).filter(Boolean)
+}
+
 function onFilter(f) {
-  const ds = f.ds, de = f.de, fp = f.fp, fv = f.fv, flt = f.flt, fr = f.fr, fs = f.fs, fk = (f.fk || '').trim().toLowerCase()
+  const ds = f.ds, de = f.de, fp = f.fp, fv = f.fv, flt = f.flt, fr = f.fr || [], fs = f.fs, fk = (f.fk || '').trim().toLowerCase()
+  const frSet = new Set(fr)
   const res = []
   allData.value.forEach(r => {
     const dt = String(r['入库时间'] || r['入库日期'] || '').slice(0, 10)
@@ -130,7 +136,10 @@ function onFilter(f) {
     if (fp && r['平台'] !== fp) return
     if (fv && r['线索有效性'] !== fv && r['有效性'] !== fv) return
     if (flt && r['线索类型'] !== flt) return
-    if (fr && r['所属大区'] !== fr) return
+    if (frSet.size) {
+      const recordRegions = splitRegions(r['所属大区'])
+      if (!recordRegions.some(region => frSet.has(region))) return
+    }
     if (fs && r['所属招商'] !== fs) return
     if (fk) {
       const hay = (r['姓名'] || '') + (r['手机号'] || '') + (r['手机'] || '') + (r['所属大区'] || '') + (r['所属招商'] || '')

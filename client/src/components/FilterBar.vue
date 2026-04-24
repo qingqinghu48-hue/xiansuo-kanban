@@ -27,10 +27,13 @@
         <option>自然流线索</option>
       </select>
       <span class="filter-label">大区</span>
-      <select class="filter-select" v-model="filter.fr">
-        <option value="">全部大区</option>
-        <option v-for="r in regions" :key="r" :value="r">{{ r }}</option>
-      </select>
+      <div class="filter-multi" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+        <label v-for="r in regions" :key="r" class="filter-tag" :class="{ active: filter.fr.includes(r) }">
+          <input type="checkbox" :value="r" v-model="filter.fr" style="display:none">
+          {{ r }}
+        </label>
+        <button v-if="filter.fr.length" class="filter-clear" @click="filter.fr = []" style="font-size:11px;color:var(--primary);background:none;border:none;cursor:pointer">清除</button>
+      </div>
       <span class="filter-label">招商员</span>
       <select class="filter-select" v-model="filter.fs">
         <option value="">全部招商</option>
@@ -65,17 +68,25 @@ const filter = reactive({
   fp: '',
   fv: '',
   flt: '',
-  fr: '',
+  fr: [],
   fs: '',
   fk: ''
 })
+
+function splitRegions(val) {
+  if (!val) return []
+  // 支持逗号、顿号、逗号+空格分隔
+  return String(val).split(/[,，、]\s*/).map(s => s.trim()).filter(Boolean)
+}
 
 function extractOptions() {
   const regSet = new Set()
   const stfSet = new Set()
   const platSet = new Set()
   props.allData.forEach(r => {
-    if (r['所属大区']) regSet.add(r['所属大区'])
+    if (r['所属大区']) {
+      splitRegions(r['所属大区']).forEach(region => regSet.add(region))
+    }
     if (r['所属招商']) stfSet.add(r['所属招商'])
     if (r['平台']) platSet.add(r['平台'])
   })
@@ -93,6 +104,8 @@ function loadFilterState() {
     const raw = localStorage.getItem('kanban_filter')
     if (!raw) return
     const state = JSON.parse(raw)
+    // 兼容旧数据：fr 可能为字符串
+    if (state.fr && !Array.isArray(state.fr)) state.fr = state.fr ? [state.fr] : []
     Object.assign(filter, state)
   } catch(e) {}
 }
@@ -108,7 +121,7 @@ function reset() {
   filter.fp = ''
   filter.fv = ''
   filter.flt = ''
-  filter.fr = ''
+  filter.fr = []
   filter.fs = ''
   filter.fk = ''
   saveFilterState()
