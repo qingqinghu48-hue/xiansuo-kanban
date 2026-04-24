@@ -115,7 +115,10 @@ function reset() {
   emit('filter', { ...filter })
 }
 
-watch(() => props.allData, extractOptions, { immediate: true })
+watch(() => props.allData, (val) => {
+  extractOptions()
+  if (val && val.length) emit('filter', { ...filter })
+}, { immediate: true })
 watch(() => [filter.ds, filter.de], () => { saveFilterState(); emit('filter', { ...filter }) })
 
 onMounted(() => {
