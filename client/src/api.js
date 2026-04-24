@@ -1,4 +1,4 @@
-const API_BASE = ''
+const API_BASE = import.meta.env.PROD ? '/LeadKanBan' : ''
 
 async function request(url, options = {}) {
   const res = await fetch(API_BASE + url, {

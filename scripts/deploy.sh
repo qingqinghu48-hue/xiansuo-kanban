@@ -5,7 +5,7 @@ set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SERVER_IP="47.116.200.214"
-SERVER_DIR="/var/www/SupplyChainSystem/LeadKanBan"
+SERVER_DIR="/var/www/LeadKanBan"
 SSH_KEY="~/.ssh/id_ed25519"
 
 echo ">>> 推送代码到 GitHub..."
