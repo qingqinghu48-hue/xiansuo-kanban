@@ -1,56 +1,57 @@
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
+*$py.class
+*.so
+.Python
 build/
-.venv/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# 数据库及数据文件（绝对禁止同步到服务端）
-*.db
-*.db-journal
-users.yaml
-data.js
-
-# Excel/CSV 数据文件（导入源文件，不提交）
-*.xlsx
-*.csv
-
-# 客资数据目录
-抖音客资/
-小红书客资/
-
-# 生成文件
-dashboard_data.json
-
-# 运行时文件（不提交）
-server.log
-sync.log
-test_out.txt
-
-# 编码备份
-server_b64.txt
-server_b64_clean.txt
-data_b64.txt
-
-# 压缩包备份
-*.tar.gz
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
-
-# 临时文件
-*.tmp
 *~
 
-# 工作目录
-.workbuddy/
-.codebuddy/
+# Environment variables
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Database (do not commit production data)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.pids/
+.logs/

@@ -1,0 +1,23 @@
+admin:
+  username: admin
+  password: admin123
+  name: 管理员
+
+agents:
+  - username: zhengjianjun
+    password: zjj001345
+    name: 郑建俊
+    regions:
+      - 华东
+      - 华南
+  - username: liurenjie
+    password: lrj001678
+    name: 刘仁杰
+    regions:
+      - 华北
+      - 西南
+
+guest:
+  username: guest
+  password: guest123
+  name: 游客
