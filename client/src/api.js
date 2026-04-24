@@ -1,0 +1,75 @@
+const API_BASE = ''
+
+async function request(url, options = {}) {
+  const res = await fetch(API_BASE + url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  })
+  return res.json()
+}
+
+export default {
+  getLeads() {
+    return request('/api/leads')
+  },
+  getCurrentUser() {
+    return request('/api/current_user')
+  },
+  getCost() {
+    return request('/api/cost')
+  },
+  deleteLead(phone) {
+    return request('/api/leads/delete', {
+      method: 'POST',
+      body: JSON.stringify({ phone })
+    })
+  },
+  batchDelete(payload) {
+    return request('/api/leads/batch-delete', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  },
+  updateLead(data) {
+    return request('/api/leads/update', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  markRead() {
+    return request('/api/leads/mark_read', { method: 'POST' })
+  },
+  submitCost(data) {
+    return request('/api/cost', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  submitUnitCost(data) {
+    return request('/api/cost/unit', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  deleteCost(id) {
+    return request('/api/cost/delete', {
+      method: 'POST',
+      body: JSON.stringify({ id })
+    })
+  },
+  importFile(type, formData) {
+    return fetch(API_BASE + '/api/import/' + type, {
+      method: 'POST',
+      body: formData
+    }).then(r => r.json())
+  },
+  login(data) {
+    return request('/api/login', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+}

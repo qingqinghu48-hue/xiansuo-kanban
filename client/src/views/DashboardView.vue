@@ -1,0 +1,196 @@
+<template>
+  <div>
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="brand">
+          <div class="brand-icon">招</div>
+          <div class="brand-text">
+            <h1>招商线索看板</h1>
+            <span>全渠道线索数据总览</span>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right" style="display:flex;align-items:center;gap:12px">
+        <router-link v-if="isAdmin" to="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">管理后台</router-link>
+        <span>{{ userInfo.name || userInfo.username || '-' }}</span>
+      </div>
+    </div>
+
+    <div class="main">
+      <FilterBar :allData="allData" @filter="onFilter" />
+      <KpiCards :filtered="filtered" :isAdmin="isAdmin" :costData="costData" />
+      <ChartSection :filtered="filtered" :costData="costData" />
+      <DataTable
+        :filtered="filtered"
+        :isGuest="isGuest"
+        @detail="openDetail"
+        @edit="openEdit"
+        @delete="doDelete"
+        @batchDelete="doBatchDelete"
+      />
+    </div>
+
+    <DetailModal :visible="detailVisible" :record="detailRecord" @close="detailVisible = false" />
+    <EditModal :visible="editVisible" :record="editRecord" :isAdmin="isAdmin" @close="editVisible = false" @saved="onEditSaved" />
+
+    <!-- Toast -->
+    <div v-if="toastMsg" :class="['toast', toastType === 'ok' ? 'toast-ok' : 'toast-err']">{{ toastMsg }}</div>
+
+    <!-- Notify -->
+    <div v-if="notifyVisible" class="notify-bar">
+      <div class="notify-title">🎉 您有 {{ unreadCount }} 条新线索</div>
+      <div class="notify-text">请及时跟进处理</div>
+      <div class="notify-close" @click="closeNotify">我知道了</div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import api from '../api.js'
+import FilterBar from '../components/FilterBar.vue'
+import KpiCards from '../components/KpiCards.vue'
+import ChartSection from '../components/ChartSection.vue'
+import DataTable from '../components/DataTable.vue'
+import DetailModal from '../components/DetailModal.vue'
+import EditModal from '../components/EditModal.vue'
+
+const allData = ref([])
+const filtered = ref([])
+const costData = ref([])
+const userInfo = ref({})
+const loading = ref(true)
+
+const detailVisible = ref(false)
+const detailRecord = ref({})
+const editVisible = ref(false)
+const editRecord = ref({})
+
+const toastMsg = ref('')
+const toastType = ref('ok')
+
+const notifyVisible = ref(false)
+const unreadCount = ref(0)
+
+const isAdmin = computed(() => userInfo.value.role === 'admin')
+const isGuest = computed(() => userInfo.value.role === 'guest')
+
+onMounted(async () => {
+  try {
+    const [leadsRes, userRes] = await Promise.all([api.getLeads(), api.getCurrentUser()])
+    if (leadsRes.data) allData.value = dedup(leadsRes.data)
+    else if (Array.isArray(leadsRes)) allData.value = dedup(leadsRes)
+    if (userRes.role) {
+      userInfo.value = userRes
+      if (!isAdmin.value) {
+        // 非admin只显示自己的线索（如果有分配）
+        // 但原逻辑是guest/agent都通过后端过滤，这里先保留全部
+      }
+    } else {
+      window.location.href = '/login'
+      return
+    }
+    if (isAdmin.value) {
+      try { const c = await api.getCost(); costData.value = c || [] } catch(e) {}
+    }
+    // 检查未读新线索
+    if (!isAdmin.value && leadsRes.new_count) {
+      unreadCount.value = leadsRes.new_count
+      notifyVisible.value = true
+    }
+  } catch(e) {
+    console.error(e)
+  }
+  loading.value = false
+})
+
+function dedup(arr) {
+  const seen = {}
+  const res = []
+  arr.forEach(r => {
+    const phone = String(r['手机号'] || r['手机'] || '').trim()
+    if (!phone || phone === 'undefined') { res.push(r); return }
+    if (!seen[phone]) { seen[phone] = true; res.push(r) }
+  })
+  return res
+}
+
+function onFilter(f) {
+  const ds = f.ds, de = f.de, fp = f.fp, fv = f.fv, flt = f.flt, fr = f.fr, fs = f.fs, fk = (f.fk || '').trim().toLowerCase()
+  const res = []
+  allData.value.forEach(r => {
+    const dt = String(r['入库时间'] || r['入库日期'] || '').slice(0, 10)
+    if (dt && dt < ds) return
+    if (dt && dt > de) return
+    if (fp && r['平台'] !== fp) return
+    if (fv && r['线索有效性'] !== fv && r['有效性'] !== fv) return
+    if (flt && r['线索类型'] !== flt) return
+    if (fr && r['所属大区'] !== fr) return
+    if (fs && r['所属招商'] !== fs) return
+    if (fk) {
+      const hay = (r['姓名'] || '') + (r['手机号'] || '') + (r['手机'] || '') + (r['所属大区'] || '') + (r['所属招商'] || '')
+      if (hay.toLowerCase().indexOf(fk) === -1) return
+    }
+    res.push(r)
+  })
+  filtered.value = res
+}
+
+function showToast(msg, type) {
+  toastMsg.value = msg
+  toastType.value = type
+  setTimeout(() => { toastMsg.value = '' }, 2500)
+}
+
+function openDetail(r) { detailRecord.value = r; detailVisible.value = true }
+function openEdit(r) { editRecord.value = r; editVisible.value = true }
+
+async function doDelete(r) {
+  const phone = r['手机号'] || r['手机']
+  if (!phone || phone === '-') { showToast('该记录缺少手机号，无法删除', 'err'); return }
+  if (!confirm('确定删除 ' + (r['姓名'] || '') + ' (' + phone + ') 的线索记录？')) return
+  try {
+    const data = await api.deleteLead(phone)
+    if (data.success) {
+      allData.value = allData.value.filter(x => (x['手机号']||x['手机']) !== phone)
+      onFilter(getCurrentFilter())
+      showToast('删除成功', 'ok')
+    } else { showToast(data.message || '删除失败', 'err') }
+  } catch(e) { showToast('网络错误', 'err') }
+}
+
+async function doBatchDelete(rows) {
+  const phones = rows.map(r => r['手机号'] || r['手机']).filter(p => p && p !== '-')
+  if (!phones.length) { showToast('请先选择要删除的线索', 'err'); return }
+  if (!confirm('确定删除选中的 ' + phones.length + ' 条线索？')) return
+  try {
+    const data = await api.batchDelete({ phones })
+    if (data.success) {
+      const set = new Set(phones)
+      allData.value = allData.value.filter(x => !set.has(x['手机号'] || x['手机']))
+      onFilter(getCurrentFilter())
+      showToast(data.message || '删除成功', 'ok')
+    } else { showToast(data.message || '删除失败', 'err') }
+  } catch(e) { showToast('删除失败', 'err') }
+}
+
+function onEditSaved(payload) {
+  const phone = payload.phone
+  const idx = allData.value.findIndex(x => (x['手机号']||x['手机']) === phone)
+  if (idx >= 0) {
+    Object.keys(payload).forEach(k => { if (k !== 'phone') allData.value[idx][k] = payload[k] })
+  }
+  onFilter(getCurrentFilter())
+}
+
+function getCurrentFilter() {
+  try {
+    return JSON.parse(localStorage.getItem('kanban_filter') || '{}')
+  } catch(e) { return {} }
+}
+
+async function closeNotify() {
+  notifyVisible.value = false
+  try { await api.markRead() } catch(e) {}
+}
+</script>

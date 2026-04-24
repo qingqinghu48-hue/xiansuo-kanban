@@ -1,94 +1,74 @@
-# 线索看板 - 部署操作指南
+# 部署指南
 
-## 服务器信息
-- 服务器IP：47.116.116.67
-- 项目目录：/www/xiansuo-kanban
-- 端口：5001
-- 启动文件：run.py
-- SSH密钥：~/.ssh/xiansuo_deploy
+## 环境要求
 
-## 一、常规部署流程
+- Node.js >= 18
+- npm >= 9
 
-### 1. 本地推送代码到 GitHub
-```bash
-cd /Users/sunji/Desktop/Project/LeadKanBan
-git add -A
-git commit -m "描述修改内容"
-git push origin dev
-```
+## 服务器部署
 
-### 2. 服务器拉取并重启
-
-**推荐方式：使用部署脚本**
-```bash
-./scripts/deploy.sh
-```
-
-**或者分步执行：**
-
-第一步：拉取最新代码
-```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "cd /www/xiansuo-kanban && git fetch origin && git reset --hard origin/dev"
-```
-
-第二步：杀掉旧进程
-```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "pkill -9 -f 'python3 run.py'"
-```
-
-第三步：启动新进程
-```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 'cat > /tmp/restart.sh << "EOF"
-#!/bin/bash
-cd /www/xiansuo-kanban
-nohup python3 run.py > run.log 2>&1 &
-echo restarted
-EOF
-chmod +x /tmp/restart.sh && bash /tmp/restart.sh'
-```
-
-第四步：验证服务
-```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "pgrep -f 'python3 run.py' && tail -3 /www/xiansuo-kanban/run.log"
-```
-
-## 二、开发环境启动
+### 1. 克隆项目
 
 ```bash
-cd /Users/sunji/Desktop/Project/LeadKanBan
-./scripts/start.sh
+git clone git@github.com:qingqinghu48-hue/xiansuo-kanban.git /www/LeadKanBan
+cd /www/LeadKanBan
 ```
 
-或手动启动：
+### 2. 安装依赖
+
 ```bash
-python run.py
+npm run install:all
 ```
 
-## 三、常见问题排查
+### 3. 构建前端
 
-### 1. 端口被占用
 ```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "fuser -k 5001/tcp"
+npm run build
 ```
 
-### 2. 查看服务日志
+### 4. 配置后端生产环境
+
+编辑 `server/.env`:
+
+```env
+PORT=5001
+NODE_ENV=production
+```
+
+### 5. 使用 PM2 启动后端
+
 ```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "tail -50 /www/xiansuo-kanban/run.log"
+cd server
+npm install -g pm2
+pm2 start app.js --name "lead-kanban"
+pm2 save
+pm2 startup
 ```
 
-### 3. 检查 Python 进程
+### 6. 配置 Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        root /www/LeadKanBan/client/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+## 本地开发
+
 ```bash
-ssh -i ~/.ssh/xiansuo_deploy root@47.116.116.67 "ps aux | grep python | grep -v grep"
+npm run dev
 ```
 
-### 4. 浏览器缓存问题
-- Mac: `Cmd + Shift + R` 强制刷新
-- Windows: `Ctrl + Shift + R`
-- 或使用隐私/无痕模式访问
-
-## 四、重要提醒
-
-1. **绝对不能用 `git reset --hard` 在本地！** 会覆盖 leads.db 导致数据丢失
-2. 服务器更新代码用 `git fetch + git reset --hard origin/dev` 是安全的（不影响数据库）
-3. 修改代码必须先在本地改 → 推 GitHub → 服务器拉取
-4. 数据库文件（leads.db）不要提交到 Git
+同时启动前后端开发服务器。
