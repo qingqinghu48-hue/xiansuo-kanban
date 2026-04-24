@@ -27,7 +27,7 @@
         </thead>
         <tbody>
           <tr v-for="(r, idx) in pageData" :key="idx">
-            <td v-if="!isGuest" style="text-align:center"><input type="checkbox" v-model="selected" :value="r"></td>
+            <td v-if="!isGuest" style="text-align:center"><input type="checkbox" :checked="selected.includes(r)" @change="e => toggleRow(r, e.target.checked)"></td>
             <td class="td-date">{{ fmtDate(r) }}</td>
             <td><span class="tag" :style="platStyle(r['平台'])">{{ r['平台'] || '-' }}</span></td>
             <td class="td-num">{{ r['姓名'] || '-' }}</td>
@@ -166,6 +166,10 @@ function fmtDate(r) {
 const batchStyle = computed(() => {
   return selected.value.length ? { display: 'inline-block', background: '#fff', color: 'var(--danger)', borderColor: 'var(--danger)', fontWeight: 600 } : { display: 'none' }
 })
+function toggleRow(row, checked) {
+  if (checked) { if (!selected.value.includes(row)) selected.value.push(row) }
+  else { const i = selected.value.indexOf(row); if (i > -1) selected.value.splice(i, 1) }
+}
 function toggleSelectAll() {
   if (selectAll.value) selected.value = [...pageData.value]
   else selected.value = []

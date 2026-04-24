@@ -61,7 +61,7 @@
             <div class="cost-field"><label>客户姓名</label><input type="text" v-model="newLead['姓名']"></div>
             <div class="cost-field"><label>客户电话</label><input type="text" v-model="newLead['手机号']"></div>
             <div class="cost-field"><label>线索平台</label><input type="text" v-model="newLead['平台']"></div>
-            <div class="cost-field"><label>入库日期</label><input type="date" v-model="newLead['入库日期']" :value="today"></div>
+            <div class="cost-field"><label>入库日期</label><input type="date" v-model="newLead['入库日期']"></div>
             <div class="cost-field"><label>所属大区</label><input type="text" v-model="newLead['所属大区']"></div>
             <div class="cost-field"><label>所属城市</label><input type="text" v-model="newLead['省份']"></div>
             <div class="cost-field" style="grid-column:1/-1">
@@ -112,7 +112,7 @@ const showNewLead = ref(false)
 const importRef = ref(null)
 const costData = ref([])
 
-const newLead = ref({})
+const newLead = ref({ '入库日期': today })
 const newResult = ref('')
 const newResultType = ref('')
 const today = new Date().toISOString().slice(0,10)
