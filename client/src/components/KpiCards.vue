@@ -69,15 +69,17 @@ const xhsPct = computed(() => {
 })
 
 const totalSpend = computed(() => {
+  const arr = Array.isArray(props.costData) ? props.costData : []
   let sum = 0
-  props.costData.forEach(c => { sum += Number(c.amount || 0) })
+  arr.forEach(c => { sum += Number(c.amount || 0) })
   return sum.toFixed(2)
 })
 
 const avgCost = computed(() => {
   const adLeads = props.filtered.filter(r => r['平台'] === '抖音' || r['平台'] === '小红书')
   if (!adLeads.length) return '0.00'
-  const sum = props.costData.reduce((a, c) => a + Number(c.amount || 0), 0)
+  const arr = Array.isArray(props.costData) ? props.costData : []
+  const sum = arr.reduce((a, c) => a + Number(c.amount || 0), 0)
   return (sum / adLeads.length).toFixed(2)
 })
 </script>

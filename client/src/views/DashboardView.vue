@@ -93,7 +93,10 @@ onMounted(async () => {
       return
     }
     if (isAdmin.value) {
-      try { const c = await api.getCost(); costData.value = c || [] } catch(e) {}
+      try {
+        const c = await api.getCost()
+        costData.value = Array.isArray(c) ? c : (c.cost_data || [])
+      } catch(e) { costData.value = [] }
     }
     // 检查未读新线索
     if (!isAdmin.value && (leadsRes.new_leads_count || leadsRes.new_count)) {
