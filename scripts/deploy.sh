@@ -1,31 +1,29 @@
 #!/bin/bash
-# 线索看板 - 一键部署脚本
+# 线索看板 - 一键部署脚本（Node.js 版本）
 
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SERVER_IP="47.116.116.67"
-SERVER_DIR="/www/xiansuo-kanban"
-SSH_KEY="~/.ssh/xiansuo_deploy"
+SERVER_IP="47.116.200.214"
+SERVER_DIR="/var/www/SupplyChainSystem/LeadKanBan"
+SSH_KEY="~/.ssh/id_ed25519"
 
 echo ">>> 推送代码到 GitHub..."
 cd "$PROJECT_DIR"
 git add -A
 git commit -m "deploy: $(date +%Y%m%d_%H%M)" || true
-git push
+git push origin dev
 
 echo ">>> 更新服务器代码..."
 ssh -i "$SSH_KEY" root@$SERVER_IP "cd $SERVER_DIR && git fetch origin && git reset --hard origin/dev"
 
-echo ">>> 重启服务..."
-ssh -i "$SSH_KEY" root@$SERVER_IP "pkill -9 -f 'python3 run.py' 2>/dev/null || true"
-sleep 2
-ssh -i "$SSH_KEY" root@$SERVER_IP "cd $SERVER_DIR && setsid python3 run.py > run.log 2>&1 < /dev/null &"
+echo ">>> 安装依赖并构建..."
+ssh -i "$SSH_KEY" root@$SERVER_IP "cd $SERVER_DIR && npm run install:all && npm run build"
 
-echo ">>> 等待启动..."
-sleep 3
+echo ">>> 重启 PM2 服务..."
+ssh -i "$SSH_KEY" root@$SERVER_IP "cd $SERVER_DIR/server && pm2 restart lead-kanban || pm2 start app.js --name lead-kanban"
 
 echo ">>> 检查服务状态..."
-ssh -i "$SSH_KEY" root@$SERVER_IP "ps aux | grep run.py | grep -v grep && tail -3 $SERVER_DIR/run.log"
+ssh -i "$SSH_KEY" root@$SERVER_IP "pm2 status lead-kanban && pm2 logs lead-kanban --lines 5"
 
-echo ">>> 部署完成！访问: http://$SERVER_IP"
+echo ">>> 部署完成！"

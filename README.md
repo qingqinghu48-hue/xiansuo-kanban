@@ -7,6 +7,7 @@
 - **后端**: Node.js + Express + SQLite (better-sqlite3)
 - **前端**: Vue 3 + Vite + Composition API
 - **数据库**: SQLite
+- **认证**: Express Session + Cookie
 
 ## 项目结构
 
@@ -14,10 +15,10 @@
 LeadKanBan/
 ├── server/                 # Node.js 后端
 │   ├── app.js              # Express 入口
-│   ├── db.js               # SQLite 数据库
+│   ├── db.js               # SQLite 数据库连接
 │   ├── middleware/         # 认证中间件
 │   ├── routes/             # API 路由
-│   │   ├── auth.js         # 认证
+│   │   ├── auth.js         # 认证（登录/登出/当前用户）
 │   │   ├── leads.js        # 线索 CRUD + 导入
 │   │   ├── cost.js         # 成本管理
 │   │   └── notifications.js # 通知
@@ -31,7 +32,7 @@ LeadKanBan/
 │   └── vite.config.js
 ├── users.yaml              # 用户配置
 ├── leads.db                # SQLite 数据库
-└── dashboard_data.json     # 原始线索数据
+└── dashboard_data.json     # 原始线索数据（JSON）
 ```
 
 ## 快速启动
@@ -73,9 +74,38 @@ npm run dev:client
 
 ## 功能模块
 
-- 线索看板：筛选、排序、分页、详情查看
-- 数据可视化：平台分布饼图、有效性饼图、消耗柱状图、成本折线图
-- 线索管理：录入、编辑、删除、批量删除
-- Excel 导入：招商线索表、抖音客资、小红书客资
-- 成本管理：每日营销成本录入与统计
-- 权限控制：管理员/招商员/游客三级权限
+- **线索看板**：筛选、排序、分页、详情查看
+- **数据可视化**：平台分布饼图、有效性饼图、消耗柱状图、成本折线图
+- **线索管理**：录入、编辑、删除、批量删除
+- **Excel 导入**：招商线索表、抖音客资、小红书客资
+- **成本管理**：每日营销成本录入与统计
+- **权限控制**：管理员/招商员/游客三级权限
+
+## 部署
+
+详见 [DEPLOY.md](./DEPLOY.md)
+
+## 开发备忘
+
+### 手机号唯一性
+- 数据库层面：`new_leads` 表 `UNIQUE(phone)` 约束
+- 录入/导入前主动查重，重复跳过或提示
+- 编辑时修改手机号需检查是否与其他记录冲突
+
+### 前端响应式陷阱
+- Vue 3 `ref` 只追踪 `.value` 的重新赋值，不追踪数组内对象的属性变化
+- 修改数组元素后需用 `[...arr]` 替换整个数组触发更新
+- 删除/编辑操作需同时更新 `allData` 和 `filtered`
+
+### API 返回格式一致性
+- `/api/leads` 返回 `{ records: [...], total: N }`
+- `/api/cost` 返回 `{ cost_data: [...] }`
+- 前端需做防御性检查（`Array.isArray`），避免类型错误导致组件崩溃
+
+### Cookie / Session
+- 前端 `fetch` 必须加 `credentials: 'include'`
+- 后端 CORS 需配置 `credentials: true` 且 `origin` 不能为 `*`
+
+### 事件绑定
+- Vue 3 `<script setup>` 中模板 `$emit` 可能有编译兼容性问题
+- 推荐在 script 中定义显式方法再绑定到模板
