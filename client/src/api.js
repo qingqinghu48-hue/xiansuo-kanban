@@ -32,7 +32,7 @@ async function request(url, options = {}) {
     clearTimeout(timeoutId)
 
     if (res.status === 401) {
-      window.location.href = '/login'
+      window.location.href = API_BASE + '/login'
       throw new ApiError('未授权，请重新登录', 401, null)
     }
 
