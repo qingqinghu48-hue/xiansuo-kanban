@@ -181,10 +181,18 @@ function initPlatforms() {
 
 function fixPlatformClassification() {
   try {
-    const row = db.prepare("SELECT COUNT(*) as cnt FROM new_leads WHERE platform = '抖音广告'").get();
-    if (row && row.cnt > 0) {
-      db.exec("UPDATE new_leads SET platform = '抖音' WHERE platform = '抖音广告'");
-      console.log(`[启动修复] 已将 ${row.cnt} 条'抖音广告'改为'抖音'`);
+    const mappings = [
+      { from: '抖音广告', to: '抖音' },
+      { from: '抖音自然流', to: '抖音' },
+      { from: '小红书广告', to: '小红书' },
+      { from: '自媒体小红书', to: '小红书' },
+    ];
+    for (const { from, to } of mappings) {
+      const row = db.prepare("SELECT COUNT(*) as cnt FROM new_leads WHERE platform = ?").get(from);
+      if (row && row.cnt > 0) {
+        db.prepare("UPDATE new_leads SET platform = ? WHERE platform = ?").run(to, from);
+        console.log(`[启动修复] 已将 ${row.cnt} 条'${from}'改为'${to}'`);
+      }
     }
   } catch (e) {
     console.log(`[启动修复] 修复平台分类失败: ${e.message}`);

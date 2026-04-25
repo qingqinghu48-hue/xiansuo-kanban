@@ -588,7 +588,10 @@ router.post('/api/leads/import', requireAdmin, upload.single('file'), (req, res)
         }
         platform = normalized;
       } else {
-        platform = getVal(row, platformCol) || '抖音';
+        // 通用导入：同样做平台标准化
+        const rawPlatform = getVal(row, platformCol) || '抖音';
+        const validPlatforms = getValidPlatforms();
+        platform = normalizePlatform(rawPlatform, validPlatforms) || rawPlatform;
       }
 
       parsed.push({
