@@ -7,7 +7,7 @@
 - **后端**: Node.js + Express + SQLite (better-sqlite3)
 - **前端**: Vue 3 + Vite + Composition API
 - **数据库**: SQLite
-- **认证**: Express Session + Cookie
+- **认证**: Express Session + Cookie，密码使用 scrypt + salt 哈希存储
 
 ## 项目结构
 
@@ -75,11 +75,12 @@ npm run dev:client
 ## 功能模块
 
 - **线索看板**：筛选、排序、分页、详情查看
-- **数据可视化**：平台分布饼图、有效性饼图、消耗柱状图、成本折线图
+- **数据可视化**：平台分布饼图、有效性饼图、消耗柱状图、成本折线图（支持数据点多时横向滚动）
 - **线索管理**：录入、编辑、删除、批量删除
 - **Excel 导入**：招商线索表、抖音客资、小红书客资
 - **成本管理**：每日营销成本录入与统计
-- **权限控制**：管理员/招商员/游客三级权限
+- **权限控制**：管理员/招商员/游客三级权限（admin 超级管理员可管理所有其他账号）
+- **响应式布局**：适配桌面端、平板、手机端（断点 1200/768/640/480px）
 
 ## 部署
 
@@ -105,6 +106,18 @@ npm run dev:client
 ### Cookie / Session
 - 前端 `fetch` 必须加 `credentials: 'include'`
 - 后端 CORS 需配置 `credentials: true` 且 `origin` 不能为 `*`
+
+### 密码哈希
+- 使用 Node.js 内置 `crypto.scryptSync` + 随机 salt
+- 存储格式：`hex(salt):hex(hash)`
+- 启动时自动迁移存量明文密码（`migratePasswords`）
+- 登录/修改密码/创建用户均通过 `verifyPassword`/`hashPassword` 处理
+
+### 响应式断点
+- 1200px：KPI 3 列
+- 768px：KPI 2 列、筛选栏紧凑、饼图单列
+- 640px：筛选栏垂直堆叠、成本图表单列、分页换行
+- 480px：KPI 单列、模态框 96% 宽度
 
 ### 事件绑定
 - Vue 3 `<script setup>` 中模板 `$emit` 可能有编译兼容性问题

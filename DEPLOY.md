@@ -12,8 +12,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone git@github.com:qingqinghu48-hue/xiansuo-kanban.git /www/LeadKanBan
-cd /www/LeadKanBan
+git clone git@github.com:qingqinghu48-hue/xiansuo-kanban.git /var/www/LeadKanBan
+cd /var/www/LeadKanBan
 ```
 
 ### 2. 安装依赖
@@ -64,7 +64,7 @@ server {
 
     # 前端静态文件
     location / {
-        root /www/LeadKanBan/client/dist;
+        root /var/www/LeadKanBan/client/dist;
         try_files $uri $uri/ /index.html;
     }
 

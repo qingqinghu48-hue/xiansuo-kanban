@@ -9,8 +9,6 @@ class ApiError extends Error {
   }
 }
 
-export { ApiError }
-
 async function request(url, options = {}) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 10000)
