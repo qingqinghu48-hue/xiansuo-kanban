@@ -59,7 +59,7 @@
       <div v-if="activeTab === 'users'">
         <div class="chart-card" style="padding:20px;margin-bottom:16px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">添加新账号</h3>
-          <div style="display:grid;grid-template-columns:1fr 1fr 120px 120px;gap:12px;align-items:end">
+          <div class="user-form-grid" style="display:grid;grid-template-columns:1fr 1fr 120px 120px;gap:12px;align-items:end">
             <div class="cost-field">
               <label>用户名（英文/数字）</label>
               <input type="text" v-model="newUser.username" placeholder="例如：zhangsan">
@@ -118,7 +118,7 @@
       <div v-if="activeTab === 'platforms'">
         <div class="chart-card" style="padding:20px;margin-bottom:16px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">添加平台来源</h3>
-          <div style="display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:end">
+          <div class="simple-form-grid" style="display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:end">
             <div class="cost-field">
               <label>平台名称</label>
               <input type="text" v-model="newPlatformName" placeholder="例如：百度推广">
@@ -151,7 +151,7 @@
       <div v-if="activeTab === 'regions'">
         <div class="chart-card" style="padding:20px;margin-bottom:16px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">添加大区</h3>
-          <div style="display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:end">
+          <div class="simple-form-grid" style="display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:end">
             <div class="cost-field">
               <label>大区名称</label>
               <input type="text" v-model="newRegionName" placeholder="例如：华东大区">
@@ -192,7 +192,7 @@
           <button class="modal-x" @click="showNewLead = false">&#10005;</button>
         </div>
         <div class="modal-bd" style="padding:20px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="modal-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="cost-field" style="grid-column:1/-1">
               <label>手机号 *</label>
               <input type="text" v-model="newLead.phone" placeholder="请输入手机号">
@@ -470,7 +470,11 @@ async function deleteRegion(name) {
   margin-bottom: 20px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
+.tab-bar::-webkit-scrollbar { display: none; }
 .action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -487,7 +491,18 @@ async function deleteRegion(name) {
   cursor: pointer;
   border-radius: var(--radius-xs);
   transition: all .15s;
+  flex-shrink: 0;
 }
 .tab-btn:hover { color: var(--primary); }
 .tab-btn.active { background: var(--primary); color: #fff; }
+@media(max-width:640px){
+  .user-form-grid{grid-template-columns:1fr 1fr !important}
+  .simple-form-grid{grid-template-columns:1fr 100px !important}
+}
+@media(max-width:480px){
+  .user-form-grid{grid-template-columns:1fr !important}
+  .simple-form-grid{grid-template-columns:1fr !important}
+  .modal-form-grid{grid-template-columns:1fr !important}
+  .action-grid{grid-template-columns:1fr}
+}
 </style>

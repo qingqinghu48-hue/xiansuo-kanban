@@ -11,7 +11,7 @@
           <div style="font-weight:700;color:var(--primary);margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
             <span style="font-size:16px">💰</span> 录入每日总消耗
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="cost-form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
             <div class="cost-field"><label>日期</label><input type="date" v-model="costForm.cost_date"></div>
             <div class="cost-field">
               <label>平台</label>
@@ -32,7 +32,7 @@
           <div style="font-weight:700;color:#c2410c;margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
             <span style="font-size:16px">📊</span> 录入单条线索成本
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="cost-form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
             <div class="cost-field"><label>日期</label><input type="date" v-model="unitForm.cost_date"></div>
             <div class="cost-field">
               <label>平台</label>
@@ -183,3 +183,9 @@ async function delCost(id) {
   } catch(e) { showMsg('网络错误', 'err') }
 }
 </script>
+
+<style scoped>
+@media(max-width:640px){
+  .cost-form-grid{grid-template-columns:1fr !important}
+}
+</style>

@@ -6,7 +6,7 @@
         <button class="modal-x" @click="close">&#10005;</button>
       </div>
       <div class="modal-bd" style="padding:20px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="modal-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="cost-field"><label>客户姓名</label><input type="text" v-model="form['姓名']"></div>
           <div class="cost-field"><label>客户电话</label><input type="text" v-model="form['手机号']"></div>
           <div class="cost-field"><label>线索平台</label><input type="text" v-model="form['平台']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
@@ -127,3 +127,9 @@ async function save() {
   }
 }
 </script>
+
+<style scoped>
+@media(max-width:480px){
+  .modal-form-grid{grid-template-columns:1fr !important}
+}
+</style>

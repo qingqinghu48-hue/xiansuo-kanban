@@ -18,7 +18,7 @@
       </div>
       <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border-radius:8px;font-size:14px;font-weight:700">抖</span>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="chart-card" style="border:1px solid var(--border-2)">
         <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
         <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDySpend" style="height:200px"></canvas></div>
@@ -38,7 +38,7 @@
       </div>
       <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;border-radius:8px;font-size:14px;font-weight:700">红</span>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="chart-card" style="border:1px solid var(--border-2)">
         <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
         <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsSpend" style="height:200px"></canvas></div>

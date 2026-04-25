@@ -1,7 +1,7 @@
 <template>
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)">
     <!-- 登录表单 -->
-    <div v-if="!showChangePwd" style="background:var(--surface);padding:40px;border-radius:var(--radius);box-shadow:var(--shadow-lg);width:360px;border:1px solid var(--border-2)">
+    <div v-if="!showChangePwd" style="background:var(--surface);padding:40px;border-radius:var(--radius);box-shadow:var(--shadow-lg);width:92%;max-width:360px;border:1px solid var(--border-2)">
       <div style="text-align:center;margin-bottom:28px">
         <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;margin-bottom:12px">招</div>
         <h2 style="font-size:18px;font-weight:700">招商线索看板</h2>
@@ -20,7 +20,7 @@
     </div>
 
     <!-- 首次登录强制修改密码 -->
-    <div v-else style="background:var(--surface);padding:40px;border-radius:var(--radius);box-shadow:var(--shadow-lg);width:360px;border:1px solid var(--border-2)">
+    <div v-else style="background:var(--surface);padding:40px;border-radius:var(--radius);box-shadow:var(--shadow-lg);width:92%;max-width:360px;border:1px solid var(--border-2)">
       <div style="text-align:center;margin-bottom:28px">
         <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;margin-bottom:12px">🔐</div>
         <h2 style="font-size:18px;font-weight:700">首次登录，请修改密码</h2>

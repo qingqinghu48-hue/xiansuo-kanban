@@ -11,9 +11,9 @@
         </div>
       </div>
       <div class="topbar-right" style="display:flex;align-items:center;gap:12px">
-        <router-link v-if="isAdmin" to="/admin" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">⚙️ 管理后台</router-link>
-        <span>{{ userInfo.name || userInfo.username || '-' }}</span>
-        <button class="btn btn-ghost" @click="doLogout" style="font-size:12px;padding:4px 10px">退出登录</button>
+        <router-link v-if="isAdmin" to="/admin" class="admin-link" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">⚙️ 管理后台</router-link>
+        <span class="user-name">{{ userInfo.name || userInfo.username || '-' }}</span>
+        <button class="btn btn-ghost btn-sm logout-btn" @click="doLogout">退出登录</button>
       </div>
     </div>
 
