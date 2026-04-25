@@ -45,7 +45,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // HTTP环境下必须为false，否则浏览器不发送cookie
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24小时
   },
