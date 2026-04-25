@@ -53,6 +53,15 @@ function parseDateVal(v) {
     const d = String(v.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
+  // Excel 日期序列号（如 46085.5539）
+  if (typeof v === 'number' && v > 30000 && v < 60000) {
+    const parsed = xlsx.SSF.parse_date_code(v);
+    if (parsed && parsed.y) {
+      const m = String(parsed.m).padStart(2, '0');
+      const d = String(parsed.d).padStart(2, '0');
+      return `${parsed.y}-${m}-${d}`;
+    }
+  }
   const s = String(v).trim();
   const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
