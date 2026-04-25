@@ -471,7 +471,10 @@ function handleImport(req, res) {
 
       // 招商员分配
       let agent;
-      if (isDouyinKezi) {
+      if (isDouyinChannel || isDouyinKezi) {
+        // 抖音/客资渠道：优先读取表格里的"跟进员工"列
+        agent = getVal(row, findCol(cols, ['跟进员工'])) || getVal(row, agentCol) || '郑建军';
+      } else if (isXhsChannel) {
         agent = getVal(row, agentCol) || '郑建军';
       } else {
         agent = getVal(row, findCol(cols, ['所属招商'])) || getVal(row, findCol(cols, ['跟进员工'])) || getVal(row, agentCol) || '郑建军';
@@ -604,8 +607,8 @@ function handleImport(req, res) {
             continue;
           }
 
-          // 招商线索管理表导入时，抖音/小红书入库日期不变
-          if (isZhaoshang && (old.platform.includes('抖音') || old.platform.includes('小红书'))) {
+          // 招商线索管理表导入时，若导入的平台是抖音/小红书，入库日期不变
+          if (isZhaoshang && ((platform || '').includes('抖音') || (platform || '').includes('小红书'))) {
             entryDate = old.entry_date;
           }
 
@@ -617,7 +620,7 @@ function handleImport(req, res) {
           updated++;
         } else {
           // 招商线索管理表导入时，抖音/小红书的新线索不创建
-          if (isZhaoshang && (platform.includes('抖音') || platform.includes('小红书'))) {
+          if (isZhaoshang && ((platform || '').includes('抖音') || (platform || '').includes('小红书'))) {
             skipped++;
             continue;
           }
