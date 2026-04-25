@@ -295,6 +295,41 @@ router.post('/api/leads/mark_read', requireAuth, (req, res) => {
 });
 
 /**
+ * 获取有效平台列表
+ */
+function getValidPlatforms() {
+  return db.prepare('SELECT name FROM platforms ORDER BY sort_order').all().map(r => r.name);
+}
+
+/**
+ * 平台名称标准化映射
+ */
+function normalizePlatform(raw, validPlatforms) {
+  if (!raw) return null;
+  const p = String(raw).trim();
+  const lower = p.toLowerCase();
+
+  // 直接匹配
+  if (validPlatforms.includes(p)) return p;
+
+  // 映射规则（抖音系列）
+  const douyinKeywords = ['抖音', 'douyin', '巨量引擎', '巨量'];
+  if (douyinKeywords.some(kw => lower.includes(kw))) return '抖音';
+
+  // 映射规则（小红书系列）
+  const xhsKeywords = ['小红书', 'xhs', 'xiaohongshu', 'redbook', '红薯'];
+  if (xhsKeywords.some(kw => lower.includes(kw))) return '小红书';
+
+  // 映射规则（其他精确匹配）
+  if (lower === '豆包') return '豆包';
+  if (lower === '400线索' || lower === '400') return '400线索';
+  if (lower === '品专') return '品专';
+  if (lower === '转介绍') return '转介绍';
+
+  return null;
+}
+
+/**
  * Excel 导入辅助函数
  */
 function parseExcel(buffer, filename) {
@@ -484,6 +519,20 @@ router.post('/api/leads/import', requireAdmin, upload.single('file'), (req, res)
         platform = '小红书';
       } else if (isDouyinChannel) {
         platform = '抖音';
+      } else if (isZhaoshang) {
+        // 招商线索管理表导入：平台标准化映射
+        const rawPlatform = getVal(row, platformCol);
+        const validPlatforms = getValidPlatforms();
+        const normalized = normalizePlatform(rawPlatform, validPlatforms);
+        if (!normalized) {
+          badRows.push({
+            row: idx + 2,
+            raw: rawPlatform || '(空)',
+            reason: `平台来源"${rawPlatform || '(空)'}"无法识别，有效平台：${validPlatforms.join('、')}`
+          });
+          continue;
+        }
+        platform = normalized;
       } else {
         platform = getVal(row, platformCol) || '抖音';
       }

@@ -79,6 +79,78 @@ function initDb() {
       // 忽略错误
     }
   }
+
+  // 创建 users 表（替代 YAML）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      regions TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      must_change_password INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  // 创建 platforms 表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS platforms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL
+    )
+  `);
+}
+
+/**
+ * 从 YAML 迁移用户数据到 SQLite（只执行一次）
+ */
+function migrateUsersFromYaml() {
+  try {
+    const yaml = require('js-yaml');
+    const fs = require('fs');
+    const path = require('path');
+    const yamlFile = path.join(__dirname, '..', 'users.yaml');
+    if (!fs.existsSync(yamlFile)) return;
+
+    const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
+    if (count > 0) return; // 已有数据，跳过
+
+    const data = yaml.load(fs.readFileSync(yamlFile, 'utf-8'));
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const stmt = db.prepare(`INSERT INTO users (username, password, name, role, regions, active, must_change_password, created_at)
+      VALUES (?, ?, ?, ?, ?, 1, 0, ?)`);
+
+    if (data.admin) {
+      stmt.run(data.admin.username, data.admin.password, data.admin.name, 'admin', '', now);
+    }
+    for (const agent of data.agents || []) {
+      stmt.run(agent.username, agent.password, agent.name, 'agent', JSON.stringify(agent.regions || []), now);
+    }
+    if (data.guest) {
+      stmt.run(data.guest.username, data.guest.password, data.guest.name, 'guest', '', now);
+    }
+    console.log('[迁移] users.yaml 数据已导入 SQLite');
+  } catch (e) {
+    console.log('[迁移] 用户迁移失败:', e.message);
+  }
+}
+
+/**
+ * 初始化默认平台来源
+ */
+function initPlatforms() {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM platforms').get().cnt;
+  if (count > 0) return;
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const stmt = db.prepare('INSERT INTO platforms (name, sort_order, created_at) VALUES (?, ?, ?)');
+  const defaults = ['抖音', '小红书', '豆包', '400线索', '品专', '转介绍'];
+  defaults.forEach((name, i) => stmt.run(name, i, now));
+  console.log('[初始化] 默认平台来源已创建');
 }
 
 function fixPlatformClassification() {
@@ -95,5 +167,7 @@ function fixPlatformClassification() {
 
 initDb();
 fixPlatformClassification();
+migrateUsersFromYaml();
+initPlatforms();
 
 module.exports = db;

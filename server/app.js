@@ -11,6 +11,8 @@ const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
 const costRoutes = require('./routes/cost');
 const notificationsRoutes = require('./routes/notifications');
+const usersRoutes = require('./routes/users');
+const platformsRoutes = require('./routes/platforms');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -42,6 +44,8 @@ app.use(authRoutes);
 app.use(leadsRoutes);
 app.use(costRoutes);
 app.use(notificationsRoutes);
+app.use(usersRoutes);
+app.use(platformsRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

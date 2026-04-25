@@ -85,5 +85,47 @@ export default {
       method: 'POST',
       body: JSON.stringify(data)
     })
+  },
+  changePassword(data) {
+    return request('/api/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  getUsers() {
+    return request('/api/users')
+  },
+  createUser(data) {
+    return request('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  toggleUser(data) {
+    return request('/api/users/toggle', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  deleteUser(data) {
+    return request('/api/users/delete', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  getPlatforms() {
+    return request('/api/platforms')
+  },
+  addPlatform(data) {
+    return request('/api/platforms', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  deletePlatform(data) {
+    return request('/api/platforms/delete', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   }
 }

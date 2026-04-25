@@ -2,17 +2,12 @@
  * 认证路由
  */
 const express = require('express');
-const yaml = require('js-yaml');
-const fs = require('fs');
-const path = require('path');
+const db = require('../db');
 
 const router = express.Router();
 
-const USERS_FILE = path.join(__dirname, '..', '..', 'users.yaml');
-
-function loadUsers() {
-  const content = fs.readFileSync(USERS_FILE, 'utf-8');
-  return yaml.load(content);
+function loadUserByUsername(username) {
+  return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 }
 
 // POST /api/login
@@ -25,43 +20,36 @@ router.post('/api/login', (req, res) => {
     return res.json({ success: false, message: '请输入用户名和密码' });
   }
 
-  const users = loadUsers();
-
-  // 管理员
-  if (u === users.admin.username && p === users.admin.password) {
-    req.session.user = {
-      username: u,
-      name: users.admin.name,
-      role: 'admin',
-    };
-    return res.json({ success: true, name: users.admin.name, role: 'admin' });
+  const user = loadUserByUsername(u);
+  if (!user) {
+    return res.json({ success: false, message: '用户名或密码错误' });
   }
 
-  // 招商员
-  for (const agent of users.agents || []) {
-    if (agent.username === u && agent.password === p) {
-      req.session.user = {
-        username: u,
-        name: agent.name,
-        role: 'agent',
-        regions: agent.regions || [],
-      };
-      return res.json({ success: true, name: agent.name, role: 'agent' });
-    }
+  if (!user.active) {
+    return res.json({ success: false, message: '账号已停用，请联系管理员' });
   }
 
-  // 游客
-  const guest = users.guest;
-  if (guest && u === guest.username && p === guest.password) {
-    req.session.user = {
-      username: u,
-      name: guest.name,
-      role: 'guest',
-    };
-    return res.json({ success: true, name: guest.name, role: 'guest' });
+  if (user.password !== p) {
+    return res.json({ success: false, message: '用户名或密码错误' });
   }
 
-  return res.json({ success: false, message: '用户名或密码错误' });
+  const sessionUser = {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
+    regions: user.regions ? JSON.parse(user.regions) : [],
+    must_change_password: user.must_change_password,
+  };
+
+  req.session.user = sessionUser;
+
+  return res.json({
+    success: true,
+    name: user.name,
+    role: user.role,
+    must_change_password: user.must_change_password,
+  });
 });
 
 // POST /api/logout
@@ -77,6 +65,43 @@ router.get('/api/current_user', (req, res) => {
     return res.json({ logged_in: true, user });
   }
   return res.json({ logged_in: false });
+});
+
+// POST /api/change-password
+router.post('/api/change-password', (req, res) => {
+  const user = req.session ? req.session.user : null;
+  if (!user) {
+    return res.status(401).json({ success: false, message: '请先登录' });
+  }
+
+  const { old_password, new_password } = req.body;
+  const oldP = (old_password || '').trim();
+  const newP = (new_password || '').trim();
+
+  if (!newP) {
+    return res.json({ success: false, message: '请输入新密码' });
+  }
+  if (newP.length !== 6) {
+    return res.json({ success: false, message: '密码必须为6位' });
+  }
+
+  const dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+  if (!dbUser) {
+    return res.json({ success: false, message: '用户不存在' });
+  }
+
+  // 首次登录时 old_password 传空，不用校验旧密码
+  if (dbUser.must_change_password === 0 && dbUser.password !== oldP) {
+    return res.json({ success: false, message: '旧密码错误' });
+  }
+
+  db.prepare('UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?')
+    .run(newP, user.id);
+
+  // 更新 session
+  req.session.user.must_change_password = 0;
+
+  return res.json({ success: true, message: '密码修改成功' });
 });
 
 module.exports = router;
