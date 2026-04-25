@@ -22,7 +22,8 @@ const PORT = process.env.PORT || 5001;
 const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173', 'http://localhost:4173'];
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // 生产环境允许任意来源（Nginx已做访问控制），开发环境限制localhost
+    if (!origin || process.env.NODE_ENV === 'production' || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('不允许的跨域来源'));
