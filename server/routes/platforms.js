@@ -43,6 +43,12 @@ router.post('/api/platforms/delete', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '平台名称不能为空' });
   }
 
+  // 检查是否有线索数据使用了该平台
+  const leadCount = db.prepare('SELECT COUNT(*) as cnt FROM new_leads WHERE platform = ?').get(n);
+  if (leadCount.cnt > 0) {
+    return res.json({ success: false, message: `无法删除：该平台下还有 ${leadCount.cnt} 条线索数据，请先处理或转移这些线索` });
+  }
+
   db.prepare('DELETE FROM platforms WHERE name = ?').run(n);
   res.json({ success: true, message: '平台已删除' });
 });
