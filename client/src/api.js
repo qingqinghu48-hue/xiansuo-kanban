@@ -83,13 +83,19 @@ export default {
     return request('/api/leads/mark_read', { method: 'POST' })
   },
   submitCost(data) {
-    return request('/api/cost', {
+    return request('/api/cost/add', {
       method: 'POST',
       body: JSON.stringify(data)
     })
   },
   submitUnitCost(data) {
-    return request('/api/cost/unit', {
+    return request('/api/cost/add', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  updateCost(data) {
+    return request('/api/cost/update', {
       method: 'POST',
       body: JSON.stringify(data)
     })

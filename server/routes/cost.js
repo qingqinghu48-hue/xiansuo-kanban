@@ -8,8 +8,9 @@ const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 function loadCostData() {
-  const rows = db.prepare('SELECT cost_date, platform, amount, unit_cost FROM cost_data ORDER BY cost_date ASC').all();
+  const rows = db.prepare('SELECT id, cost_date, platform, amount, unit_cost FROM cost_data ORDER BY cost_date ASC').all();
   return rows.map(r => ({
+    id: r.id,
     date: r.cost_date,
     platform: r.platform,
     amount: r.amount,
@@ -30,7 +31,8 @@ router.post('/api/cost/add', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '请求数据为空' });
   }
 
-  const cost_date = String(data.cost_date || '').trim();
+  // 兼容前端字段名 date / cost_date
+  const cost_date = String(data.cost_date || data.date || '').trim();
   const platform = String(data.platform || '').trim();
   let amount = data.amount;
   let unit_cost = data.unit_cost;
@@ -58,7 +60,11 @@ router.post('/api/cost/add', requireAdmin, (req, res) => {
     const existing = db.prepare('SELECT id FROM cost_data WHERE cost_date = ? AND platform = ?').get(cost_date, platform);
 
     if (existing) {
-      db.prepare('UPDATE cost_data SET amount = ?, unit_cost = ?, created_at = ? WHERE id = ?').run(amount, unit_cost, now, existing.id);
+      // 已存在则更新：如果只传了amount或unit_cost其中一个，保留另一个现有值
+      const current = db.prepare('SELECT amount, unit_cost FROM cost_data WHERE id = ?').get(existing.id);
+      const finalAmount = amount > 0 ? amount : (current.amount || 0);
+      const finalUnitCost = unit_cost > 0 ? unit_cost : (current.unit_cost || 0);
+      db.prepare('UPDATE cost_data SET amount = ?, unit_cost = ?, created_at = ? WHERE id = ?').run(finalAmount, finalUnitCost, now, existing.id);
     } else {
       db.prepare('INSERT INTO cost_data (cost_date, platform, amount, unit_cost, created_at) VALUES (?, ?, ?, ?, ?)')
         .run(cost_date, platform, amount, unit_cost, now);
@@ -70,20 +76,50 @@ router.post('/api/cost/add', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/cost/delete
-router.post('/api/cost/delete', requireAdmin, (req, res) => {
-  const { cost_date, platform } = req.body;
-  const cd = (cost_date || '').trim();
-  const plat = (platform || '').trim();
-
-  if (!cd || !plat) {
-    return res.json({ success: false, message: '请提供日期和平台' });
+// POST /api/cost/update
+router.post('/api/cost/update', requireAdmin, (req, res) => {
+  const { id, amount, unit_cost } = req.body;
+  const costId = parseInt(id, 10);
+  if (isNaN(costId)) {
+    return res.json({ success: false, message: '记录ID无效' });
   }
 
-  const result = db.prepare('DELETE FROM cost_data WHERE cost_date = ? AND platform = ?').run(cd, plat);
+  const existing = db.prepare('SELECT id FROM cost_data WHERE id = ?').get(costId);
+  if (!existing) {
+    return res.json({ success: false, message: '记录不存在' });
+  }
+
+  let finalAmount, finalUnitCost;
+  try {
+    finalAmount = amount !== undefined ? parseFloat(amount) : undefined;
+    if (isNaN(finalAmount)) finalAmount = undefined;
+  } catch (e) { finalAmount = undefined; }
+
+  try {
+    finalUnitCost = unit_cost !== undefined ? parseFloat(unit_cost) : undefined;
+    if (isNaN(finalUnitCost)) finalUnitCost = undefined;
+  } catch (e) { finalUnitCost = undefined; }
+
+  const current = db.prepare('SELECT amount, unit_cost FROM cost_data WHERE id = ?').get(costId);
+  const setAmount = finalAmount !== undefined ? finalAmount : (current.amount || 0);
+  const setUnitCost = finalUnitCost !== undefined ? finalUnitCost : (current.unit_cost || 0);
+
+  db.prepare('UPDATE cost_data SET amount = ?, unit_cost = ? WHERE id = ?').run(setAmount, setUnitCost, costId);
+  res.json({ success: true, message: '记录已更新' });
+});
+
+// POST /api/cost/delete
+router.post('/api/cost/delete', requireAdmin, (req, res) => {
+  const { id } = req.body;
+  const costId = parseInt(id, 10);
+  if (isNaN(costId)) {
+    return res.json({ success: false, message: '记录ID无效' });
+  }
+
+  const result = db.prepare('DELETE FROM cost_data WHERE id = ?').run(costId);
 
   if (result.changes > 0) {
-    return res.json({ success: true, message: `已删除 ${plat} ${cd} 的成本记录` });
+    return res.json({ success: true, message: '记录已删除' });
   } else {
     return res.json({ success: false, message: '未找到该记录' });
   }
