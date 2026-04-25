@@ -256,6 +256,35 @@ td{
 .filter-tag:hover{border-color:var(--primary);color:var(--primary)}
 .filter-tag.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
+/* 多选下拉组件 */
+.multi-select-wrap{position:relative;display:inline-block}
+.multi-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:140px}
+.multi-select-trigger .multi-caret{font-size:10px;color:var(--text-3);transition:transform .2s}
+.multi-select-trigger .multi-caret.open{transform:rotate(180deg)}
+.multi-select-dropdown{
+  position:absolute;top:calc(100% + 4px);left:0;z-index:100;
+  background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);
+  box-shadow:var(--shadow-lg);min-width:180px;max-width:260px;
+  max-height:260px;display:flex;flex-direction:column;
+}
+.multi-select-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;border-bottom:1px solid var(--border-2);flex-shrink:0;
+}
+.multi-select-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer}
+.multi-select-check input{cursor:pointer}
+.multi-select-clear{
+  font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;padding:2px 6px;
+}
+.multi-select-clear:hover{text-decoration:underline}
+.multi-select-bd{padding:4px 0;overflow-y:auto;flex:1}
+.multi-select-item{
+  display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px;color:var(--text);
+  cursor:pointer;transition:background .1s;white-space:nowrap;
+}
+.multi-select-item:hover{background:var(--bg-2)}
+.multi-select-item input{cursor:pointer;flex-shrink:0}
+
 .modal{
   display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;
   backdrop-filter:blur(4px);align-items:center;justify-content:center;

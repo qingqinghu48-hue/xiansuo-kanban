@@ -27,12 +27,28 @@
         <option>自然流线索</option>
       </select>
       <span class="filter-label">大区</span>
-      <div class="filter-multi" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-        <label v-for="r in regions" :key="r" class="filter-tag" :class="{ active: filter.fr.includes(r) }">
-          <input type="checkbox" :value="r" v-model="filter.fr" style="display:none">
-          {{ r }}
-        </label>
-        <button v-if="filter.fr.length" class="filter-clear" @click="filter.fr = []" style="font-size:11px;color:var(--primary);background:none;border:none;cursor:pointer">清除</button>
+      <div class="multi-select-wrap" ref="regionWrap">
+        <button type="button" class="filter-select multi-select-trigger" @click.stop="regionOpen = !regionOpen">
+          <span v-if="filter.fr.length === 0">全部大区</span>
+          <span v-else-if="filter.fr.length === 1">{{ filter.fr[0] }}</span>
+          <span v-else>已选 {{ filter.fr.length }} 个大区</span>
+          <span class="multi-caret" :class="{ open: regionOpen }">▼</span>
+        </button>
+        <div v-show="regionOpen" class="multi-select-dropdown" @click.stop>
+          <div class="multi-select-hd">
+            <label class="multi-select-check">
+              <input type="checkbox" :checked="filter.fr.length === regions.length && regions.length > 0" @change="toggleAllRegions">
+              <span>全选</span>
+            </label>
+            <button v-if="filter.fr.length" class="multi-select-clear" @click="filter.fr = []">清除</button>
+          </div>
+          <div class="multi-select-bd">
+            <label v-for="r in regions" :key="r" class="multi-select-item">
+              <input type="checkbox" :value="r" v-model="filter.fr">
+              <span>{{ r }}</span>
+            </label>
+          </div>
+        </div>
       </div>
       <span class="filter-label">招商员</span>
       <select class="filter-select" v-model="filter.fs">
@@ -51,7 +67,7 @@
 </template>
 
 <script setup>
-import { reactive, watch, onMounted } from 'vue'
+import { reactive, watch, onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
   allData: { type: Array, default: () => [] }
@@ -61,6 +77,8 @@ const emit = defineEmits(['filter'])
 const platforms = reactive([])
 const regions = reactive([])
 const staffs = reactive([])
+const regionOpen = ref(false)
+const regionWrap = ref(null)
 
 const filter = reactive({
   ds: '2026-03-01',
@@ -72,6 +90,20 @@ const filter = reactive({
   fs: '',
   fk: ''
 })
+
+function toggleAllRegions(e) {
+  if (e.target.checked) {
+    filter.fr = [...regions]
+  } else {
+    filter.fr = []
+  }
+}
+
+function onDocClick(e) {
+  if (regionWrap.value && !regionWrap.value.contains(e.target)) {
+    regionOpen.value = false
+  }
+}
 
 function splitRegions(val) {
   if (!val) return []
@@ -137,5 +169,10 @@ watch(() => [filter.ds, filter.de], () => { saveFilterState(); emit('filter', { 
 onMounted(() => {
   loadFilterState()
   emit('filter', { ...filter })
+  document.addEventListener('click', onDocClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocClick)
 })
 </script>
