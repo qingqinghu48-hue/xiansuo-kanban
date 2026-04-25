@@ -44,6 +44,32 @@ function initDb() {
     { name: '最近一次电联时间', type: 'TEXT DEFAULT ""' },
     { name: '到访时间', type: 'TEXT DEFAULT ""' },
     { name: '签约时间', type: 'TEXT DEFAULT ""' },
+    // 招商线索管理表新增字段
+    { name: 'is_duplicate', type: 'TEXT DEFAULT ""' },
+    // 小红书线索列表数据新增字段
+    { name: 'xhs_nickname', type: 'TEXT DEFAULT ""' },
+    { name: 'xhs_user_id', type: 'TEXT DEFAULT ""' },
+    { name: 'xhs_uid', type: 'TEXT DEFAULT ""' },
+    { name: 'source_note', type: 'TEXT DEFAULT ""' },
+    { name: 'creative_name', type: 'TEXT DEFAULT ""' },
+    { name: 'creative_id', type: 'TEXT DEFAULT ""' },
+    { name: 'conversion_method', type: 'TEXT DEFAULT ""' },
+    { name: 'wechat_id', type: 'TEXT DEFAULT ""' },
+    { name: 'detail_json', type: 'TEXT DEFAULT ""' },
+    // 抖音客资中心新增字段
+    { name: 'intention_type', type: 'TEXT DEFAULT ""' },
+    { name: 'intention_store', type: 'TEXT DEFAULT ""' },
+    { name: 'intention_store_id', type: 'TEXT DEFAULT ""' },
+    { name: 'follow_up_account', type: 'TEXT DEFAULT ""' },
+    { name: 'latest_follow_note', type: 'TEXT DEFAULT ""' },
+    { name: 'lead_stage', type: 'TEXT DEFAULT ""' },
+    { name: 'lead_tags', type: 'TEXT DEFAULT ""' },
+    { name: 'call_count', type: 'INTEGER DEFAULT 0' },
+    { name: 'marketing_type', type: 'TEXT DEFAULT ""' },
+    { name: 'last_call_time', type: 'TEXT DEFAULT ""' },
+    { name: 'smart_intention', type: 'TEXT DEFAULT ""' },
+    { name: 'interaction_scene', type: 'TEXT DEFAULT ""' },
+    { name: 'latest_lead_record', type: 'TEXT DEFAULT ""' },
   ];
 
   for (const col of missingCols) {

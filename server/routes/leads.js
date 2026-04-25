@@ -70,6 +70,32 @@ function loadNewLeads() {
       '小红书账号': cleanVal(row.xhs_account),
       '线索类型': cleanVal(row.lead_type),
       '来源文件': '手动录入',
+      // 招商线索管理表扩展字段
+      '是否重复': cleanVal(row.is_duplicate),
+      // 小红书线索扩展字段
+      '用户小红书昵称': cleanVal(row.xhs_nickname),
+      '用户小红书ID': cleanVal(row.xhs_user_id),
+      '用户ID': cleanVal(row.xhs_uid),
+      '来源笔记': cleanVal(row.source_note),
+      '创意名称': cleanVal(row.creative_name),
+      '创意ID': cleanVal(row.creative_id),
+      '转化方式': cleanVal(row.conversion_method),
+      '微信号': cleanVal(row.wechat_id),
+      '详情': cleanVal(row.detail_json),
+      // 抖音客资扩展字段
+      '意向线索': cleanVal(row.intention_type),
+      '意向门店': cleanVal(row.intention_store),
+      '意向门店ID': cleanVal(row.intention_store_id),
+      '跟进户': cleanVal(row.follow_up_account),
+      '最新跟进记录': cleanVal(row.latest_follow_note),
+      '线索阶段': cleanVal(row.lead_stage),
+      '线索标签': cleanVal(row.lead_tags),
+      '线索拨打次数': row.call_count || 0,
+      '营销类型': cleanVal(row.marketing_type),
+      '最近拨打时间': cleanVal(row.last_call_time),
+      '智能意向': cleanVal(row.smart_intention),
+      '互动场景': cleanVal(row.interaction_scene),
+      '最近留资记录': cleanVal(row.latest_lead_record),
     });
   }
   return leads;
@@ -452,6 +478,34 @@ router.post('/api/leads/import', requireAdmin, upload.single('file'), (req, res)
     const visitTimeCol = findCol(cols, ['到访时间', '到店时间', '来访时间']);
     const signTimeCol = findCol(cols, ['签约时间', '成交时间', '签约日期']);
 
+    // 招商线索管理表特有列
+    const isDuplicateCol = findCol(cols, ['是否重复', '重复']);
+
+    // 小红书线索列表数据特有列
+    const xhsNicknameCol = findCol(cols, ['用户小红书昵称', '小红书昵称', '昵称']);
+    const xhsUserIdCol = findCol(cols, ['用户小红书ID', '小红书ID']);
+    const xhsUidCol = findCol(cols, ['用户ID']);
+    const sourceNoteCol = findCol(cols, ['来源笔记', '笔记']);
+    const creativeNameCol = findCol(cols, ['创意名称', '创意']);
+    const creativeIdCol = findCol(cols, ['创意ID', '创意id']);
+    const conversionMethodCol = findCol(cols, ['转化方式', '转化']);
+    const detailJsonCol = findCol(cols, ['详情', '详细信息']);
+
+    // 抖音客资中心特有列（通用导入时也可能遇到）
+    const intentionTypeCol = findCol(cols, ['意向线索', '线索意向']);
+    const intentionStoreCol = findCol(cols, ['意向门店']);
+    const intentionStoreIdCol = findCol(cols, ['意向门店ID', '意向门店id']);
+    const followUpAccountCol = findCol(cols, ['跟进户']);
+    const latestFollowNoteCol = findCol(cols, ['最新跟进记录']);
+    const leadStageCol = findCol(cols, ['线索阶段', '阶段']);
+    const leadTagsCol = findCol(cols, ['线索标签', '标签']);
+    const callCountCol = findCol(cols, ['线索拨打次数', '拨打次数']);
+    const marketingTypeCol = findCol(cols, ['营销类型']);
+    const lastCallTimeCol = findCol(cols, ['最近拨打时间']);
+    const smartIntentionCol = findCol(cols, ['智能意向']);
+    const interactionSceneCol = findCol(cols, ['互动场景']);
+    const latestLeadRecordCol = findCol(cols, ['最近留资记录']);
+
     if (!phoneCol) {
       return res.json({ success: false, message: `无法识别手机号列。当前列名: ${cols.join(',')}` });
     }
@@ -555,6 +609,36 @@ router.post('/api/leads/import', requireAdmin, upload.single('file'), (req, res)
         sign_time: parseDate(row, signTimeCol),
         xhs_account: isXhsChannel ? getVal(row, xhsAccountCol) : '',
         lead_type: isXhsChannel ? getVal(row, leadTypeCol) : '',
+        // 招商扩展字段
+        is_duplicate: getVal(row, isDuplicateCol),
+        // 小红书扩展字段
+        xhs_nickname: isXhsChannel ? getVal(row, xhsNicknameCol) : '',
+        xhs_user_id: isXhsChannel ? getVal(row, xhsUserIdCol) : '',
+        xhs_uid: isXhsChannel ? getVal(row, xhsUidCol) : '',
+        source_note: isXhsChannel ? getVal(row, sourceNoteCol) : '',
+        creative_name: isXhsChannel ? getVal(row, creativeNameCol) : '',
+        creative_id: isXhsChannel ? getVal(row, creativeIdCol) : '',
+        conversion_method: isXhsChannel ? getVal(row, conversionMethodCol) : '',
+        wechat_id: isXhsChannel ? getVal(row, weixinCol) : '',
+        detail_json: isXhsChannel ? getVal(row, detailJsonCol) : '',
+        // 抖音扩展字段（通用导入也可能遇到）
+        intention_type: getVal(row, intentionTypeCol),
+        intention_store: getVal(row, intentionStoreCol),
+        intention_store_id: getVal(row, intentionStoreIdCol),
+        follow_up_account: getVal(row, followUpAccountCol),
+        latest_follow_note: getVal(row, latestFollowNoteCol),
+        lead_stage: getVal(row, leadStageCol),
+        lead_tags: getVal(row, leadTagsCol),
+        call_count: (() => {
+          const v = getVal(row, callCountCol);
+          const n = parseInt(v, 10);
+          return isNaN(n) ? 0 : n;
+        })(),
+        marketing_type: getVal(row, marketingTypeCol),
+        last_call_time: parseDate(row, lastCallTimeCol),
+        smart_intention: getVal(row, smartIntentionCol),
+        interaction_scene: getVal(row, interactionSceneCol),
+        latest_lead_record: getVal(row, latestLeadRecordCol),
       });
     }
 
@@ -612,12 +696,17 @@ router.post('/api/leads/import', requireAdmin, upload.single('file'), (req, res)
           platform = ?, agent = ?, entry_date = ?, name = ?,
           city = ?, region = ?, validity = ?, can_wechat = ?, remark = ?,
           \u4e8c\u6b21\u8054\u7cfb\u65f6\u95f4 = ?, \u4e8c\u6b21\u8054\u7cfb\u5907\u6ce8 = ?, \u6700\u8fd1\u4e00\u6b21\u7535\u8054\u65f6\u95f4 = ?, \u5230\u8bbf\u65f6\u95f4 = ?, \u7b7e\u7ea6\u65f6\u95f4 = ?,
-          xhs_account = ?, lead_type = ?
+          xhs_account = ?, lead_type = ?,
+          is_duplicate = ?, xhs_nickname = ?, xhs_user_id = ?, xhs_uid = ?, source_note = ?, creative_name = ?, creative_id = ?, conversion_method = ?, wechat_id = ?, detail_json = ?,
+          intention_type = ?, intention_store = ?, intention_store_id = ?, follow_up_account = ?, latest_follow_note = ?, lead_stage = ?, lead_tags = ?, call_count = ?, marketing_type = ?, last_call_time = ?, smart_intention = ?, interaction_scene = ?, latest_lead_record = ?
           WHERE phone = ?`).run(
           platform, agent, entryDate, item.name,
           item.city, item.region, item.validity, item.can_wechat, item.remark,
           item.follow_time, item.follow_note, item.call_time, item.visit_time, item.sign_time,
-          item.xhs_account, item.lead_type, phone
+          item.xhs_account, item.lead_type,
+          item.is_duplicate, item.xhs_nickname, item.xhs_user_id, item.xhs_uid, item.source_note, item.creative_name, item.creative_id, item.conversion_method, item.wechat_id, item.detail_json,
+          item.intention_type, item.intention_store, item.intention_store_id, item.follow_up_account, item.latest_follow_note, item.lead_stage, item.lead_tags, item.call_count, item.marketing_type, item.last_call_time, item.smart_intention, item.interaction_scene, item.latest_lead_record,
+          phone
         );
         updated++;
       } else {
@@ -632,12 +721,18 @@ router.post('/api/leads/import', requireAdmin, upload.single('file'), (req, res)
           (phone, platform, agent, entry_date, name, city, region, validity,
            can_wechat, remark, created_at,
            \u4e8c\u6b21\u8054\u7cfb\u65f6\u95f4, \u4e8c\u6b21\u8054\u7cfb\u5907\u6ce8, \u6700\u8fd1\u4e00\u6b21\u7535\u8054\u65f6\u95f4, \u5230\u8bbf\u65f6\u95f4, \u7b7e\u7ea6\u65f6\u95f4,
-           xhs_account, lead_type)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+           xhs_account, lead_type,
+           is_duplicate, xhs_nickname, xhs_user_id, xhs_uid, source_note, creative_name, creative_id, conversion_method, wechat_id, detail_json,
+           intention_type, intention_store, intention_store_id, follow_up_account, latest_follow_note, lead_stage, lead_tags, call_count, marketing_type, last_call_time, smart_intention, interaction_scene, latest_lead_record)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
           phone, platform, agent, entryDate, item.name, item.city, item.region,
           item.validity, item.can_wechat, item.remark, now,
           item.follow_time, item.follow_note, item.call_time, item.visit_time, item.sign_time,
-          item.xhs_account, item.lead_type
+          item.xhs_account, item.lead_type,
+          item.is_duplicate, item.xhs_nickname, item.xhs_user_id, item.xhs_uid, item.source_note, item.creative_name, item.creative_id, item.conversion_method, item.wechat_id, item.detail_json,
+          item.intention_type, item.intention_store, item.intention_store_id, item.follow_up_account, item.latest_follow_note, item.lead_stage, item.lead_tags, item.call_count, item.marketing_type, item.last_call_time, item.smart_intention, item.interaction_scene, item.latest_lead_record
         );
         added++;
         existing[phone] = { platform, entry_date: entryDate };
@@ -696,6 +791,22 @@ router.post('/api/leads/import-douyin', requireAdmin, upload.single('file'), (re
     const agentCol = findCol(cols, ['跟进员工', '所属招商', '负责人', '招商员', '员工']);
     const cityCol = findCol(cols, ['所在城市', '城市', '省份', '地区']);
 
+    // 抖音特有列
+    const leadTypeCol = findCol(cols, ['流量类型', '线索类型']);
+    const intentionTypeCol = findCol(cols, ['意向线索']);
+    const intentionStoreCol = findCol(cols, ['意向门店']);
+    const intentionStoreIdCol = findCol(cols, ['意向门店ID', '意向门店id']);
+    const followUpAccountCol = findCol(cols, ['跟进户']);
+    const latestFollowNoteCol = findCol(cols, ['最新跟进记录']);
+    const leadStageCol = findCol(cols, ['线索阶段', '阶段']);
+    const leadTagsCol = findCol(cols, ['线索标签', '标签']);
+    const callCountCol = findCol(cols, ['线索拨打次数', '拨打次数']);
+    const marketingTypeCol = findCol(cols, ['营销类型']);
+    const lastCallTimeCol = findCol(cols, ['最近拨打时间']);
+    const smartIntentionCol = findCol(cols, ['智能意向']);
+    const interactionSceneCol = findCol(cols, ['互动场景']);
+    const latestLeadRecordCol = findCol(cols, ['最近留资记录']);
+
     if (!phoneCol) {
       return res.json({ success: false, message: `无法识别手机号列。当前列名: ${cols.join(',')}` });
     }
@@ -730,8 +841,32 @@ router.post('/api/leads/import-douyin', requireAdmin, upload.single('file'), (re
       const agent = getVal(row, agentCol) || '郑建军';
       const city = getVal(row, cityCol);
 
-      db.prepare('INSERT INTO new_leads (phone, platform, agent, entry_date, name, city, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(phone, '抖音', agent, entryDate, name, city, now);
+      const callCountVal = getVal(row, callCountCol);
+      const callCountNum = parseInt(callCountVal, 10);
+
+      db.prepare(`INSERT INTO new_leads
+        (phone, platform, agent, entry_date, name, city, created_at,
+         lead_type, intention_type, intention_store, intention_store_id, follow_up_account,
+         latest_follow_note, lead_stage, lead_tags, call_count, marketing_type,
+         last_call_time, smart_intention, interaction_scene, latest_lead_record)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(
+          phone, '抖音', agent, entryDate, name, city, now,
+          getVal(row, leadTypeCol),
+          getVal(row, intentionTypeCol),
+          getVal(row, intentionStoreCol),
+          getVal(row, intentionStoreIdCol),
+          getVal(row, followUpAccountCol),
+          getVal(row, latestFollowNoteCol),
+          getVal(row, leadStageCol),
+          getVal(row, leadTagsCol),
+          isNaN(callCountNum) ? 0 : callCountNum,
+          getVal(row, marketingTypeCol),
+          parseDate(row, lastCallTimeCol),
+          getVal(row, smartIntentionCol),
+          getVal(row, interactionSceneCol),
+          getVal(row, latestLeadRecordCol)
+        );
       added++;
     }
 
