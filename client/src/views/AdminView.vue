@@ -58,7 +58,7 @@
       <div v-if="activeTab === 'users'">
         <div class="chart-card" style="padding:20px;margin-bottom:16px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">添加新账号</h3>
-          <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:end">
+          <div style="display:grid;grid-template-columns:1fr 1fr 120px 120px;gap:12px;align-items:end">
             <div class="cost-field">
               <label>用户名（英文/数字）</label>
               <input type="text" v-model="newUser.username" placeholder="例如：zhangsan">
@@ -66,6 +66,14 @@
             <div class="cost-field">
               <label>姓名</label>
               <input type="text" v-model="newUser.name" placeholder="例如：张三">
+            </div>
+            <div class="cost-field">
+              <label>身份</label>
+              <select v-model="newUser.role">
+                <option value="agent">招商员</option>
+                <option value="admin">管理员</option>
+                <option value="guest">普通用户</option>
+              </select>
             </div>
             <button class="btn btn-pri" @click="createUser">创建账号</button>
           </div>
@@ -87,7 +95,7 @@
               <tr v-for="u in userList" :key="u.id">
                 <td>{{ u.username }}</td>
                 <td>{{ u.name }}</td>
-                <td>{{ u.role === 'admin' ? '管理员' : u.role === 'agent' ? '招商员' : '游客' }}</td>
+                <td>{{ u.role === 'admin' ? '管理员' : u.role === 'agent' ? '招商员' : '普通用户' }}</td>
                 <td>
                   <span :style="{ color: u.active ? 'var(--success)' : 'var(--danger)', fontSize: '12px', fontWeight: 600 }">
                     {{ u.active ? '正常' : '已停用' }}
@@ -203,7 +211,7 @@ const activeTab = ref('ops')
 
 // 账号管理
 const userList = ref([])
-const newUser = ref({ username: '', name: '' })
+const newUser = ref({ username: '', name: '', role: 'agent' })
 const userResult = ref('')
 const userResultType = ref('')
 
@@ -296,11 +304,11 @@ async function createUser() {
     return
   }
   try {
-    const data = await api.createUser({ username: u, name: n, role: 'agent' })
+    const data = await api.createUser({ username: u, name: n, role: newUser.value.role || 'agent' })
     userResult.value = data.message
     userResultType.value = data.success ? 'ok' : 'err'
     if (data.success) {
-      newUser.value = { username: '', name: '' }
+      newUser.value = { username: '', name: '', role: 'agent' }
       loadUsers()
     }
   } catch(e) {
