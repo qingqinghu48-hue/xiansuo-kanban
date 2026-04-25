@@ -21,6 +21,7 @@
         <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">管理操作</button>
         <button class="tab-btn" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">账号管理</button>
         <button class="tab-btn" :class="{ active: activeTab === 'platforms' }" @click="activeTab = 'platforms'">平台来源管理</button>
+        <button class="tab-btn" :class="{ active: activeTab === 'regions' }" @click="activeTab = 'regions'">大区管理</button>
       </div>
 
       <!-- 管理操作 -->
@@ -137,6 +138,31 @@
           </div>
         </div>
       </div>
+
+      <!-- 大区管理 -->
+      <div v-if="activeTab === 'regions'">
+        <div class="chart-card" style="padding:20px;margin-bottom:16px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">添加大区</h3>
+          <div style="display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:end">
+            <div class="cost-field">
+              <label>大区名称</label>
+              <input type="text" v-model="newRegionName" placeholder="例如：华东大区">
+            </div>
+            <button class="btn btn-pri" @click="addRegionForm.submit">添加</button>
+          </div>
+          <div :class="['cost-result', addRegionForm.resultType]" style="margin-top:8px">{{ addRegionForm.result }}</div>
+        </div>
+
+        <div class="chart-card" style="padding:20px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">现有大区</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <div v-for="r in regionList" :key="r" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-xs);border:1px solid var(--border);background:#fff">
+              <span style="font-size:13px">{{ r }}</span>
+              <button @click="deleteRegion(r)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;line-height:1">&times;</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <CostModal :visible="showCost" @close="showCost = false" :costData="costData" @update="loadCost" />
@@ -217,6 +243,10 @@ const newUser = ref({ username: '', name: '', role: 'agent' })
 // 平台管理
 const newPlatformName = ref('')
 
+// 大区管理
+const newRegionName = ref('')
+const regionList = ref([])
+
 const newLeadForm = useForm({
   validate() {
     if (!newLead.value.phone || !newLead.value.platform || !newLead.value.agent) {
@@ -271,12 +301,27 @@ const addPlatformForm = useForm({
   }
 })
 
+const addRegionForm = useForm({
+  validate() {
+    const n = (newRegionName.value || '').trim()
+    if (!n) return '大区名称不能为空'
+  },
+  submit() {
+    return api.addRegion({ name: newRegionName.value.trim() })
+  },
+  onSuccess() {
+    newRegionName.value = ''
+    loadRegions()
+  }
+})
+
 onMounted(async () => {
   const user = await checkAuth(router)
   if (user) userInfo.value = user
   loadCost()
   loadAgents()
   loadPlatforms()
+  loadRegions()
   loadUsers()
 })
 
@@ -297,6 +342,13 @@ async function loadPlatforms() {
   try {
     const data = await api.getPlatforms()
     if (data.success) platformList.value = data.platforms || []
+  } catch(e) {}
+}
+
+async function loadRegions() {
+  try {
+    const data = await api.getRegions()
+    if (data.success) regionList.value = data.regions || []
   } catch(e) {}
 }
 
@@ -332,6 +384,16 @@ async function deletePlatform(name) {
   try {
     const data = await api.deletePlatform({ name })
     if (data.success) loadPlatforms()
+    else alert(data.message)
+  } catch(e) { alert('删除失败') }
+}
+
+// 大区管理
+async function deleteRegion(name) {
+  if (!confirm(`确定删除大区 "${name}" 吗？`)) return
+  try {
+    const data = await api.deleteRegion({ name })
+    if (data.success) loadRegions()
     else alert(data.message)
   } catch(e) { alert('删除失败') }
 }

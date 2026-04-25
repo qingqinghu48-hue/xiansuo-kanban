@@ -14,6 +14,7 @@ const costRoutes = require('./routes/cost');
 const notificationsRoutes = require('./routes/notifications');
 const usersRoutes = require('./routes/users');
 const platformsRoutes = require('./routes/platforms');
+const regionsRoutes = require('./routes/regions');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -58,6 +59,7 @@ app.use(costRoutes);
 app.use(notificationsRoutes);
 app.use(usersRoutes);
 app.use(platformsRoutes);
+app.use(regionsRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

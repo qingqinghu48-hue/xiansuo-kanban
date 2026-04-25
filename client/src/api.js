@@ -168,5 +168,20 @@ export default {
       method: 'POST',
       body: JSON.stringify(data)
     })
+  },
+  getRegions() {
+    return request('/api/regions')
+  },
+  addRegion(data) {
+    return request('/api/regions', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  deleteRegion(data) {
+    return request('/api/regions/delete', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   }
 }

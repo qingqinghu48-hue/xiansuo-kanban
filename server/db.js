@@ -131,6 +131,15 @@ function initDb() {
     )
   `);
 
+  // 创建 regions 表
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS regions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+
   // 创建常用查询索引
   db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_platform ON new_leads(platform)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_agent ON new_leads(agent)`);
@@ -190,6 +199,23 @@ function initPlatforms() {
   console.log('[初始化] 默认平台来源已创建');
 }
 
+function initRegions() {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM regions').get().cnt;
+  if (count > 0) return;
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const stmt = db.prepare('INSERT OR IGNORE INTO regions (name, created_at) VALUES (?, ?)');
+  const rows = db.prepare("SELECT DISTINCT region FROM new_leads WHERE region IS NOT NULL AND region != ''").all();
+  let added = 0;
+  for (const row of rows) {
+    const name = (row.region || '').trim();
+    if (name) {
+      stmt.run(name, now);
+      added++;
+    }
+  }
+  console.log(`[初始化] 已从 new_leads 提取 ${added} 个大区到 regions 表`);
+}
+
 function fixPlatformClassification() {
   try {
     const mappings = [
@@ -214,5 +240,6 @@ initDb();
 fixPlatformClassification();
 migrateUsersFromYaml();
 initPlatforms();
+initRegions();
 
 module.exports = db;
