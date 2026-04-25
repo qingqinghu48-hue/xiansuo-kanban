@@ -4,7 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
-const { cleanVal } = require('../utils/helpers');
+const { cleanVal, formatDateTime } = require('../utils/helpers');
 const { parseExcel, findCol, getVal, parseDate } = require('../utils/excel');
 const { getValidPlatforms, normalizePlatform } = require('../utils/platform');
 const multer = require('multer');
@@ -161,7 +161,7 @@ router.post('/api/leads/add', requireAdmin, (req, res) => {
       return res.json({ success: false, message: '该手机号已录入' });
     }
 
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const now = formatDateTime();
     db.prepare('INSERT INTO new_leads (phone, platform, agent, entry_date, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(phone, platform, agent, entryDate, now);
 
@@ -582,7 +582,7 @@ function handleImport(req, res) {
 
       let added = 0, updated = 0, dupSkip = 0, skipped = 0;
       const seenInFile = new Set();
-      const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      const now = formatDateTime();
 
       const insertStmt = db.prepare(buildInsertSql());
       const updateStmt = db.prepare(buildImportUpdateSql());

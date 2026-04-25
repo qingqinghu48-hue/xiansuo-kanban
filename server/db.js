@@ -5,6 +5,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
+const { formatDateTime } = require('./utils/helpers');
 
 const DB_FILE = path.join(__dirname, '..', 'leads.db');
 
@@ -202,7 +203,7 @@ function migrateUsersFromYaml() {
     if (count > 0) return; // 已有数据，跳过
 
     const data = yaml.load(fs.readFileSync(yamlFile, 'utf-8'));
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const now = formatDateTime();
     const stmt = db.prepare(`INSERT INTO users (username, password, name, role, regions, active, must_change_password, created_at)
       VALUES (?, ?, ?, ?, ?, 1, 0, ?)`);
 
@@ -227,7 +228,7 @@ function migrateUsersFromYaml() {
 function initPlatforms() {
   const count = db.prepare('SELECT COUNT(*) as cnt FROM platforms').get().cnt;
   if (count > 0) return;
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const now = formatDateTime();
   const stmt = db.prepare('INSERT INTO platforms (name, sort_order, created_at) VALUES (?, ?, ?)');
   const defaults = ['抖音', '小红书', '豆包', '400线索', '品专', '转介绍'];
   defaults.forEach((name, i) => stmt.run(name, i, now));
@@ -235,7 +236,7 @@ function initPlatforms() {
 }
 
 function initRegions() {
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const now = formatDateTime();
   const standardRegions = ['上海区域', '常锡区域', '其他区域', '南京区域', '深莞惠区域', '苏州区域', '镇扬泰区域'];
 
   // 1. 清洗 regions 表：删除非标准区域（组合区域）

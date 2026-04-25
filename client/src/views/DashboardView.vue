@@ -208,12 +208,6 @@ function onEditSaved(payload) {
   }
 }
 
-function getCurrentFilter() {
-  try {
-    return JSON.parse(localStorage.getItem('kanban_filter') || '{}')
-  } catch(e) { return {} }
-}
-
 async function closeNotify() {
   notifyVisible.value = false
   try { await api.markRead() } catch(e) {}

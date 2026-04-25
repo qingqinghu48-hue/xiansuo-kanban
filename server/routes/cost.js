@@ -4,6 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../middleware/auth');
+const { formatDateTime } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ router.post('/api/cost/add', requireAdmin, (req, res) => {
   }
 
   try {
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const now = formatDateTime();
     const existing = db.prepare('SELECT id FROM cost_data WHERE cost_date = ? AND platform = ?').get(cost_date, platform);
 
     if (existing) {

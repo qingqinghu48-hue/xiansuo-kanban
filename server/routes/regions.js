@@ -4,6 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../middleware/auth');
+const { formatDateTime } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -33,7 +34,7 @@ router.post('/api/regions', requireAdmin, (req, res) => {
       return res.json({ success: false, message: '该大区已存在' });
     }
 
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const now = formatDateTime();
     db.prepare('INSERT INTO regions (name, created_at) VALUES (?, ?)').run(n, now);
 
     res.json({ success: true, message: '大区添加成功' });

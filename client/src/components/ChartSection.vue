@@ -53,6 +53,7 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
+import { platColor } from '../utils.js'
 
 const props = defineProps({
   filtered: { type: Array, default: () => [] },
@@ -65,16 +66,6 @@ const cvDySpend = ref(null)
 const cvDyUnit = ref(null)
 const cvXhsSpend = ref(null)
 const cvXhsUnit = ref(null)
-
-const PLAT_PALETTE = ['#f43f5e','#f59e0b','#3b82f6','#10b981','#6366f1','#ec4899','#14b8a6','#f97316']
-const platColorMap = {}
-function platColor(p) {
-  if (platColorMap[p]) return platColorMap[p]
-  const keys = Object.keys(platColorMap)
-  const c = PLAT_PALETTE[keys.length % PLAT_PALETTE.length]
-  platColorMap[p] = c
-  return c
-}
 
 const VALID_COLORS = {
   '意向客户': '#10b981', '一般客户': '#3b82f6', '无效线索': '#94a3b8',

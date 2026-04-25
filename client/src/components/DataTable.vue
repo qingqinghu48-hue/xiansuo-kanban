@@ -66,6 +66,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { platColor, platStyle, esc } from '../utils.js'
 
 const props = defineProps({
   filtered: { type: Array, default: () => [] },
@@ -132,20 +133,6 @@ function sortIcon(k) {
   return sortAsc.value ? '▲' : '▼'
 }
 
-const PLAT_PALETTE = ['#f43f5e','#f59e0b','#3b82f6','#10b981','#6366f1','#ec4899','#14b8a6','#f97316']
-const platColorMap = {}
-function platColor(p) {
-  if (platColorMap[p]) return platColorMap[p]
-  const keys = Object.keys(platColorMap)
-  const c = PLAT_PALETTE[keys.length % PLAT_PALETTE.length]
-  platColorMap[p] = c
-  return c
-}
-const platBgMap = {'#f43f5e':'#fee2e2','#f59e0b':'#fef3c7','#3b82f6':'#dbeafe','#10b981':'#d1fae5','#6366f1':'#ede9fe','#ec4899':'#fce7f3','#14b8a6':'#d1fae5','#f97316':'#ffedd5'}
-function platStyle(p) {
-  const c = platColor(p)
-  return { background: platBgMap[c] || '#f1f5f9', color: c }
-}
 function validTag(v) {
   const cls = v === '意向客户' ? 'tag-yx' : v === '一般客户' ? 'tag-yb' : v === '无效线索' ? 'tag-wlx' : v === '普通线索' ? 'tag-pt' : ''
   return `<span class="tag ${cls}">${esc(v)}</span>`
@@ -154,10 +141,6 @@ function jmTag(jm) {
   if (jm === '是') return '<span style="color:#10b981;font-weight:700">是</span>'
   if (jm === '否') return '<span style="color:#94a3b8">否</span>'
   return '<span style="color:#94a3b8">—</span>'
-}
-function esc(s) {
-  s = s == null ? '' : String(s)
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
 function fmtDate(r) {
   return String(r['录入日期'] || r['入库日期'] || '-').slice(0, 10)

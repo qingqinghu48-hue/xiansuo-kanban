@@ -5,6 +5,7 @@ const express = require('express');
 const db = require('../db');
 const { hashPassword } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
+const { formatDateTime } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -42,7 +43,7 @@ router.post('/api/users', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '用户名已存在' });
   }
 
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const now = formatDateTime();
   const regionsJson = Array.isArray(regions) ? JSON.stringify(regions) : '[]';
 
   db.prepare(`INSERT INTO users (username, password, name, role, regions, active, must_change_password, created_at)

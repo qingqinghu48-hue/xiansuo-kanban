@@ -4,6 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../middleware/auth');
+const { formatDateTime } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.post('/api/platforms', requireAdmin, (req, res) => {
   }
 
   const maxOrder = db.prepare('SELECT MAX(sort_order) as mo FROM platforms').get();
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const now = formatDateTime();
 
   db.prepare('INSERT INTO platforms (name, sort_order, created_at) VALUES (?, ?, ?)')
     .run(n, (maxOrder.mo || 0) + 1, now);
