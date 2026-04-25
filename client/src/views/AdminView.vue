@@ -346,7 +346,7 @@ onMounted(async () => {
 })
 
 async function loadCost() {
-  try { const data = await api.getCost(); costData.value = data || [] } catch(e) {}
+  try { const data = await api.getCost(); costData.value = data.cost_data || [] } catch(e) {}
 }
 
 async function loadAgents() {
