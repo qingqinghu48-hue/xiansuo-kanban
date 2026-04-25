@@ -46,7 +46,7 @@ function buildImportUpdateSql() {
  * 返回格式与 Python 版一致：字段名用中文键名
  */
 function loadNewLeads() {
-  const rows = db.prepare('SELECT * FROM new_leads ORDER BY created_at DESC').all();
+  const rows = db.prepare('SELECT * FROM new_leads ORDER BY entry_date DESC, created_at DESC').all();
   const leads = [];
   for (const row of rows) {
     leads.push({
