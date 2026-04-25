@@ -21,11 +21,11 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="chart-card" style="border:1px solid var(--border-2)">
         <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
-        <div class="chart-card-body"><canvas ref="cvDySpend" style="height:200px"></canvas></div>
+        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDySpend" style="height:200px"></canvas></div>
       </div>
       <div class="chart-card" style="border:1px solid var(--border-2)">
         <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
-        <div class="chart-card-body"><canvas ref="cvDyUnit" style="height:200px"></canvas></div>
+        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDyUnit" style="height:200px"></canvas></div>
       </div>
     </div>
   </div>
@@ -41,11 +41,11 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="chart-card" style="border:1px solid var(--border-2)">
         <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
-        <div class="chart-card-body"><canvas ref="cvXhsSpend" style="height:200px"></canvas></div>
+        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsSpend" style="height:200px"></canvas></div>
       </div>
       <div class="chart-card" style="border:1px solid var(--border-2)">
         <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
-        <div class="chart-card-body"><canvas ref="cvXhsUnit" style="height:200px"></canvas></div>
+        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsUnit" style="height:200px"></canvas></div>
       </div>
     </div>
   </div>
@@ -214,6 +214,20 @@ function drawLineChart(canvasRef, dataDict, lineColor, fillColors) {
   })
 }
 
+function autoCanvasWidth(canvasRef, keys, type) {
+  if (!canvasRef) return
+  const parent = canvasRef.parentElement
+  const parentW = parent ? parent.clientWidth : 300
+  let dataW = 300
+  const n = keys.length
+  if (type === 'bar') {
+    dataW = Math.max(300, n * 40 + 60)
+  } else {
+    dataW = Math.max(300, (n - 1) * 50 + 60)
+  }
+  canvasRef.style.width = `${Math.max(parentW, dataW)}px`
+}
+
 function renderAll() {
   nextTick(() => {
     // platform pie
@@ -266,9 +280,20 @@ function renderAll() {
       })
     })
 
+    const dySpendKeys = Object.keys(COST_BY_PLAT['抖音'] || {}).sort()
+    autoCanvasWidth(cvDySpend.value, dySpendKeys, 'bar')
     drawBarChart(cvDySpend.value, COST_BY_PLAT['抖音'] || {}, '#3b82f6', '#93c5fd')
+
+    const dyUnitKeys = Object.keys(unitByPlat['抖音'] || {}).sort()
+    autoCanvasWidth(cvDyUnit.value, dyUnitKeys, 'line')
     drawLineChart(cvDyUnit.value, unitByPlat['抖音'] || {}, '#f59e0b', ['rgba(245,158,11,0.25)', 'rgba(245,158,11,0.02)'])
+
+    const xhsSpendKeys = Object.keys(COST_BY_PLAT['小红书'] || {}).sort()
+    autoCanvasWidth(cvXhsSpend.value, xhsSpendKeys, 'bar')
     drawBarChart(cvXhsSpend.value, COST_BY_PLAT['小红书'] || {}, '#ec4899', '#fbcfe8')
+
+    const xhsUnitKeys = Object.keys(unitByPlat['小红书'] || {}).sort()
+    autoCanvasWidth(cvXhsUnit.value, xhsUnitKeys, 'line')
     drawLineChart(cvXhsUnit.value, unitByPlat['小红书'] || {}, '#be185d', ['rgba(190,24,93,0.25)', 'rgba(190,24,93,0.02)'])
   })
 }
