@@ -379,7 +379,7 @@ function handleImport(req, res) {
     const cityCol = findCol(cols, ['城市', '省份', '地区', '所在城市', '省']);
     const regionCol = findCol(cols, ['所属大区', '大区', '区域']);
     const validityCol = findCol(cols, ['线索有效性', '有效性', '客户类型', '等级']);
-    const wechatCol = findCol(cols, ['是否能加上微信', '能否加微', '加微信', '微信']);
+    const wechatCol = findCol(cols, ['是否能加上微信', '能否加微', '加微信']);
     const remarkCol = findCol(cols, ['备注', '说明', '备注信息', '客户情况备注']);
     const followTimeCol = findCol(cols, ['二次联系时间', '跟进时间', '下次联系时间']);
     const followNoteCol = findCol(cols, ['二次联系备注', '跟进备注', '联系备注']);
