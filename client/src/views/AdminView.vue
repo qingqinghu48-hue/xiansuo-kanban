@@ -103,10 +103,10 @@
                   </span>
                 </td>
                 <td>
-                  <button v-if="u.role !== 'admin'" class="td-btn" @click="toggleUser(u)" style="margin-right:4px">
+                  <button v-if="u.id !== userInfo.id" class="td-btn" @click="toggleUser(u)" style="margin-right:4px">
                     {{ u.active ? '停用' : '启用' }}
                   </button>
-                  <button v-if="u.role !== 'admin'" class="td-btn" @click="deleteUser(u)" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>
+                  <button v-if="u.id !== userInfo.id" class="td-btn" @click="deleteUser(u)" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>
                 </td>
               </tr>
             </tbody>

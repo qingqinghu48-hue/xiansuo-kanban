@@ -3,6 +3,7 @@
  */
 const express = require('express');
 const db = require('../db');
+const { hashPassword } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -46,7 +47,7 @@ router.post('/api/users', requireAdmin, (req, res) => {
 
   db.prepare(`INSERT INTO users (username, password, name, role, regions, active, must_change_password, created_at)
     VALUES (?, ?, ?, ?, ?, 1, 1, ?)`)
-    .run(u, '123456', n, r, regionsJson, now);
+    .run(u, hashPassword('123456'), n, r, regionsJson, now);
 
   res.json({ success: true, message: '账号创建成功，初始密码：123456' });
 });
@@ -58,12 +59,14 @@ router.post('/api/users/toggle', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '缺少用户ID' });
   }
 
+  // 不能操作自己
+  if (req.session.user.id === id) {
+    return res.json({ success: false, message: '不能停用自己的账号' });
+  }
+
   const user = db.prepare('SELECT active, role FROM users WHERE id = ?').get(id);
   if (!user) {
     return res.json({ success: false, message: '用户不存在' });
-  }
-  if (user.role === 'admin') {
-    return res.json({ success: false, message: '不能停用管理员账号' });
   }
 
   const newActive = user.active ? 0 : 1;
@@ -79,12 +82,14 @@ router.post('/api/users/delete', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '缺少用户ID' });
   }
 
+  // 不能删除自己
+  if (req.session.user.id === id) {
+    return res.json({ success: false, message: '不能删除自己的账号' });
+  }
+
   const user = db.prepare('SELECT role FROM users WHERE id = ?').get(id);
   if (!user) {
     return res.json({ success: false, message: '用户不存在' });
-  }
-  if (user.role === 'admin') {
-    return res.json({ success: false, message: '不能删除管理员账号' });
   }
 
   db.prepare('DELETE FROM users WHERE id = ?').run(id);

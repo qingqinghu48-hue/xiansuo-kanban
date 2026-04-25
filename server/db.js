@@ -4,10 +4,45 @@
  */
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
 
 const DB_FILE = path.join(__dirname, '..', 'leads.db');
 
 const db = new Database(DB_FILE);
+
+/**
+ * 密码哈希工具
+ */
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 32).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
+  const [salt, hash] = stored.split(':');
+  const computed = crypto.scryptSync(password, salt, 32).toString('hex');
+  return computed === hash;
+}
+
+/**
+ * 将现有明文密码迁移为哈希存储
+ */
+function migratePasswords() {
+  try {
+    const rows = db.prepare("SELECT id, password FROM users WHERE password IS NOT NULL AND password NOT LIKE '%:%'").all();
+    if (!rows.length) return;
+    const stmt = db.prepare('UPDATE users SET password = ? WHERE id = ?');
+    for (const row of rows) {
+      stmt.run(hashPassword(row.password), row.id);
+      console.log(`[密码迁移] 用户ID ${row.id} 密码已哈希化`);
+    }
+    console.log(`[密码迁移] 共迁移 ${rows.length} 个用户的明文密码`);
+  } catch (e) {
+    console.log('[密码迁移] 失败:', e.message);
+  }
+}
 
 function initDb() {
   // 创建 new_leads 表
@@ -259,5 +294,8 @@ fixPlatformClassification();
 migrateUsersFromYaml();
 initPlatforms();
 initRegions();
+migratePasswords();
 
 module.exports = db;
+module.exports.hashPassword = hashPassword;
+module.exports.verifyPassword = verifyPassword;

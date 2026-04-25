@@ -3,6 +3,7 @@
  */
 const express = require('express');
 const db = require('../db');
+const { verifyPassword, hashPassword } = require('../db');
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.post('/api/login', (req, res) => {
     return res.json({ success: false, message: '账号已停用，请联系管理员' });
   }
 
-  if (user.password !== p) {
+  if (!verifyPassword(p, user.password)) {
     return res.json({ success: false, message: '用户名或密码错误' });
   }
 
@@ -91,12 +92,12 @@ router.post('/api/change-password', (req, res) => {
   }
 
   // 首次登录时 old_password 传空，不用校验旧密码
-  if (dbUser.must_change_password === 0 && dbUser.password !== oldP) {
+  if (dbUser.must_change_password === 0 && !verifyPassword(oldP, dbUser.password)) {
     return res.json({ success: false, message: '旧密码错误' });
   }
 
   db.prepare('UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?')
-    .run(newP, user.id);
+    .run(hashPassword(newP), user.id);
 
   // 更新 session
   req.session.user.must_change_password = 0;
