@@ -219,26 +219,27 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
     const platform = data.platform || '';
     const xhsAccount = data.xhs_account || '';
     const leadType = data.lead_type || '';
+    const xhsUserId = data.xhs_user_id || '';
 
     if (user.role === 'admin') {
       db.prepare(`UPDATE new_leads SET
         phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
         platform = ?, entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
-        xhs_account = ?, lead_type = ?
+        xhs_account = ?, lead_type = ?, xhs_user_id = ?
         WHERE id = ?`).run(
         newPhone || phone, name, city, validity, region, canWechat, remark,
         platform, entryDate, contactTime, contactRemark, callTime, visitTime, signTime,
-        xhsAccount, leadType, leadId
+        xhsAccount, leadType, xhsUserId, leadId
       );
     } else {
       db.prepare(`UPDATE new_leads SET
         phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
         二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
-        xhs_account = ?, lead_type = ?
+        xhs_account = ?, lead_type = ?, xhs_user_id = ?
         WHERE id = ?`).run(
         newPhone || phone, name, city, validity, region, canWechat, remark,
         contactTime, contactRemark, callTime, visitTime, signTime,
-        xhsAccount, leadType, leadId
+        xhsAccount, leadType, xhsUserId, leadId
       );
     }
 
