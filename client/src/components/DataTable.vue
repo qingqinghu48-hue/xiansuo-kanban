@@ -160,7 +160,7 @@ function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
 function fmtDate(r) {
-  return String(r['入库时间'] || r['入库日期'] || '-').slice(0, 10)
+  return String(r['录入日期'] || r['入库日期'] || '-').slice(0, 10)
 }
 
 const batchStyle = computed(() => {
