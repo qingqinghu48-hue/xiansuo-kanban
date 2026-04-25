@@ -43,6 +43,42 @@ router.post('/api/regions', requireAdmin, (req, res) => {
   }
 });
 
+// POST /api/regions/update
+router.post('/api/regions/update', requireAdmin, (req, res) => {
+  try {
+    const { oldName, newName } = req.body;
+    const oldN = (oldName || '').trim();
+    const newN = (newName || '').trim();
+
+    if (!oldN || !newN) {
+      return res.json({ success: false, message: '大区名称不能为空' });
+    }
+    if (oldN === newN) {
+      return res.json({ success: true, message: '名称未变更' });
+    }
+
+    const oldRegion = db.prepare('SELECT id FROM regions WHERE name = ?').get(oldN);
+    if (!oldRegion) {
+      return res.json({ success: false, message: '原大区不存在' });
+    }
+
+    const existing = db.prepare('SELECT id FROM regions WHERE name = ?').get(newN);
+    if (existing) {
+      return res.json({ success: false, message: '新大区名称已存在' });
+    }
+
+    // 更新 regions 表
+    db.prepare('UPDATE regions SET name = ? WHERE name = ?').run(newN, oldN);
+    // 同步更新 new_leads 中包含该大区的记录（处理组合区域）
+    db.prepare("UPDATE new_leads SET region = REPLACE(region, ?, ?) WHERE region LIKE ?").run(oldN, newN, `%${oldN}%`);
+
+    res.json({ success: true, message: '大区名称已更新' });
+  } catch (e) {
+    console.error('[大区更新错误]', e);
+    res.status(500).json({ success: false, message: '更新失败' });
+  }
+});
+
 // POST /api/regions/delete
 router.post('/api/regions/delete', requireAdmin, (req, res) => {
   try {
@@ -58,7 +94,7 @@ router.post('/api/regions/delete', requireAdmin, (req, res) => {
       return res.json({ success: false, message: '大区不存在' });
     }
 
-    // 检查是否有线索归属该大区
+    // 检查是否有线索归属该大区（精确匹配）
     const leads = db.prepare('SELECT COUNT(*) as cnt FROM new_leads WHERE region = ?').get(n);
     if (leads && leads.cnt > 0) {
       return res.json({ success: false, message: `该大区下有 ${leads.cnt} 条线索，无法删除` });

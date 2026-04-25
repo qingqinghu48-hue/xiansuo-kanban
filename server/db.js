@@ -200,20 +200,38 @@ function initPlatforms() {
 }
 
 function initRegions() {
-  const count = db.prepare('SELECT COUNT(*) as cnt FROM regions').get().cnt;
-  if (count > 0) return;
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const stmt = db.prepare('INSERT OR IGNORE INTO regions (name, created_at) VALUES (?, ?)');
-  const rows = db.prepare("SELECT DISTINCT region FROM new_leads WHERE region IS NOT NULL AND region != ''").all();
-  let added = 0;
-  for (const row of rows) {
-    const name = (row.region || '').trim();
-    if (name) {
-      stmt.run(name, now);
-      added++;
+  const standardRegions = ['上海区域', '常锡区域', '其他区域', '南京区域', '深莞惠区域', '苏州区域', '镇扬泰区域'];
+
+  // 1. 清洗 regions 表：删除非标准区域（组合区域）
+  const allRegions = db.prepare('SELECT name FROM regions').all();
+  for (const row of allRegions) {
+    if (!standardRegions.includes(row.name)) {
+      db.prepare('DELETE FROM regions WHERE name = ?').run(row.name);
+      console.log(`[清洗] 删除组合区域: ${row.name}`);
     }
   }
-  console.log(`[初始化] 已从 new_leads 提取 ${added} 个大区到 regions 表`);
+
+  // 2. 确保标准区域都存在
+  const stmt = db.prepare('INSERT OR IGNORE INTO regions (name, created_at) VALUES (?, ?)');
+  for (const name of standardRegions) {
+    stmt.run(name, now);
+  }
+
+  // 3. 规范化 new_leads 的 region 字段：统一分隔符为 ", "
+  const leads = db.prepare("SELECT id, region FROM new_leads WHERE region IS NOT NULL AND region != ''").all();
+  const updateStmt = db.prepare('UPDATE new_leads SET region = ? WHERE id = ?');
+  let normalizedCount = 0;
+  for (const lead of leads) {
+    const normalized = String(lead.region).split(/[,，、]\s*/).map(s => s.trim()).filter(Boolean).join(', ');
+    if (normalized !== lead.region) {
+      updateStmt.run(normalized, lead.id);
+      normalizedCount++;
+    }
+  }
+  if (normalizedCount > 0) {
+    console.log(`[清洗] 已规范化 ${normalizedCount} 条线索的 region 字段`);
+  }
 }
 
 function fixPlatformClassification() {

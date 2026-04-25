@@ -35,6 +35,37 @@ router.post('/api/platforms', requireAdmin, (req, res) => {
   res.json({ success: true, message: '平台添加成功' });
 });
 
+// POST /api/platforms/update
+router.post('/api/platforms/update', requireAdmin, (req, res) => {
+  const { oldName, newName } = req.body;
+  const oldN = (oldName || '').trim();
+  const newN = (newName || '').trim();
+
+  if (!oldN || !newN) {
+    return res.json({ success: false, message: '平台名称不能为空' });
+  }
+  if (oldN === newN) {
+    return res.json({ success: true, message: '名称未变更' });
+  }
+
+  const oldPlatform = db.prepare('SELECT id FROM platforms WHERE name = ?').get(oldN);
+  if (!oldPlatform) {
+    return res.json({ success: false, message: '原平台不存在' });
+  }
+
+  const existing = db.prepare('SELECT id FROM platforms WHERE name = ?').get(newN);
+  if (existing) {
+    return res.json({ success: false, message: '新平台名称已存在' });
+  }
+
+  // 更新 platforms 表
+  db.prepare('UPDATE platforms SET name = ? WHERE name = ?').run(newN, oldN);
+  // 同步更新 new_leads 中关联的线索
+  db.prepare('UPDATE new_leads SET platform = ? WHERE platform = ?').run(newN, oldN);
+
+  res.json({ success: true, message: '平台名称已更新' });
+});
+
 // POST /api/platforms/delete
 router.post('/api/platforms/delete', requireAdmin, (req, res) => {
   const { name } = req.body;

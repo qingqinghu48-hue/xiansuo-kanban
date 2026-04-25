@@ -131,9 +131,17 @@
         <div class="chart-card" style="padding:20px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">现有平台来源</h3>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <div v-for="p in platformList" :key="p" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-xs);border:1px solid var(--border);background:#fff">
-              <span style="font-size:13px">{{ p }}</span>
-              <button @click="deletePlatform(p)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;line-height:1">&times;</button>
+            <div v-for="p in platformList" :key="p" style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-xs);border:1px solid var(--border);background:#fff">
+              <template v-if="editingPlatform === p">
+                <input v-model="editingPlatformName" style="width:100px;font-size:13px;padding:2px 6px;border:1px solid var(--primary);border-radius:4px;outline:none">
+                <button @click="saveEditPlatform" style="background:none;border:none;color:var(--success);cursor:pointer;font-size:13px;line-height:1">✓</button>
+                <button @click="cancelEditPlatform" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:13px;line-height:1">✕</button>
+              </template>
+              <template v-else>
+                <span style="font-size:13px">{{ p }}</span>
+                <button @click="startEditPlatform(p)" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;line-height:1;margin-left:2px">✎</button>
+                <button @click="deletePlatform(p)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;line-height:1">&times;</button>
+              </template>
             </div>
           </div>
         </div>
@@ -156,9 +164,17 @@
         <div class="chart-card" style="padding:20px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">现有大区</h3>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <div v-for="r in regionList" :key="r" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-xs);border:1px solid var(--border);background:#fff">
-              <span style="font-size:13px">{{ r }}</span>
-              <button @click="deleteRegion(r)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;line-height:1">&times;</button>
+            <div v-for="r in regionList" :key="r" style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-xs);border:1px solid var(--border);background:#fff">
+              <template v-if="editingRegion === r">
+                <input v-model="editingRegionName" style="width:100px;font-size:13px;padding:2px 6px;border:1px solid var(--primary);border-radius:4px;outline:none">
+                <button @click="saveEditRegion" style="background:none;border:none;color:var(--success);cursor:pointer;font-size:13px;line-height:1">✓</button>
+                <button @click="cancelEditRegion" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:13px;line-height:1">✕</button>
+              </template>
+              <template v-else>
+                <span style="font-size:13px">{{ r }}</span>
+                <button @click="startEditRegion(r)" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;line-height:1;margin-left:2px">✎</button>
+                <button @click="deleteRegion(r)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;line-height:1">&times;</button>
+              </template>
             </div>
           </div>
         </div>
@@ -242,10 +258,14 @@ const newUser = ref({ username: '', name: '', role: 'agent' })
 
 // 平台管理
 const newPlatformName = ref('')
+const editingPlatform = ref('')
+const editingPlatformName = ref('')
 
 // 大区管理
 const newRegionName = ref('')
 const regionList = ref([])
+const editingRegion = ref('')
+const editingRegionName = ref('')
 
 const newLeadForm = useForm({
   validate() {
@@ -379,6 +399,28 @@ async function deleteUser(u) {
 }
 
 // 平台管理
+function startEditPlatform(name) {
+  editingPlatform.value = name
+  editingPlatformName.value = name
+}
+function cancelEditPlatform() {
+  editingPlatform.value = ''
+  editingPlatformName.value = ''
+}
+async function saveEditPlatform() {
+  const newName = (editingPlatformName.value || '').trim()
+  if (!newName) { alert('平台名称不能为空'); return }
+  try {
+    const data = await api.updatePlatform({ oldName: editingPlatform.value, newName })
+    if (data.success) {
+      editingPlatform.value = ''
+      editingPlatformName.value = ''
+      loadPlatforms()
+    } else {
+      alert(data.message)
+    }
+  } catch(e) { alert('更新失败') }
+}
 async function deletePlatform(name) {
   if (!confirm(`确定删除平台来源 "${name}" 吗？`)) return
   try {
@@ -389,6 +431,28 @@ async function deletePlatform(name) {
 }
 
 // 大区管理
+function startEditRegion(name) {
+  editingRegion.value = name
+  editingRegionName.value = name
+}
+function cancelEditRegion() {
+  editingRegion.value = ''
+  editingRegionName.value = ''
+}
+async function saveEditRegion() {
+  const newName = (editingRegionName.value || '').trim()
+  if (!newName) { alert('大区名称不能为空'); return }
+  try {
+    const data = await api.updateRegion({ oldName: editingRegion.value, newName })
+    if (data.success) {
+      editingRegion.value = ''
+      editingRegionName.value = ''
+      loadRegions()
+    } else {
+      alert(data.message)
+    }
+  } catch(e) { alert('更新失败') }
+}
 async function deleteRegion(name) {
   if (!confirm(`确定删除大区 "${name}" 吗？`)) return
   try {

@@ -169,6 +169,12 @@ export default {
       body: JSON.stringify(data)
     })
   },
+  updatePlatform(data) {
+    return request('/api/platforms/update', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
   getRegions() {
     return request('/api/regions')
   },
@@ -180,6 +186,12 @@ export default {
   },
   deleteRegion(data) {
     return request('/api/regions/delete', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  updateRegion(data) {
+    return request('/api/regions/update', {
       method: 'POST',
       body: JSON.stringify(data)
     })
