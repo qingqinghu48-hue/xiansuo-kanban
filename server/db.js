@@ -130,6 +130,17 @@ function initDb() {
       created_at TEXT NOT NULL
     )
   `);
+
+  // 创建常用查询索引
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_platform ON new_leads(platform)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_agent ON new_leads(agent)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_entry_date ON new_leads(entry_date)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_is_read ON new_leads(is_read)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_new_leads_created_at ON new_leads(created_at)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_data_cost_date ON cost_data(cost_date)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cost_data_platform ON cost_data(platform)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)`);
 }
 
 /**

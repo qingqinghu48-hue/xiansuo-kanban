@@ -233,7 +233,7 @@ function renderAll() {
     // cost data
     const COST_BY_PLAT = { '抖音': {}, '小红书': {} }
     props.costData.forEach(c => {
-      const plat = c.platform || c.platform
+      const plat = c.platform
       if (COST_BY_PLAT[plat]) COST_BY_PLAT[plat][c.date] = Number(c.amount || 0)
     })
 

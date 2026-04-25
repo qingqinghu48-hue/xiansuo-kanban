@@ -1,15 +1,54 @@
 const API_BASE = import.meta.env.PROD ? '/LeadKanBan' : ''
 
+class ApiError extends Error {
+  constructor(message, status, data) {
+    super(message)
+    this.status = status
+    this.data = data
+    this.name = 'ApiError'
+  }
+}
+
+export { ApiError }
+
 async function request(url, options = {}) {
-  const res = await fetch(API_BASE + url, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
+  const isFormData = options.body instanceof FormData
+
+  try {
+    const res = await fetch(API_BASE + url, {
+      ...options,
+      signal: controller.signal,
+      credentials: 'include',
+      headers: isFormData
+        ? { ...options.headers }
+        : {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+    })
+
+    clearTimeout(timeoutId)
+
+    if (res.status === 401) {
+      window.location.href = '/login'
+      throw new ApiError('未授权，请重新登录', 401, null)
     }
-  })
-  return res.json()
+
+    if (!res.ok) {
+      throw new ApiError(`请求失败: ${res.status}`, res.status, null)
+    }
+
+    return res.json()
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e.name === 'AbortError') {
+      throw new ApiError('请求超时，请稍后重试', 0, null)
+    }
+    if (e instanceof ApiError) throw e
+    throw new ApiError(e.message || '网络错误', 0, null)
+  }
 }
 
 export default {
@@ -65,11 +104,10 @@ export default {
     const map = { zs: 'zhaoshang', dy: 'douyin', xhs: 'xiaohongshu' }
     const endpoint = type === 'dy' ? '/api/leads/import-douyin' : '/api/leads/import'
     if (type !== 'dy') formData.append('type', map[type] || type)
-    return fetch(API_BASE + endpoint, {
+    return request(endpoint, {
       method: 'POST',
-      credentials: 'include',
       body: formData
-    }).then(r => r.json())
+    })
   },
   addLead(data) {
     return request('/api/leads/add', {
@@ -112,6 +150,9 @@ export default {
       method: 'POST',
       body: JSON.stringify(data)
     })
+  },
+  getAgents() {
+    return request('/api/agents')
   },
   getPlatforms() {
     return request('/api/platforms')

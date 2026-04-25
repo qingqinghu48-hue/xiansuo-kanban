@@ -17,7 +17,7 @@
     </div>
     <div class="main">
       <!-- Tab 切换 -->
-      <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:8px">
+      <div class="tab-bar">
         <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">管理操作</button>
         <button class="tab-btn" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">账号管理</button>
         <button class="tab-btn" :class="{ active: activeTab === 'platforms' }" @click="activeTab = 'platforms'">平台来源管理</button>
@@ -25,32 +25,32 @@
 
       <!-- 管理操作 -->
       <div v-if="activeTab === 'ops'">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:24px">
-          <div class="chart-card" style="padding:20px">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">录入新线索</h3>
-            <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">手动录入单条招商线索信息</p>
-            <button class="btn btn-pri" @click="showNewLead = true">打开录入表单</button>
-          </div>
-          <div class="chart-card" style="padding:20px">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">录入营销成本</h3>
-            <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">录入每日平台广告消耗</p>
-            <button class="btn btn-pri" @click="showCost = true">打开成本录入</button>
-          </div>
-          <div class="chart-card" style="padding:20px">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">导入招商线索管理表</h3>
-            <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">批量导入招商线索数据</p>
-            <button class="btn btn-pri" @click="importRef?.openZS()">开始导入</button>
-          </div>
-          <div class="chart-card" style="padding:20px">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">导入抖音渠道线索</h3>
-            <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">导入抖音广告渠道线索</p>
-            <button class="btn btn-pri" @click="importRef?.openDY()">开始导入</button>
-          </div>
-          <div class="chart-card" style="padding:20px">
-            <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">导入小红书渠道线索</h3>
-            <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">导入小红书广告渠道线索</p>
-            <button class="btn btn-pri" @click="importRef?.openXHS()">开始导入</button>
-          </div>
+        <div class="action-grid">
+          <ActionCard title="录入新线索" description="手动录入单条招商线索信息">
+            <template #action>
+              <button class="btn btn-pri" @click="showNewLead = true">打开录入表单</button>
+            </template>
+          </ActionCard>
+          <ActionCard title="录入营销成本" description="录入每日平台广告消耗">
+            <template #action>
+              <button class="btn btn-pri" @click="showCost = true">打开成本录入</button>
+            </template>
+          </ActionCard>
+          <ActionCard title="导入招商线索管理表" description="批量导入招商线索数据">
+            <template #action>
+              <button class="btn btn-pri" @click="importRef?.openZS()">开始导入</button>
+            </template>
+          </ActionCard>
+          <ActionCard title="导入抖音渠道线索" description="导入抖音广告渠道线索">
+            <template #action>
+              <button class="btn btn-pri" @click="importRef?.openDY()">开始导入</button>
+            </template>
+          </ActionCard>
+          <ActionCard title="导入小红书渠道线索" description="导入小红书广告渠道线索">
+            <template #action>
+              <button class="btn btn-pri" @click="importRef?.openXHS()">开始导入</button>
+            </template>
+          </ActionCard>
         </div>
       </div>
 
@@ -75,9 +75,9 @@
                 <option value="guest">普通用户</option>
               </select>
             </div>
-            <button class="btn btn-pri" @click="createUser">创建账号</button>
+            <button class="btn btn-pri" @click="createUserForm.submit">创建账号</button>
           </div>
-          <div :class="['cost-result', userResultType]" style="margin-top:8px">{{ userResult }}</div>
+          <div :class="['cost-result', createUserForm.resultType]" style="margin-top:8px">{{ createUserForm.result }}</div>
         </div>
 
         <div class="chart-card" style="padding:0;overflow:hidden">
@@ -122,9 +122,9 @@
               <label>平台名称</label>
               <input type="text" v-model="newPlatformName" placeholder="例如：百度推广">
             </div>
-            <button class="btn btn-pri" @click="addPlatform">添加</button>
+            <button class="btn btn-pri" @click="addPlatformForm.submit">添加</button>
           </div>
-          <div :class="['cost-result', platformResultType]" style="margin-top:8px">{{ platformResult }}</div>
+          <div :class="['cost-result', addPlatformForm.resultType]" style="margin-top:8px">{{ addPlatformForm.result }}</div>
         </div>
 
         <div class="chart-card" style="padding:20px">
@@ -176,9 +176,9 @@
           </div>
           <div style="text-align:right;margin-top:16px">
             <button class="btn btn-ghost" @click="showNewLead = false">取消</button>
-            <button class="btn btn-pri" style="margin-left:8px" @click="submitNewLead">录入线索</button>
+            <button class="btn btn-pri" style="margin-left:8px" @click="newLeadForm.submit">录入线索</button>
           </div>
-          <div :class="['cost-result', newResultType]">{{ newResult }}</div>
+          <div :class="['cost-result', newLeadForm.resultType]">{{ newLeadForm.result }}</div>
         </div>
       </div>
     </div>
@@ -189,8 +189,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api.js'
+import { checkAuth } from '../auth.js'
+import { useForm } from '../composables/useForm.js'
 import CostModal from '../components/CostModal.vue'
 import ImportModals from '../components/ImportModals.vue'
+import ActionCard from '../components/ActionCard.vue'
 
 const userInfo = ref({})
 const showCost = ref(false)
@@ -201,8 +204,6 @@ const router = useRouter()
 
 const today = new Date().toISOString().slice(0,10)
 const newLead = ref({ phone: '', platform: '', entry_date: today, agent: '' })
-const newResult = ref('')
-const newResultType = ref('')
 const agents = ref([])
 const platformList = ref([])
 
@@ -212,21 +213,67 @@ const activeTab = ref('ops')
 // 账号管理
 const userList = ref([])
 const newUser = ref({ username: '', name: '', role: 'agent' })
-const userResult = ref('')
-const userResultType = ref('')
 
 // 平台管理
 const newPlatformName = ref('')
-const platformResult = ref('')
-const platformResultType = ref('')
+
+const newLeadForm = useForm({
+  validate() {
+    if (!newLead.value.phone || !newLead.value.platform || !newLead.value.agent) {
+      return '请填写完整信息'
+    }
+  },
+  submit() {
+    return api.addLead({
+      phone: newLead.value.phone,
+      platform: newLead.value.platform,
+      agent: newLead.value.agent,
+      entry_date: newLead.value.entry_date || today
+    })
+  },
+  onSuccess() {
+    newLead.value = { phone: '', platform: '', entry_date: today, agent: '' }
+  },
+  successMsg: '线索录入成功'
+})
+
+const createUserForm = useForm({
+  validate() {
+    const u = (newUser.value.username || '').trim()
+    const n = (newUser.value.name || '').trim()
+    if (!u || !n) return '用户名和姓名不能为空'
+    if (!/^[a-zA-Z0-9]+$/.test(u)) return '用户名只能包含英文和数字'
+  },
+  submit() {
+    return api.createUser({
+      username: newUser.value.username.trim(),
+      name: newUser.value.name.trim(),
+      role: newUser.value.role || 'agent'
+    })
+  },
+  onSuccess() {
+    newUser.value = { username: '', name: '', role: 'agent' }
+    loadUsers()
+  }
+})
+
+const addPlatformForm = useForm({
+  validate() {
+    const n = (newPlatformName.value || '').trim()
+    if (!n) return '平台名称不能为空'
+  },
+  submit() {
+    return api.addPlatform({ name: newPlatformName.value.trim() })
+  },
+  onSuccess() {
+    newPlatformName.value = ''
+    loadPlatforms()
+  }
+})
 
 onMounted(async () => {
-  try {
-    const data = await api.getCurrentUser()
-    const user = data.user || data
-    if (user.role) userInfo.value = user
-    else router.push('/login')
-  } catch(e) { router.push('/login') }
+  const user = await checkAuth(router)
+  if (user) userInfo.value = user
   loadCost()
   loadAgents()
   loadPlatforms()
@@ -239,14 +286,10 @@ async function loadCost() {
 
 async function loadAgents() {
   try {
-    const res = await api.getLeads()
-    const records = res.records || res
-    const set = new Set()
-    records.forEach(r => {
-      const a = r['所属招商'] || r['跟进员工']
-      if (a) set.add(a)
-    })
-    agents.value = Array.from(set).sort()
+    const data = await api.getAgents()
+    if (data.success) {
+      agents.value = data.agents || []
+    }
   } catch(e) {}
 }
 
@@ -264,59 +307,7 @@ async function loadUsers() {
   } catch(e) {}
 }
 
-async function submitNewLead() {
-  if (!newLead.value.phone || !newLead.value.platform || !newLead.value.agent) {
-    newResult.value = '请填写完整信息'
-    newResultType.value = 'err'
-    return
-  }
-  try {
-    const data = await api.addLead({
-      phone: newLead.value.phone,
-      platform: newLead.value.platform,
-      agent: newLead.value.agent,
-      entry_date: newLead.value.entry_date || today
-    })
-    if (data.success) {
-      newResult.value = '线索录入成功'
-      newResultType.value = 'ok'
-      newLead.value = { phone: '', platform: '', entry_date: today, agent: '' }
-    } else {
-      newResult.value = data.message || '录入失败'
-      newResultType.value = 'err'
-    }
-  } catch(e) { newResult.value = '网络错误'; newResultType.value = 'err' }
-}
-
 // 账号管理
-async function createUser() {
-  userResult.value = ''
-  const u = (newUser.value.username || '').trim()
-  const n = (newUser.value.name || '').trim()
-  if (!u || !n) {
-    userResult.value = '用户名和姓名不能为空'
-    userResultType.value = 'err'
-    return
-  }
-  if (!/^[a-zA-Z0-9]+$/.test(u)) {
-    userResult.value = '用户名只能包含英文和数字'
-    userResultType.value = 'err'
-    return
-  }
-  try {
-    const data = await api.createUser({ username: u, name: n, role: newUser.value.role || 'agent' })
-    userResult.value = data.message
-    userResultType.value = data.success ? 'ok' : 'err'
-    if (data.success) {
-      newUser.value = { username: '', name: '', role: 'agent' }
-      loadUsers()
-    }
-  } catch(e) {
-    userResult.value = '网络错误'
-    userResultType.value = 'err'
-  }
-}
-
 async function toggleUser(u) {
   if (!confirm(`确定${u.active ? '停用' : '启用'}账号 "${u.name}" 吗？`)) return
   try {
@@ -336,28 +327,6 @@ async function deleteUser(u) {
 }
 
 // 平台管理
-async function addPlatform() {
-  platformResult.value = ''
-  const n = (newPlatformName.value || '').trim()
-  if (!n) {
-    platformResult.value = '平台名称不能为空'
-    platformResultType.value = 'err'
-    return
-  }
-  try {
-    const data = await api.addPlatform({ name: n })
-    platformResult.value = data.message
-    platformResultType.value = data.success ? 'ok' : 'err'
-    if (data.success) {
-      newPlatformName.value = ''
-      loadPlatforms()
-    }
-  } catch(e) {
-    platformResult.value = '网络错误'
-    platformResultType.value = 'err'
-  }
-}
-
 async function deletePlatform(name) {
   if (!confirm(`确定删除平台来源 "${name}" 吗？`)) return
   try {
@@ -369,6 +338,19 @@ async function deletePlatform(name) {
 </script>
 
 <style scoped>
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
 .tab-btn {
   padding: 8px 16px;
   border: none;

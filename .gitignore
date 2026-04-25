@@ -29,6 +29,10 @@ package-lock.json
 
 # Vue build
 dist/
+client/dist/
+
+# WorkBuddy
+.workbuddy/
 
 # Project specific
 .pids/

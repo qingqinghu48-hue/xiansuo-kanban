@@ -31,6 +31,11 @@ router.post('/api/users', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '用户名只能包含英文和数字' });
   }
 
+  const validRoles = ['admin', 'agent', 'guest'];
+  if (!validRoles.includes(r)) {
+    return res.json({ success: false, message: '角色无效，可选：admin、agent、guest' });
+  }
+
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(u);
   if (existing) {
     return res.json({ success: false, message: '用户名已存在' });

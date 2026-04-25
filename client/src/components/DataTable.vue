@@ -4,7 +4,7 @@
       <h2>线索明细</h2>
       <div style="display:flex;align-items:center;gap:12px">
         <span class="table-badge">{{ filtered.length }} 条</span>
-        <button type="button" class="td-btn" @click="downloadExcel" style="background:#10b981">📥 下载Excel</button>
+        <button type="button" class="td-btn td-btn-success" @click="downloadExcel">📥 下载Excel</button>
         <button v-if="!isGuest" type="button" class="td-btn" @click="batchDelete" :style="batchStyle">🗑 批量删除</button>
       </div>
     </div>
@@ -12,7 +12,7 @@
       <table>
         <thead>
           <tr>
-            <th v-if="!isGuest" style="width:36px;text-align:center"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll"></th>
+            <th v-if="!isGuest" class="th-check"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll"></th>
             <th @click="sortBy('入库日期')">入库日期 {{ sortIcon('入库日期') }}</th>
             <th @click="sortBy('平台')">平台 {{ sortIcon('平台') }}</th>
             <th @click="sortBy('姓名')">姓名 {{ sortIcon('姓名') }}</th>
@@ -27,7 +27,7 @@
         </thead>
         <tbody>
           <tr v-for="(r, idx) in pageData" :key="idx">
-            <td v-if="!isGuest" style="text-align:center"><input type="checkbox" :checked="selected.includes(r)" @change="e => toggleRow(r, e.target.checked)"></td>
+            <td v-if="!isGuest" class="td-check"><input type="checkbox" :checked="selected.includes(r)" @change="e => toggleRow(r, e.target.checked)"></td>
             <td class="td-date">{{ fmtDate(r) }}</td>
             <td><span class="tag" :style="platStyle(r['平台'])">{{ r['平台'] || '-' }}</span></td>
             <td class="td-num">{{ r['姓名'] || '-' }}</td>
@@ -38,10 +38,10 @@
             <td>{{ r['所属招商'] || '-' }}</td>
             <td v-html="jmTag(r['是否能加上微信'])"></td>
             <td>
-              <button class="td-btn" @click="onDetail(r)" style="margin-right:4px">查看</button>
+              <button class="td-btn td-btn-gap" @click="onDetail(r)">查看</button>
               <template v-if="!isGuest">
-                <button class="td-btn" @click="onEdit(r)" style="margin-right:4px;background:#fff;color:var(--primary);border-color:var(--primary)">编辑</button>
-                <button class="td-btn" @click="onDelete(r)" style="background:#fff;color:var(--danger);border-color:var(--danger)">删除</button>
+                <button class="td-btn td-btn-gap td-btn-edit" @click="onEdit(r)">编辑</button>
+                <button class="td-btn td-btn-delete" @click="onDelete(r)">删除</button>
               </template>
             </td>
           </tr>
@@ -201,3 +201,12 @@ function downloadExcel() {
   link.click()
 }
 </script>
+
+<style scoped>
+.th-check { width: 36px; text-align: center; }
+.td-check { text-align: center; }
+.td-btn-success { background: #10b981; }
+.td-btn-gap { margin-right: 4px; }
+.td-btn-edit { background: #fff; color: var(--primary); border-color: var(--primary); }
+.td-btn-delete { background: #fff; color: var(--danger); border-color: var(--danger); }
+</style>

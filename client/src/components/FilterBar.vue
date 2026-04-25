@@ -68,6 +68,7 @@
 
 <script setup>
 import { reactive, watch, onMounted, onUnmounted, ref } from 'vue'
+import { splitRegions } from '../utils.js'
 
 const props = defineProps({
   allData: { type: Array, default: () => [] }
@@ -103,12 +104,6 @@ function onDocClick(e) {
   if (regionWrap.value && !regionWrap.value.contains(e.target)) {
     regionOpen.value = false
   }
-}
-
-function splitRegions(val) {
-  if (!val) return []
-  // 支持逗号、顿号、逗号+空格分隔
-  return String(val).split(/[,，、]\s*/).map(s => s.trim()).filter(Boolean)
 }
 
 function extractOptions() {

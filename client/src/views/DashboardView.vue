@@ -50,6 +50,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api.js'
+import { checkAuth } from '../auth.js'
+import { splitRegions } from '../utils.js'
 import FilterBar from '../components/FilterBar.vue'
 import KpiCards from '../components/KpiCards.vue'
 import ChartSection from '../components/ChartSection.vue'
@@ -79,21 +81,18 @@ const isAdmin = computed(() => userInfo.value.role === 'admin')
 const isGuest = computed(() => userInfo.value.role === 'guest')
 
 onMounted(async () => {
+  const user = await checkAuth(router)
+  if (!user) {
+    loading.value = false
+    return
+  }
+  userInfo.value = user
+
   try {
-    const [leadsRes, userRes] = await Promise.all([api.getLeads(), api.getCurrentUser()])
+    const leadsRes = await api.getLeads()
     const records = leadsRes.records || leadsRes.data || (Array.isArray(leadsRes) ? leadsRes : [])
     allData.value = dedup(records)
-    const user = userRes.user || userRes
-    if (user.role) {
-      userInfo.value = user
-      if (!isAdmin.value) {
-        // 非admin只显示自己的线索（如果有分配）
-        // 但原逻辑是guest/agent都通过后端过滤，这里先保留全部
-      }
-    } else {
-      router.push('/login')
-      return
-    }
+
     if (isAdmin.value) {
       try {
         const c = await api.getCost()
@@ -120,11 +119,6 @@ function dedup(arr) {
     if (!seen[phone]) { seen[phone] = true; res.push(r) }
   })
   return res
-}
-
-function splitRegions(val) {
-  if (!val) return []
-  return String(val).split(/[,，、]\s*/).map(s => s.trim()).filter(Boolean)
 }
 
 function onFilter(f) {
