@@ -248,40 +248,15 @@ function renderAll() {
     if (!charts.valid) charts.valid = initChart(elValid.value)
     setPieChart(charts.valid, validDict, validColors)
 
-    // cost data
+    // cost data — 直接从后端 unit_cost 获取
     const COST_BY_PLAT = { '抖音': {}, '小红书': {} }
-    const UNIT_COST_BY_PLAT = { '抖音': {}, '小红书': {} }
+    const unitByPlat = { '抖音': {}, '小红书': {} }
     props.costData.forEach(c => {
       const plat = c.platform
       if (COST_BY_PLAT[plat]) {
         COST_BY_PLAT[plat][c.date] = Number(c.amount || 0)
-        UNIT_COST_BY_PLAT[plat][c.date] = Number(c.unit_cost || 0)
+        unitByPlat[plat][c.date] = Number(c.unit_cost || 0)
       }
-    })
-
-    // 每日线索数按平台
-    const leadsByDayPlat = { '抖音': {}, '小红书': {} }
-    props.filtered.forEach(r => {
-      const dt = String(r['入库日期'] || '').slice(0, 10)
-      const plat = r['平台']
-      if (leadsByDayPlat[plat] && dt) {
-        leadsByDayPlat[plat][dt] = (leadsByDayPlat[plat][dt] || 0) + 1
-      }
-    })
-
-    // unit cost
-    const unitByPlat = { '抖音': {}, '小红书': {} }
-    Object.keys(COST_BY_PLAT).forEach(plat => {
-      Object.keys(COST_BY_PLAT[plat]).forEach(dt => {
-        const enteredUnit = UNIT_COST_BY_PLAT[plat][dt]
-        if (enteredUnit > 0) {
-          unitByPlat[plat][dt] = enteredUnit
-        } else {
-          const spend = COST_BY_PLAT[plat][dt]
-          const leads = leadsByDayPlat[plat][dt] || 0
-          unitByPlat[plat][dt] = leads > 0 ? spend / leads : 0
-        }
-      })
     })
 
     if (!charts.dySpend) charts.dySpend = initChart(elDySpend.value)

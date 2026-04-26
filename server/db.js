@@ -125,15 +125,23 @@ function initDb() {
       cost_date TEXT NOT NULL,
       platform TEXT NOT NULL,
       amount REAL NOT NULL,
+      lead_count REAL DEFAULT 0,
       unit_cost REAL DEFAULT 0,
       created_at TEXT NOT NULL,
       UNIQUE(cost_date, platform)
     )
   `);
 
-  // 兼容旧表：若缺少 unit_cost 列则添加
+  // 兼容旧表
   const costColumns = db.prepare("PRAGMA table_info(cost_data)").all();
   const costColNames = costColumns.map(c => c.name);
+  if (!costColNames.includes('lead_count')) {
+    try {
+      db.exec('ALTER TABLE cost_data ADD COLUMN lead_count REAL DEFAULT 0');
+    } catch (e) {
+      // 忽略错误
+    }
+  }
   if (!costColNames.includes('unit_cost')) {
     try {
       db.exec('ALTER TABLE cost_data ADD COLUMN unit_cost REAL DEFAULT 0');

@@ -6,12 +6,12 @@
         <button class="modal-x" @click="close">&#10005;</button>
       </div>
       <div class="modal-bd" style="padding:24px">
-        <!-- 每日总消耗 -->
+        <!-- 录入每日消耗 -->
         <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
           <div style="font-weight:700;color:var(--primary);margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
             <span style="font-size:16px">💰</span> 录入每日总消耗
           </div>
-          <div class="cost-form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="cost-form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
             <div class="cost-field"><label>日期</label><input type="date" v-model="costForm.cost_date"></div>
             <div class="cost-field">
               <label>平台</label>
@@ -21,30 +21,10 @@
               </select>
             </div>
             <div class="cost-field"><label>总消耗（元）</label><input type="number" v-model="costForm.amount" placeholder="输入金额" step="0.01" min="0"></div>
+            <div class="cost-field"><label>营销线索数</label><input type="number" v-model="costForm.lead_count" placeholder="输入数量" step="1" min="0"></div>
           </div>
           <div style="text-align:right;margin-top:12px">
             <button class="btn btn-pri" @click="submitCost">确认录入</button>
-          </div>
-        </div>
-
-        <!-- 单条线索成本 -->
-        <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#fff7ed;border-radius:8px;border:1px solid #fed7aa">
-          <div style="font-weight:700;color:#c2410c;margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
-            <span style="font-size:16px">📊</span> 录入单条线索成本
-          </div>
-          <div class="cost-form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div class="cost-field"><label>日期</label><input type="date" v-model="unitForm.cost_date"></div>
-            <div class="cost-field">
-              <label>平台</label>
-              <select v-model="unitForm.platform">
-                <option value="抖音">抖音</option>
-                <option value="小红书">小红书</option>
-              </select>
-            </div>
-            <div class="cost-field"><label>单条成本（元/条）</label><input type="number" v-model="unitForm.unit_cost" placeholder="手动指定" step="0.01" min="0"></div>
-          </div>
-          <div style="text-align:right;margin-top:12px">
-            <button class="btn" style="background:#c2410c;color:#fff;border-color:#c2410c" @click="submitUnitCost">录入单条成本</button>
           </div>
         </div>
 
@@ -83,11 +63,11 @@
             <div v-if="!costData.length" style="color:var(--text-3);font-size:13px;text-align:center;padding:20px">暂无记录</div>
             <div v-for="c in costData" :key="c.id" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border-2)">
               <template v-if="editingId === c.id">
-                <div style="display:flex;align-items:center;gap:8px;flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
                   <span style="font-size:12px;color:var(--text-3)">{{ c.date }}</span>
                   <span style="font-size:12px;color:var(--text-3)">{{ c.platform }}</span>
                   <input v-model="editAmount" type="number" step="0.01" style="width:80px;font-size:12px;padding:2px 4px;border:1px solid var(--primary);border-radius:4px" placeholder="总消耗">
-                  <input v-model="editUnitCost" type="number" step="0.01" style="width:80px;font-size:12px;padding:2px 4px;border:1px solid var(--primary);border-radius:4px" placeholder="单条成本">
+                  <input v-model="editLeadCount" type="number" step="1" style="width:80px;font-size:12px;padding:2px 4px;border:1px solid var(--primary);border-radius:4px" placeholder="线索数">
                 </div>
                 <div style="display:flex;gap:4px">
                   <button style="background:none;border:none;color:var(--success);cursor:pointer;font-size:13px" @click="saveEdit(c.id)">✓</button>
@@ -98,7 +78,8 @@
                 <span style="font-size:13px">
                   {{ c.date }} {{ c.platform }}
                   <span style="color:var(--text-2)">总消耗 ¥{{ Number(c.amount||0).toFixed(2) }}</span>
-                  <span style="color:var(--text-3)">单条 ¥{{ Number(c.unit_cost||0).toFixed(2) }}</span>
+                  <span style="color:var(--text-3)">线索 {{ Number(c.lead_count||0).toFixed(0) }} 条</span>
+                  <span style="color:var(--primary)">单条 ¥{{ Number(c.unit_cost||0).toFixed(2) }}</span>
                 </span>
                 <div style="display:flex;gap:4px">
                   <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px" @click="startEdit(c)">编辑</button>
@@ -128,8 +109,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'update'])
 
-const costForm = ref({ cost_date: today(), platform: '抖音', amount: '' })
-const unitForm = ref({ cost_date: today(), platform: '抖音', unit_cost: '' })
+const costForm = ref({ cost_date: today(), platform: '抖音', amount: '', lead_count: '' })
 const result = ref('')
 const resultType = ref('')
 
@@ -142,7 +122,7 @@ const importResultType = ref('')
 // 编辑状态
 const editingId = ref(null)
 const editAmount = ref('')
-const editUnitCost = ref('')
+const editLeadCount = ref('')
 
 function today() { return new Date().toISOString().slice(0,10) }
 
@@ -159,36 +139,28 @@ async function submitCost() {
     const data = await api.submitCost({
       cost_date: costForm.value.cost_date,
       platform: costForm.value.platform,
-      amount: parseFloat(costForm.value.amount) || 0
+      amount: parseFloat(costForm.value.amount) || 0,
+      lead_count: parseFloat(costForm.value.lead_count) || 0
     })
-    if (data.success) { showMsg('录入成功', 'ok'); emit('update'); costForm.value.amount = '' }
-    else { showMsg(data.message || '录入失败', 'err') }
-  } catch(e) { showMsg('网络错误', 'err') }
-}
-
-async function submitUnitCost() {
-  if (!unitForm.value.cost_date || !unitForm.value.unit_cost) { showMsg('请填写完整', 'err'); return }
-  try {
-    const data = await api.submitUnitCost({
-      cost_date: unitForm.value.cost_date,
-      platform: unitForm.value.platform,
-      unit_cost: parseFloat(unitForm.value.unit_cost) || 0
-    })
-    if (data.success) { showMsg('录入成功', 'ok'); emit('update'); unitForm.value.unit_cost = '' }
-    else { showMsg(data.message || '录入失败', 'err') }
+    if (data.success) {
+      showMsg('录入成功', 'ok')
+      emit('update')
+      costForm.value.amount = ''
+      costForm.value.lead_count = ''
+    } else { showMsg(data.message || '录入失败', 'err') }
   } catch(e) { showMsg('网络错误', 'err') }
 }
 
 function startEdit(c) {
   editingId.value = c.id
   editAmount.value = c.amount || 0
-  editUnitCost.value = c.unit_cost || 0
+  editLeadCount.value = c.lead_count || 0
 }
 
 function cancelEdit() {
   editingId.value = null
   editAmount.value = ''
-  editUnitCost.value = ''
+  editLeadCount.value = ''
 }
 
 async function saveEdit(id) {
@@ -196,7 +168,7 @@ async function saveEdit(id) {
     const data = await api.updateCost({
       id,
       amount: parseFloat(editAmount.value) || 0,
-      unit_cost: parseFloat(editUnitCost.value) || 0
+      lead_count: parseFloat(editLeadCount.value) || 0
     })
     if (data.success) {
       showMsg('更新成功', 'ok')
@@ -219,12 +191,12 @@ async function delCost(id) {
 
 // 下载模板
 function downloadTemplate() {
-  const header = '日期,平台,总消耗（元）,单条成本（元/条）\n'
+  const header = '日期,平台,总消耗（元）,营销线索数\n'
   const sample = [
-    '2026-04-20,抖音,5000,50',
-    '2026-04-20,小红书,3000,30',
-    '2026-04-21,抖音,5200,48',
-    '2026-04-21,小红书,3200,28',
+    '2026-04-20,抖音,5000,100',
+    '2026-04-20,小红书,3000,60',
+    '2026-04-21,抖音,5200,104',
+    '2026-04-21,小红书,3200,64',
   ].join('\n') + '\n'
   const blob = new Blob(['\uFEFF' + header + sample], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
