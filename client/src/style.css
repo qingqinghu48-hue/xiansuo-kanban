@@ -320,7 +320,7 @@ td{
 .cost-field label{font-size:13px;font-weight:600;color:var(--text-2)}
 .cost-field input,.cost-field select{
   padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);
-  font-size:14px;background:#fff;color:var(--text);
+  font-size:14px;background:#fff;color:var(--text);width:100%;box-sizing:border-box;
 }
 .cost-field input:focus,.cost-field select:focus{outline:none;border-color:var(--primary)}
 .cost-result{margin-top:12px;font-size:13px;min-height:20px}
