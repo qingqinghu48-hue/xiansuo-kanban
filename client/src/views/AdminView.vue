@@ -243,7 +243,7 @@
               </select>
             </div>
             <div class="cost-field">
-              <label>录入日期 *</label>
+              <label>入库日期 *</label>
               <input type="date" v-model="newLead.entry_date">
             </div>
             <div class="cost-field" style="grid-column:1/-1">
