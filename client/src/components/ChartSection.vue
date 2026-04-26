@@ -3,11 +3,11 @@
     <div class="charts-pies">
       <div class="chart-card">
         <div class="chart-card-head"><h3>平台来源分布</h3><span class="chart-tag">渠道占比</span></div>
-        <div class="chart-card-body"><canvas ref="cvPlat" style="height:280px"></canvas></div>
+        <div class="chart-card-body"><div ref="elPlat" style="height:280px"></div></div>
       </div>
       <div class="chart-card">
         <div class="chart-card-head"><h3>有效性分布</h3><span class="chart-tag">线索质量</span></div>
-        <div class="chart-card-body"><canvas ref="cvValid" style="height:280px"></canvas></div>
+        <div class="chart-card-body"><div ref="elValid" style="height:280px"></div></div>
       </div>
     </div>
 
@@ -22,11 +22,11 @@
       <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="chart-card" style="border:1px solid var(--border-2)">
           <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
-          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDySpend" style="height:200px"></canvas></div>
+          <div class="chart-card-body" style="overflow-x:auto"><div ref="elDySpend" style="height:220px;min-width:300px"></div></div>
         </div>
         <div class="chart-card" style="border:1px solid var(--border-2)">
           <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
-          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDyUnit" style="height:200px"></canvas></div>
+          <div class="chart-card-body" style="overflow-x:auto"><div ref="elDyUnit" style="height:220px;min-width:300px"></div></div>
         </div>
       </div>
     </div>
@@ -42,11 +42,11 @@
       <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="chart-card" style="border:1px solid var(--border-2)">
           <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
-          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsSpend" style="height:200px"></canvas></div>
+          <div class="chart-card-body" style="overflow-x:auto"><div ref="elXhsSpend" style="height:220px;min-width:300px"></div></div>
         </div>
         <div class="chart-card" style="border:1px solid var(--border-2)">
           <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
-          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsUnit" style="height:200px"></canvas></div>
+          <div class="chart-card-body" style="overflow-x:auto"><div ref="elXhsUnit" style="height:220px;min-width:300px"></div></div>
         </div>
       </div>
     </div>
@@ -54,7 +54,8 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import * as echarts from 'echarts'
 import { platColor } from '../utils.js'
 
 const props = defineProps({
@@ -63,213 +64,170 @@ const props = defineProps({
   isAdmin: { type: Boolean, default: false }
 })
 
-const cvPlat = ref(null)
-const cvValid = ref(null)
-const cvDySpend = ref(null)
-const cvDyUnit = ref(null)
-const cvXhsSpend = ref(null)
-const cvXhsUnit = ref(null)
+const elPlat = ref(null)
+const elValid = ref(null)
+const elDySpend = ref(null)
+const elDyUnit = ref(null)
+const elXhsSpend = ref(null)
+const elXhsUnit = ref(null)
+
+const charts = {}
 
 const VALID_COLORS = {
   '意向客户': '#10b981', '一般客户': '#3b82f6', '无效线索': '#94a3b8',
   '无意向客户': '#f59e0b', '未联系上': '#f43f5e', '未知': '#cbd5e1'
 }
 
-function getCanvasCtx(refEl) {
-  if (!refEl) return null
-  const canvas = refEl
-  const rect = canvas.getBoundingClientRect()
-  const dpr = window.devicePixelRatio || 1
-  canvas.width = rect.width * dpr
-  canvas.height = rect.height * dpr
-  const ctx = canvas.getContext('2d')
-  ctx.scale(dpr, dpr)
-  return { ctx, width: rect.width, height: rect.height }
+function initChart(el) {
+  if (!el) return null
+  const c = echarts.init(el)
+  return c
 }
 
-function drawPie(canvasRef, dataDict, colorMap) {
-  const info = getCanvasCtx(canvasRef)
-  if (!info) return
-  const { ctx, width, height } = info
-  const total = Object.values(dataDict).reduce((a, b) => a + b, 0)
-  if (!total) { ctx.clearRect(0, 0, width, height); return }
+function setPieChart(chart, dataDict, colorMap) {
+  if (!chart) return
+  const data = Object.entries(dataDict)
+    .map(([name, value]) => ({ name, value, itemStyle: { color: colorMap[name] || '#94a3b8' } }))
+    .sort((a, b) => b.value - a.value)
 
-  const labelAreaW = 130
-  const cx = (width - labelAreaW) / 2 - 10
-  const cy = height / 2
-  const radius = Math.min(cx - 25, cy - 25, 90)
-
-  let start = -Math.PI / 2
-  const entries = Object.entries(dataDict)
-
-  // 计算扇区信息
-  const sectors = entries.map(([k, v]) => {
-    const angle = (v / total) * Math.PI * 2
-    const mid = start + angle / 2
-    const s = start
-    start += angle
-    return { k, v, angle, mid, start: s, end: start }
-  })
-
-  // 绘制饼图
-  sectors.forEach(s => {
-    ctx.beginPath()
-    ctx.moveTo(cx, cy)
-    ctx.arc(cx, cy, radius, s.start, s.end)
-    ctx.closePath()
-    ctx.fillStyle = colorMap[s.k] || '#94a3b8'
-    ctx.fill()
-  })
-
-  // 右侧标签和引线
-  const labelX = width - labelAreaW + 5
-  const lineEndX = labelX - 5
-  const labelYStart = (height - sectors.length * 30) / 2 + 15
-
-  sectors.forEach((s, i) => {
-    const pct = ((s.v / total) * 100).toFixed(1) + '%'
-    const ly = labelYStart + i * 30
-
-    // 引线起点（扇区边缘）
-    const sx = cx + Math.cos(s.mid) * radius
-    const sy = cy + Math.sin(s.mid) * radius
-
-    // 扇区外延伸点
-    const extR = radius + 10
-    const extX = cx + Math.cos(s.mid) * extR
-    const extY = cy + Math.sin(s.mid) * extR
-
-    // 画引线：扇区边缘 → 外延伸点 → 标签左侧
-    ctx.beginPath()
-    ctx.moveTo(sx, sy)
-    ctx.lineTo(extX, extY)
-    ctx.lineTo(lineEndX, ly)
-    ctx.strokeStyle = colorMap[s.k] || '#94a3b8'
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-
-    // 引线端点圆点
-    ctx.beginPath()
-    ctx.arc(lineEndX, ly, 3, 0, Math.PI * 2)
-    ctx.fillStyle = colorMap[s.k] || '#94a3b8'
-    ctx.fill()
-
-    // 色块
-    ctx.fillStyle = colorMap[s.k] || '#94a3b8'
-    ctx.fillRect(labelX, ly - 7, 14, 14)
-
-    // 标签文字
-    ctx.fillStyle = '#1e293b'
-    ctx.font = 'bold 13px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(`${s.k} ${s.v} (${pct})`, labelX + 20, ly)
-  })
+  chart.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} ({d}%)',
+      textStyle: { fontSize: 13 }
+    },
+    series: [{
+      type: 'pie',
+      radius: '60%',
+      center: ['35%', '50%'],
+      data,
+      label: {
+        show: true,
+        position: 'outside',
+        formatter: '{b}\n{c} ({d}%)',
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#1e293b'
+      },
+      labelLine: {
+        show: true,
+        length: 15,
+        length2: 25,
+        smooth: true
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.2)'
+        }
+      }
+    }]
+  }, true)
 }
 
-function drawBarChart(canvasRef, dataDict, colorStart, colorEnd) {
-  const info = getCanvasCtx(canvasRef)
-  if (!info) return
-  const { ctx, width, height } = info
-  ctx.clearRect(0, 0, width, height)
+function setBarChart(chart, dataDict, colorStart, colorEnd) {
+  if (!chart) return
   const keys = Object.keys(dataDict).sort()
-  if (!keys.length) return
-  const max = Math.max(...Object.values(dataDict), 1)
-  const pad = 30, bottom = 20, barW = Math.max(10, (width - pad * 2) / keys.length - 6)
-  const chartH = height - pad - bottom
-  keys.forEach((k, i) => {
-    const v = dataDict[k]
-    const barH = (v / max) * chartH
-    const x = pad + i * (barW + 6)
-    const y = pad + chartH - barH
-    const grad = ctx.createLinearGradient(x, y, x, y + barH)
-    grad.addColorStop(0, colorStart)
-    grad.addColorStop(1, colorEnd)
-    ctx.fillStyle = grad
-    ctx.fillRect(x, y, barW, barH)
-    ctx.fillStyle = '#475569'
-    ctx.font = '12px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(String(k).slice(5), x + barW / 2, pad + chartH + 14)
-    ctx.fillStyle = '#0f172a'
-    ctx.font = 'bold 13px sans-serif'
-    ctx.fillText('¥' + Number(v).toFixed(0), x + barW / 2, y - 6)
-  })
-}
-
-function drawLineChart(canvasRef, dataDict, lineColor, fillColors) {
-  const info = getCanvasCtx(canvasRef)
-  if (!info) return
-  const { ctx, width, height } = info
-  ctx.clearRect(0, 0, width, height)
-  const keys = Object.keys(dataDict).sort()
-  if (!keys.length) return
   const values = keys.map(k => dataDict[k])
-  const max = Math.max(...values, 1)
-  const pad = 30, bottom = 20
-  const chartW = width - pad * 2
-  const chartH = height - pad - bottom
-  const step = keys.length > 1 ? chartW / (keys.length - 1) : chartW
 
-  const points = keys.map((k, i) => ({
-    x: pad + (keys.length > 1 ? i * step : chartW / 2),
-    y: pad + chartH - (dataDict[k] / max) * chartH
-  }))
-
-  // fill
-  if (points.length) {
-    ctx.beginPath()
-    ctx.moveTo(points[0].x, pad + chartH)
-    points.forEach(p => ctx.lineTo(p.x, p.y))
-    ctx.lineTo(points[points.length - 1].x, pad + chartH)
-    ctx.closePath()
-    const grad = ctx.createLinearGradient(0, pad, 0, pad + chartH)
-    grad.addColorStop(0, fillColors[0] || 'rgba(59,130,246,0.25)')
-    grad.addColorStop(1, fillColors[1] || 'rgba(59,130,246,0.02)')
-    ctx.fillStyle = grad
-    ctx.fill()
-  }
-
-  // line
-  ctx.beginPath()
-  points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y) })
-  ctx.strokeStyle = lineColor
-  ctx.lineWidth = 2
-  ctx.stroke()
-
-  // points
-  points.forEach(p => {
-    ctx.beginPath()
-    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2)
-    ctx.fillStyle = lineColor
-    ctx.fill()
-  })
-
-  // labels
-  keys.forEach((k, i) => {
-    ctx.fillStyle = '#475569'
-    ctx.font = '12px sans-serif'
-    ctx.textAlign = 'center'
-    const x = points[i].x
-    ctx.fillText(String(k).slice(5), x, pad + chartH + 14)
-    ctx.fillStyle = '#0f172a'
-    ctx.font = 'bold 13px sans-serif'
-    ctx.fillText('¥' + Number(dataDict[k]).toFixed(2), x, points[i].y - 10)
-  })
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: params => `${params[0].axisValue}<br/>¥${Number(params[0].value).toFixed(2)}`,
+      textStyle: { fontSize: 13 }
+    },
+    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      data: keys.map(k => String(k).slice(5)),
+      axisLabel: { fontSize: 12, color: '#475569' },
+      axisLine: { lineStyle: { color: '#e2e8f0' } }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        fontSize: 12,
+        color: '#475569',
+        formatter: v => '¥' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)
+      },
+      splitLine: { lineStyle: { color: '#f1f5f9' } }
+    },
+    series: [{
+      type: 'bar',
+      data: values,
+      barWidth: '50%',
+      itemStyle: {
+        borderRadius: [4, 4, 0, 0],
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: colorStart },
+          { offset: 1, color: colorEnd }
+        ])
+      },
+      label: {
+        show: true,
+        position: 'top',
+        formatter: p => '¥' + Number(p.value).toFixed(0),
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#0f172a'
+      }
+    }]
+  }, true)
 }
 
-function autoCanvasWidth(canvasRef, keys, type) {
-  if (!canvasRef) return
-  const parent = canvasRef.parentElement
-  const parentW = parent ? parent.clientWidth : 300
-  let dataW = 300
-  const n = keys.length
-  if (type === 'bar') {
-    dataW = Math.max(300, n * 40 + 60)
-  } else {
-    dataW = Math.max(300, (n - 1) * 50 + 60)
-  }
-  canvasRef.style.width = `${Math.max(parentW, dataW)}px`
+function setLineChart(chart, dataDict, lineColor, fillColors) {
+  if (!chart) return
+  const keys = Object.keys(dataDict).sort()
+  const values = keys.map(k => dataDict[k])
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: params => `${params[0].axisValue}<br/>¥${Number(params[0].value).toFixed(2)}`,
+      textStyle: { fontSize: 13 }
+    },
+    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      data: keys.map(k => String(k).slice(5)),
+      axisLabel: { fontSize: 12, color: '#475569' },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      boundaryGap: false
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        fontSize: 12,
+        color: '#475569',
+        formatter: v => '¥' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)
+      },
+      splitLine: { lineStyle: { color: '#f1f5f9' } }
+    },
+    series: [{
+      type: 'line',
+      data: values,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { width: 2.5, color: lineColor },
+      itemStyle: { color: lineColor, borderWidth: 2, borderColor: '#fff' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: fillColors[0] || 'rgba(59,130,246,0.25)' },
+          { offset: 1, color: fillColors[1] || 'rgba(59,130,246,0.02)' }
+        ])
+      },
+      label: {
+        show: true,
+        position: 'top',
+        formatter: p => '¥' + Number(p.value).toFixed(2),
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#0f172a'
+      }
+    }]
+  }, true)
 }
 
 function renderAll() {
@@ -279,16 +237,18 @@ function renderAll() {
     props.filtered.forEach(r => { const p = r['平台'] || '未知'; platDict[p] = (platDict[p] || 0) + 1 })
     const platColors = {}
     Object.keys(platDict).forEach(p => platColors[p] = platColor(p))
-    drawPie(cvPlat.value, platDict, platColors)
+    if (!charts.plat) charts.plat = initChart(elPlat.value)
+    setPieChart(charts.plat, platDict, platColors)
 
     // validity pie
     const validDict = {}
     props.filtered.forEach(r => { const v = r['线索有效性'] || r['有效性'] || '未知'; validDict[v] = (validDict[v] || 0) + 1 })
     const validColors = {}
     Object.keys(validDict).forEach(v => validColors[v] = VALID_COLORS[v] || '#cbd5e1')
-    drawPie(cvValid.value, validDict, validColors)
+    if (!charts.valid) charts.valid = initChart(elValid.value)
+    setPieChart(charts.valid, validDict, validColors)
 
-    // cost data: amount (每日总消耗) + unit_cost (单条线索成本)
+    // cost data
     const COST_BY_PLAT = { '抖音': {}, '小红书': {} }
     const UNIT_COST_BY_PLAT = { '抖音': {}, '小红书': {} }
     props.costData.forEach(c => {
@@ -309,7 +269,7 @@ function renderAll() {
       }
     })
 
-    // unit cost: 优先使用录入的 unit_cost，未录入则自动计算（amount/线索数）
+    // unit cost
     const unitByPlat = { '抖音': {}, '小红书': {} }
     Object.keys(COST_BY_PLAT).forEach(plat => {
       Object.keys(COST_BY_PLAT[plat]).forEach(dt => {
@@ -324,23 +284,32 @@ function renderAll() {
       })
     })
 
-    const dySpendKeys = Object.keys(COST_BY_PLAT['抖音'] || {}).sort()
-    autoCanvasWidth(cvDySpend.value, dySpendKeys, 'bar')
-    drawBarChart(cvDySpend.value, COST_BY_PLAT['抖音'] || {}, '#3b82f6', '#93c5fd')
+    if (!charts.dySpend) charts.dySpend = initChart(elDySpend.value)
+    setBarChart(charts.dySpend, COST_BY_PLAT['抖音'] || {}, '#3b82f6', '#93c5fd')
 
-    const dyUnitKeys = Object.keys(unitByPlat['抖音'] || {}).sort()
-    autoCanvasWidth(cvDyUnit.value, dyUnitKeys, 'line')
-    drawLineChart(cvDyUnit.value, unitByPlat['抖音'] || {}, '#f59e0b', ['rgba(245,158,11,0.25)', 'rgba(245,158,11,0.02)'])
+    if (!charts.dyUnit) charts.dyUnit = initChart(elDyUnit.value)
+    setLineChart(charts.dyUnit, unitByPlat['抖音'] || {}, '#f59e0b', ['rgba(245,158,11,0.25)', 'rgba(245,158,11,0.02)'])
 
-    const xhsSpendKeys = Object.keys(COST_BY_PLAT['小红书'] || {}).sort()
-    autoCanvasWidth(cvXhsSpend.value, xhsSpendKeys, 'bar')
-    drawBarChart(cvXhsSpend.value, COST_BY_PLAT['小红书'] || {}, '#ec4899', '#fbcfe8')
+    if (!charts.xhsSpend) charts.xhsSpend = initChart(elXhsSpend.value)
+    setBarChart(charts.xhsSpend, COST_BY_PLAT['小红书'] || {}, '#ec4899', '#fbcfe8')
 
-    const xhsUnitKeys = Object.keys(unitByPlat['小红书'] || {}).sort()
-    autoCanvasWidth(cvXhsUnit.value, xhsUnitKeys, 'line')
-    drawLineChart(cvXhsUnit.value, unitByPlat['小红书'] || {}, '#be185d', ['rgba(190,24,93,0.25)', 'rgba(190,24,93,0.02)'])
+    if (!charts.xhsUnit) charts.xhsUnit = initChart(elXhsUnit.value)
+    setLineChart(charts.xhsUnit, unitByPlat['小红书'] || {}, '#be185d', ['rgba(190,24,93,0.25)', 'rgba(190,24,93,0.02)'])
   })
 }
+
+function onResize() {
+  Object.values(charts).forEach(c => c && c.resize())
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  Object.values(charts).forEach(c => c && c.dispose())
+})
 
 watch(() => [props.filtered, props.costData], renderAll, { deep: true })
 </script>
