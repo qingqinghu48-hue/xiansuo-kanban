@@ -32,7 +32,7 @@
     </div>
 
     <DetailModal :visible="detailVisible" :record="detailRecord" @close="detailVisible = false" />
-    <EditModal :visible="editVisible" :record="editRecord" :isAdmin="isAdmin" @close="editVisible = false" @saved="onEditSaved" />
+    <EditModal :visible="editVisible" :record="editRecord" :isAdmin="isAdmin" :regions="allRegions" @close="editVisible = false" @saved="onEditSaved" />
 
     <!-- Toast -->
     <div v-if="toastMsg" :class="['toast', toastType === 'ok' ? 'toast-ok' : 'toast-err']">{{ toastMsg }}</div>
@@ -79,6 +79,16 @@ const unreadCount = ref(0)
 
 const isAdmin = computed(() => userInfo.value.role === 'admin')
 const isGuest = computed(() => userInfo.value.role === 'guest')
+
+const allRegions = computed(() => {
+  const set = new Set()
+  allData.value.forEach(r => {
+    if (r['所属大区']) {
+      splitRegions(r['所属大区']).forEach(region => set.add(region))
+    }
+  })
+  return Array.from(set).sort()
+})
 
 onMounted(async () => {
   const user = await checkAuth(router)

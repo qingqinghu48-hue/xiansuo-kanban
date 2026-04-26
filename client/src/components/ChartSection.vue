@@ -69,7 +69,7 @@ const cvXhsUnit = ref(null)
 
 const VALID_COLORS = {
   '意向客户': '#10b981', '一般客户': '#3b82f6', '无效线索': '#94a3b8',
-  '普通线索': '#6366f1', '无意向客户': '#f59e0b', '未联系上': '#f43f5e', '未知': '#cbd5e1'
+  '无意向客户': '#f59e0b', '未联系上': '#f43f5e', '未知': '#cbd5e1'
 }
 
 function getCanvasCtx(refEl) {

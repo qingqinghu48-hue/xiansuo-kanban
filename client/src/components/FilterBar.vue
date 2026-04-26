@@ -16,7 +16,6 @@
         <option>意向客户</option>
         <option>一般客户</option>
         <option>未联系上</option>
-        <option>普通线索</option>
         <option>无意向客户</option>
         <option>无效线索</option>
       </select>

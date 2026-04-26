@@ -134,7 +134,7 @@ function sortIcon(k) {
 }
 
 function validTag(v) {
-  const cls = v === '意向客户' ? 'tag-yx' : v === '一般客户' ? 'tag-yb' : v === '无效线索' ? 'tag-wlx' : v === '普通线索' ? 'tag-pt' : ''
+  const cls = v === '意向客户' ? 'tag-yx' : v === '一般客户' ? 'tag-yb' : v === '无效线索' ? 'tag-wlx' : ''
   return `<span class="tag ${cls}">${esc(v)}</span>`
 }
 function jmTag(jm) {

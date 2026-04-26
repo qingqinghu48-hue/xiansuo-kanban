@@ -21,7 +21,25 @@
               <option value="自然流线索">自然流线索</option>
             </select>
           </div>
-          <div class="cost-field"><label>所属大区</label><input type="text" v-model="form['所属大区']"></div>
+          <div class="cost-field">
+            <label>所属大区</label>
+            <div class="multi-select-wrap" ref="regionWrap" style="display:block">
+              <button type="button" class="filter-select multi-select-trigger" style="width:100%" @click.stop="regionOpen = !regionOpen">
+                <span v-if="selectedRegions.length === 0">请选择大区</span>
+                <span v-else-if="selectedRegions.length === 1">{{ selectedRegions[0] }}</span>
+                <span v-else>已选 {{ selectedRegions.length }} 个大区</span>
+                <span class="multi-caret" :class="{ open: regionOpen }">▼</span>
+              </button>
+              <div v-show="regionOpen" class="multi-select-dropdown" style="max-height:200px" @click.stop>
+                <div class="multi-select-bd">
+                  <label v-for="r in regions" :key="r" class="multi-select-item">
+                    <input type="checkbox" :value="r" v-model="selectedRegions">
+                    <span>{{ r }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="cost-field"><label>所属城市</label><input type="text" v-model="form['城市']"></div>
           <div class="cost-field" style="grid-column:1/-1">
             <label>线索有效性</label>
@@ -30,7 +48,6 @@
               <option>意向客户</option>
               <option>一般客户</option>
               <option>未联系上</option>
-              <option>普通线索</option>
               <option>无意向客户</option>
               <option>无效线索</option>
             </select>
@@ -64,13 +81,15 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import api from '../api.js'
+import { splitRegions } from '../utils.js'
 
 const props = defineProps({
   visible: Boolean,
   record: { type: Object, default: () => ({}) },
-  isAdmin: Boolean
+  isAdmin: Boolean,
+  regions: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['close', 'saved'])
 
@@ -79,9 +98,14 @@ const result = ref('')
 const resultType = ref('')
 const roStyle = { background: 'var(--surface2)', color: 'var(--text-3)' }
 
+const regionOpen = ref(false)
+const regionWrap = ref(null)
+const selectedRegions = ref([])
+
 watch(() => props.visible, (v) => {
   if (v) {
     result.value = ''
+    selectedRegions.value = splitRegions(props.record['所属大区'])
     form.value = {
       '姓名': props.record['姓名'] || '',
       '手机号': props.record['手机号'] || props.record['手机'] || '',
@@ -104,9 +128,19 @@ watch(() => props.visible, (v) => {
   }
 })
 
+function onDocClick(e) {
+  if (regionWrap.value && !regionWrap.value.contains(e.target)) {
+    regionOpen.value = false
+  }
+}
+
+onMounted(() => { document.addEventListener('click', onDocClick) })
+onUnmounted(() => { document.removeEventListener('click', onDocClick) })
+
 function close() { emit('close') }
 
 async function save() {
+  form.value['所属大区'] = selectedRegions.value.join('、')
   const payload = { phone: form.value['手机号'] }
   const fields = ['姓名','平台','入库日期','所属大区','城市','小红书账号','用户小红书ID','线索类型','线索有效性','是否能加上微信','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间']
   fields.forEach(f => { payload[f] = form.value[f] })
