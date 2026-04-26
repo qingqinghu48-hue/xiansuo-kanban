@@ -104,6 +104,12 @@ export default {
       body: JSON.stringify({ id })
     })
   },
+  importCost(formData) {
+    return request('/api/cost/import', {
+      method: 'POST',
+      body: formData
+    })
+  },
   importFile(type, formData) {
     const map = { zs: 'zhaoshang', dy: 'douyin', xhs: 'xiaohongshu' }
     const endpoint = type === 'dy' ? '/api/leads/import-douyin' : '/api/leads/import'

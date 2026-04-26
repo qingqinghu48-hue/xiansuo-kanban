@@ -48,6 +48,34 @@
           </div>
         </div>
 
+        <!-- 批量导入 -->
+        <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
+          <div style="font-weight:700;color:#15803d;margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:16px">📥</span> 批量导入营销成本
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-ghost" style="font-size:12px" @click="downloadTemplate">
+              ⬇️ 下载模板（CSV）
+            </button>
+          </div>
+          <div
+            class="import-dropzone"
+            :class="{ dragover: isDragOver }"
+            @dragenter.prevent="isDragOver = true"
+            @dragleave.prevent="isDragOver = false"
+            @dragover.prevent
+            @drop.prevent="onDrop"
+            @click="fileInput?.click()"
+            style="border:2px dashed #86efac;border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;background:#fff"
+          >
+            <input ref="fileInput" type="file" accept=".csv,.xlsx,.xls" style="display:none" @change="onFileChange">
+            <div style="font-size:24px;margin-bottom:6px">📁</div>
+            <div style="font-size:13px;color:#15803d;font-weight:600">点击或拖拽文件到此处</div>
+            <div style="font-size:12px;color:#86a78f;margin-top:4px">支持 CSV、XLSX 格式</div>
+          </div>
+          <div v-if="importResult" :class="['cost-result', importResultType]" style="margin-top:10px">{{ importResult }}</div>
+        </div>
+
         <!-- 历史记录 -->
         <div>
           <div style="font-weight:700;color:var(--text);margin-bottom:12px;font-size:14px">🗑 历史记录（点击编辑修改）</div>
@@ -104,6 +132,12 @@ const costForm = ref({ cost_date: today(), platform: '抖音', amount: '' })
 const unitForm = ref({ cost_date: today(), platform: '抖音', unit_cost: '' })
 const result = ref('')
 const resultType = ref('')
+
+// 批量导入
+const fileInput = ref(null)
+const isDragOver = ref(false)
+const importResult = ref('')
+const importResultType = ref('')
 
 // 编辑状态
 const editingId = ref(null)
@@ -182,9 +216,69 @@ async function delCost(id) {
     else { showMsg(data.message || '删除失败', 'err') }
   } catch(e) { showMsg('网络错误', 'err') }
 }
+
+// 下载模板
+function downloadTemplate() {
+  const header = '日期,平台,总消耗（元）,单条成本（元/条）\n'
+  const sample = [
+    '2026-04-20,抖音,5000,50',
+    '2026-04-20,小红书,3000,30',
+    '2026-04-21,抖音,5200,48',
+    '2026-04-21,小红书,3200,28',
+  ].join('\n') + '\n'
+  const blob = new Blob(['\uFEFF' + header + sample], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = '营销成本导入模板.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// 文件选择
+function onFileChange(e) {
+  const file = e.target.files[0]
+  if (file) handleImport(file)
+}
+
+// 拖拽导入
+function onDrop(e) {
+  isDragOver.value = false
+  const file = e.dataTransfer.files[0]
+  if (file) handleImport(file)
+}
+
+// 执行导入
+async function handleImport(file) {
+  importResult.value = '正在导入...'
+  importResultType.value = ''
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const data = await api.importCost(formData)
+    if (data.success) {
+      importResult.value = data.message
+      importResultType.value = 'ok'
+      emit('update')
+    } else {
+      importResult.value = data.message || '导入失败'
+      importResultType.value = 'err'
+    }
+  } catch(e) {
+    importResult.value = '网络错误，请重试'
+    importResultType.value = 'err'
+  }
+}
 </script>
 
 <style scoped>
+.import-dropzone:hover,
+.import-dropzone.dragover {
+  border-color: #15803d !important;
+  background: #f0fdf4 !important;
+}
 @media(max-width:640px){
   .cost-form-grid{grid-template-columns:1fr !important}
 }
