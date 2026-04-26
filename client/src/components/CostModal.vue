@@ -31,7 +31,7 @@
         <!-- 批量导入 -->
         <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
           <div style="font-weight:700;color:#15803d;margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
-            <span style="font-size:16px">📥</span> 批量导入营销成本
+            <span style="font-size:16px">📥</span> 批量导入营销线索消耗
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
             <button class="btn btn-ghost" style="font-size:12px" @click="downloadTemplate">
@@ -202,7 +202,7 @@ function downloadTemplate() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = '营销成本导入模板.csv'
+  a.download = '营销线索消耗导入模板.csv'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
