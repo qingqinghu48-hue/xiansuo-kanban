@@ -126,7 +126,7 @@ watch(() => props.visible, (v) => {
       '姓名': props.record['姓名'] || '',
       '手机号': props.record['手机号'] || props.record['手机'] || '',
       '平台': props.record['平台'] || '',
-      '入库日期': String(props.record['入库时间'] || props.record['入库日期'] || '').slice(0,10),
+      '入库日期': String(props.record['入库日期'] || '').slice(0,10),
       '所属大区': props.record['所属大区'] || '',
       '城市': props.record['省份'] || props.record['城市'] || '',
       '用户小红书ID': props.record['用户小红书ID'] || '',

@@ -152,7 +152,7 @@ function onFilter(f) {
   const frSet = new Set(fr)
   const res = []
   allData.value.forEach(r => {
-    const dt = String(r['入库时间'] || r['入库日期'] || '').slice(0, 10)
+    const dt = String(r['入库日期'] || '').slice(0, 10)
     if (dt && dt < ds) return
     if (dt && dt > de) return
     if (fp && r['平台'] !== fp) return

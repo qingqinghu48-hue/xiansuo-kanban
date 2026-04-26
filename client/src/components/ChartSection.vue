@@ -252,7 +252,7 @@ function renderAll() {
     // 每日线索数按平台
     const leadsByDayPlat = { '抖音': {}, '小红书': {} }
     props.filtered.forEach(r => {
-      const dt = String(r['入库时间'] || r['入库日期'] || '').slice(0, 10)
+      const dt = String(r['入库日期'] || '').slice(0, 10)
       const plat = r['平台']
       if (leadsByDayPlat[plat] && dt) {
         leadsByDayPlat[plat][dt] = (leadsByDayPlat[plat][dt] || 0) + 1
