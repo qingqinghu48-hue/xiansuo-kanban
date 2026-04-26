@@ -5,14 +5,14 @@
       <div class="table-head-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span class="table-badge">{{ filtered.length }} 条</span>
         <button type="button" class="td-btn td-btn-success" @click="downloadExcel">📥 下载Excel</button>
-        <button v-if="!isGuest" type="button" class="td-btn" @click="batchDelete" :style="batchStyle">🗑 批量删除</button>
+        <button v-if="canDelete" type="button" class="td-btn" @click="batchDelete" :style="batchStyle">🗑 批量删除</button>
       </div>
     </div>
     <div class="table-scroll">
       <table>
         <thead>
           <tr>
-            <th v-if="!isGuest" class="th-check"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll"></th>
+            <th v-if="canDelete" class="th-check"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll"></th>
             <th @click="sortBy('入库日期')">入库日期 {{ sortIcon('入库日期') }}</th>
             <th @click="sortBy('平台')">平台 {{ sortIcon('平台') }}</th>
             <th @click="sortBy('姓名')">姓名 {{ sortIcon('姓名') }}</th>
@@ -27,7 +27,7 @@
         </thead>
         <tbody>
           <tr v-for="(r, idx) in pageData" :key="idx">
-            <td v-if="!isGuest" class="td-check"><input type="checkbox" :checked="selected.includes(r)" @change="e => toggleRow(r, e.target.checked)"></td>
+            <td v-if="canDelete" class="td-check"><input type="checkbox" :checked="selected.includes(r)" @change="e => toggleRow(r, e.target.checked)"></td>
             <td class="td-date">{{ fmtDate(r) }}</td>
             <td><span class="tag" :style="platStyle(r['平台'])">{{ r['平台'] || '-' }}</span></td>
             <td class="td-num">{{ r['姓名'] || '-' }}</td>
@@ -41,7 +41,7 @@
               <button class="td-btn td-btn-gap" @click="onDetail(r)">查看</button>
               <template v-if="!isGuest">
                 <button class="td-btn td-btn-gap td-btn-edit" @click="onEdit(r)">编辑</button>
-                <button class="td-btn td-btn-delete" @click="onDelete(r)">删除</button>
+                <button v-if="canDelete" class="td-btn td-btn-delete" @click="onDelete(r)">删除</button>
               </template>
             </td>
           </tr>
@@ -70,7 +70,8 @@ import { platColor, platStyle, esc } from '../utils.js'
 
 const props = defineProps({
   filtered: { type: Array, default: () => [] },
-  isGuest: { type: Boolean, default: false }
+  isGuest: { type: Boolean, default: false },
+  canDelete: { type: Boolean, default: false }
 })
 const emit = defineEmits(['detail', 'edit', 'delete', 'batchDelete'])
 

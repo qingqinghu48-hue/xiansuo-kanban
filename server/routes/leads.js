@@ -250,8 +250,8 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
   }
 });
 
-// POST /api/leads/delete
-router.post('/api/leads/delete', requireAuth, (req, res) => {
+// POST /api/leads/delete（仅管理员可删除）
+router.post('/api/leads/delete', requireAdmin, (req, res) => {
   const user = req.session.user;
   const data = req.body;
   if (!data) {
@@ -289,8 +289,8 @@ router.post('/api/leads/delete', requireAuth, (req, res) => {
   }
 });
 
-// POST /api/leads/batch-delete
-router.post('/api/leads/batch-delete', requireAuth, (req, res) => {
+// POST /api/leads/batch-delete（仅管理员可删除）
+router.post('/api/leads/batch-delete', requireAdmin, (req, res) => {
   const user = req.session.user;
   const data = req.body;
   if (!data) {

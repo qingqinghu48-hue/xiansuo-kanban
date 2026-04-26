@@ -134,6 +134,12 @@ export default {
       body: JSON.stringify(data)
     })
   },
+  updateSelf(data) {
+    return request('/api/users/update-self', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
   getUsers() {
     return request('/api/users')
   },

@@ -11,7 +11,7 @@
         </div>
       </div>
       <div class="topbar-right" style="display:flex;align-items:center;gap:12px">
-        <router-link v-if="isAdmin" to="/admin" class="admin-link" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">⚙️ 管理后台</router-link>
+        <router-link to="/admin" class="admin-link" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">⚙️ {{ isAdmin ? '管理后台' : '个人设置' }}</router-link>
         <span class="user-name">{{ userInfo.name || userInfo.username || '-' }}</span>
         <button class="btn btn-ghost btn-sm logout-btn" @click="doLogout">退出登录</button>
       </div>
@@ -20,10 +20,11 @@
     <div class="main">
       <FilterBar :allData="allData" @filter="onFilter" />
       <KpiCards :filtered="filtered" :isAdmin="isAdmin" :costData="costData" />
-      <ChartSection :filtered="filtered" :costData="costData" />
+      <ChartSection :filtered="filtered" :costData="costData" :isAdmin="isAdmin" />
       <DataTable
         :filtered="filtered"
         :isGuest="isGuest"
+        :canDelete="isAdmin"
         @detail="openDetail"
         @edit="openEdit"
         @delete="doDelete"

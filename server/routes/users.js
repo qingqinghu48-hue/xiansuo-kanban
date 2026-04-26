@@ -4,7 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const { hashPassword } = require('../db');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { formatDateTime } = require('../utils/helpers');
 
 const router = express.Router();
@@ -95,6 +95,28 @@ router.post('/api/users/delete', requireAdmin, (req, res) => {
 
   db.prepare('DELETE FROM users WHERE id = ?').run(id);
   res.json({ success: true, message: '账号已删除' });
+});
+
+// POST /api/users/update-self — 普通用户/招商员修改自己的姓名
+router.post('/api/users/update-self', requireAuth, (req, res) => {
+  const user = req.session ? req.session.user : null;
+  if (!user) {
+    return res.status(401).json({ success: false, message: '请先登录' });
+  }
+
+  const { name } = req.body;
+  const n = (name || '').trim();
+
+  if (!n) {
+    return res.json({ success: false, message: '姓名不能为空' });
+  }
+
+  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(n, user.id);
+
+  // 更新 session
+  req.session.user.name = n;
+
+  return res.json({ success: true, message: '信息更新成功' });
 });
 
 module.exports = router;

@@ -18,10 +18,15 @@
     <div class="main">
       <!-- Tab 切换 -->
       <div class="tab-bar">
-        <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">管理操作</button>
-        <button class="tab-btn" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">账号管理</button>
-        <button class="tab-btn" :class="{ active: activeTab === 'platforms' }" @click="activeTab = 'platforms'">平台来源管理</button>
-        <button class="tab-btn" :class="{ active: activeTab === 'regions' }" @click="activeTab = 'regions'">大区管理</button>
+        <template v-if="isAdmin">
+          <button class="tab-btn" :class="{ active: activeTab === 'ops' }" @click="activeTab = 'ops'">管理操作</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">账号管理</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'platforms' }" @click="activeTab = 'platforms'">平台来源管理</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'regions' }" @click="activeTab = 'regions'">大区管理</button>
+        </template>
+        <template v-else>
+          <button class="tab-btn" :class="{ active: activeTab === 'profile' }" @click="activeTab = 'profile'">个人信息</button>
+        </template>
       </div>
 
       <!-- 管理操作 -->
@@ -147,6 +152,39 @@
         </div>
       </div>
 
+      <!-- 个人信息（非管理员） -->
+      <div v-if="activeTab === 'profile'">
+        <div class="chart-card" style="padding:20px;margin-bottom:16px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">修改姓名</h3>
+          <div class="simple-form-grid" style="display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:end">
+            <div class="cost-field">
+              <label>姓名</label>
+              <input type="text" v-model="profileName" placeholder="请输入姓名">
+            </div>
+            <button class="btn btn-pri" @click="saveProfileName">保存</button>
+          </div>
+          <div :class="['cost-result', profileResultType]" style="margin-top:8px">{{ profileResult }}</div>
+        </div>
+
+        <div class="chart-card" style="padding:20px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">修改密码</h3>
+          <div class="modal-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="cost-field">
+              <label>旧密码</label>
+              <input type="password" v-model="oldPassword" placeholder="请输入旧密码">
+            </div>
+            <div class="cost-field">
+              <label>新密码（6位）</label>
+              <input type="password" v-model="newPassword" placeholder="请输入6位新密码">
+            </div>
+          </div>
+          <div style="text-align:right;margin-top:12px">
+            <button class="btn btn-pri" @click="savePassword">修改密码</button>
+          </div>
+          <div :class="['cost-result', pwdResultType]" style="margin-top:8px">{{ pwdResult }}</div>
+        </div>
+      </div>
+
       <!-- 大区管理 -->
       <div v-if="activeTab === 'regions'">
         <div class="chart-card" style="padding:20px;margin-bottom:16px">
@@ -228,7 +266,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api.js'
 import { checkAuth } from '../auth.js'
@@ -244,6 +282,8 @@ const importRef = ref(null)
 const costData = ref([])
 const router = useRouter()
 
+const isAdmin = computed(() => userInfo.value.role === 'admin')
+
 const today = new Date().toISOString().slice(0,10)
 const newLead = ref({ phone: '', platform: '', entry_date: today, agent: '' })
 const agents = ref([])
@@ -251,6 +291,15 @@ const platformList = ref([])
 
 // Tab
 const activeTab = ref('ops')
+
+// 个人信息
+const profileName = ref('')
+const oldPassword = ref('')
+const newPassword = ref('')
+const profileResult = ref('')
+const profileResultType = ref('')
+const pwdResult = ref('')
+const pwdResultType = ref('')
 
 // 账号管理
 const userList = ref([])
@@ -337,13 +386,52 @@ const addRegionForm = useForm({
 
 onMounted(async () => {
   const user = await checkAuth(router)
-  if (user) userInfo.value = user
+  if (user) {
+    userInfo.value = user
+    profileName.value = user.name || ''
+    if (!isAdmin.value) activeTab.value = 'profile'
+  }
   loadCost()
   loadAgents()
   loadPlatforms()
   loadRegions()
   loadUsers()
 })
+
+async function saveProfileName() {
+  const n = (profileName.value || '').trim()
+  if (!n) { profileResult.value = '姓名不能为空'; profileResultType.value = 'err'; return }
+  try {
+    const data = await api.updateSelf({ name: n })
+    if (data.success) {
+      profileResult.value = '姓名修改成功'
+      profileResultType.value = 'ok'
+      userInfo.value.name = n
+    } else {
+      profileResult.value = data.message || '修改失败'
+      profileResultType.value = 'err'
+    }
+  } catch(e) { profileResult.value = '网络错误'; profileResultType.value = 'err' }
+}
+
+async function savePassword() {
+  const oldP = (oldPassword.value || '').trim()
+  const newP = (newPassword.value || '').trim()
+  if (!newP) { pwdResult.value = '请输入新密码'; pwdResultType.value = 'err'; return }
+  if (newP.length !== 6) { pwdResult.value = '密码必须为6位'; pwdResultType.value = 'err'; return }
+  try {
+    const data = await api.changePassword({ old_password: oldP, new_password: newP })
+    if (data.success) {
+      pwdResult.value = '密码修改成功'
+      pwdResultType.value = 'ok'
+      oldPassword.value = ''
+      newPassword.value = ''
+    } else {
+      pwdResult.value = data.message || '修改失败'
+      pwdResultType.value = 'err'
+    }
+  } catch(e) { pwdResult.value = '网络错误'; pwdResultType.value = 'err' }
+}
 
 async function loadCost() {
   try { const data = await api.getCost(); costData.value = data.cost_data || [] } catch(e) {}

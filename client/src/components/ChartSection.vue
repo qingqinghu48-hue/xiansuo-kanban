@@ -1,51 +1,53 @@
 <template>
-  <div class="charts-pies">
-    <div class="chart-card">
-      <div class="chart-card-head"><h3>平台来源分布</h3><span class="chart-tag">渠道占比</span></div>
-      <div class="chart-card-body"><canvas ref="cvPlat" style="height:280px"></canvas></div>
+  <div v-if="isAdmin">
+    <div class="charts-pies">
+      <div class="chart-card">
+        <div class="chart-card-head"><h3>平台来源分布</h3><span class="chart-tag">渠道占比</span></div>
+        <div class="chart-card-body"><canvas ref="cvPlat" style="height:280px"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-head"><h3>有效性分布</h3><span class="chart-tag">线索质量</span></div>
+        <div class="chart-card-body"><canvas ref="cvValid" style="height:280px"></canvas></div>
+      </div>
     </div>
-    <div class="chart-card">
-      <div class="chart-card-head"><h3>有效性分布</h3><span class="chart-tag">线索质量</span></div>
-      <div class="chart-card-body"><canvas ref="cvValid" style="height:280px"></canvas></div>
-    </div>
-  </div>
 
-  <div class="chart-row-full cost-section" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border-2)">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">抖音营销成本</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:2px">每日消耗与单条成本追踪</div>
+    <div class="chart-row-full cost-section" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border-2)">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">抖音营销成本</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">每日消耗与单条成本追踪</div>
+        </div>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border-radius:8px;font-size:14px;font-weight:700">抖</span>
       </div>
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border-radius:8px;font-size:14px;font-weight:700">抖</span>
+      <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chart-card" style="border:1px solid var(--border-2)">
+          <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
+          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDySpend" style="height:200px"></canvas></div>
+        </div>
+        <div class="chart-card" style="border:1px solid var(--border-2)">
+          <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
+          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDyUnit" style="height:200px"></canvas></div>
+        </div>
+      </div>
     </div>
-    <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="chart-card" style="border:1px solid var(--border-2)">
-        <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
-        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDySpend" style="height:200px"></canvas></div>
-      </div>
-      <div class="chart-card" style="border:1px solid var(--border-2)">
-        <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fee2e2;color:#dc2626">抖音</span></div>
-        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvDyUnit" style="height:200px"></canvas></div>
-      </div>
-    </div>
-  </div>
 
-  <div class="chart-row-full cost-section" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border-2)">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">小红书营销成本</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:2px">每日消耗与单条成本追踪</div>
+    <div class="chart-row-full cost-section" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border-2)">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">小红书营销成本</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">每日消耗与单条成本追踪</div>
+        </div>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;border-radius:8px;font-size:14px;font-weight:700">红</span>
       </div>
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;border-radius:8px;font-size:14px;font-weight:700">红</span>
-    </div>
-    <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="chart-card" style="border:1px solid var(--border-2)">
-        <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
-        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsSpend" style="height:200px"></canvas></div>
-      </div>
-      <div class="chart-card" style="border:1px solid var(--border-2)">
-        <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
-        <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsUnit" style="height:200px"></canvas></div>
+      <div class="cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chart-card" style="border:1px solid var(--border-2)">
+          <div class="chart-card-head"><h3>每日总消耗</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
+          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsSpend" style="height:200px"></canvas></div>
+        </div>
+        <div class="chart-card" style="border:1px solid var(--border-2)">
+          <div class="chart-card-head"><h3>单条线索成本</h3><span class="chart-tag" style="background:#fce7f3;color:#be185d">小红书</span></div>
+          <div class="chart-card-body" style="overflow-x:auto"><canvas ref="cvXhsUnit" style="height:200px"></canvas></div>
+        </div>
       </div>
     </div>
   </div>
@@ -57,7 +59,8 @@ import { platColor } from '../utils.js'
 
 const props = defineProps({
   filtered: { type: Array, default: () => [] },
-  costData: { type: Array, default: () => [] }
+  costData: { type: Array, default: () => [] },
+  isAdmin: { type: Boolean, default: false }
 })
 
 const cvPlat = ref(null)
