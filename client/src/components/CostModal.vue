@@ -1,6 +1,6 @@
 <template>
   <div class="modal" :class="{ show: visible }" @click.self="close">
-    <div class="modal-box" style="max-width:620px">
+    <div class="modal-box" style="max-width:680px">
       <div class="modal-hd">
         <h3>录入/管理营销成本</h3>
         <button class="modal-x" @click="close">&#10005;</button>
@@ -21,7 +21,7 @@
               </select>
             </div>
             <div class="cost-field"><label>总消耗（元）</label><input type="number" v-model="costForm.amount" placeholder="输入金额" step="0.01" min="0"></div>
-            <div class="cost-field"><label>营销线索数</label><input type="number" v-model="costForm.lead_count" placeholder="输入数量" step="1" min="0"></div>
+            <div class="cost-field"><label>获得线索数</label><input type="number" v-model="costForm.lead_count" placeholder="输入数量" step="1" min="0"></div>
           </div>
           <div style="text-align:right;margin-top:12px">
             <button class="btn btn-pri" @click="submitCost">确认录入</button>
@@ -191,7 +191,7 @@ async function delCost(id) {
 
 // 下载模板
 function downloadTemplate() {
-  const header = '日期,平台,总消耗（元）,营销线索数\n'
+  const header = '日期,平台,总消耗（元）,获得线索数\n'
   const sample = [
     '2026-04-20,抖音,5000,100',
     '2026-04-20,小红书,3000,60',

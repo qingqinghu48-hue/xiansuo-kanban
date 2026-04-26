@@ -135,7 +135,7 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
     const dateCol = findCol(cols, ['日期', 'date', 'cost_date', '时间', '日期时间']);
     const platformCol = findCol(cols, ['平台', 'platform', '渠道', '来源平台']);
     const amountCol = findCol(cols, ['总消耗', 'amount', '消耗', '每日总消耗', '花费', '费用', '投放金额', '金额']);
-    const leadCountCol = findCol(cols, ['营销线索数', '线索数', 'lead_count', '线索', '获客数', '留资数']);
+    const leadCountCol = findCol(cols, ['获得线索数', '营销线索数', '线索数', 'lead_count', '线索', '获客数', '留资数']);
 
     if (!dateCol) {
       return res.json({ success: false, message: `无法识别日期列。当前列名: ${cols.join(', ')}` });
