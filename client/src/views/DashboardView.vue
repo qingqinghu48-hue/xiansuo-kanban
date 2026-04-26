@@ -19,7 +19,7 @@
 
     <div class="main">
       <FilterBar :allData="allData" @filter="onFilter" />
-      <KpiCards :filtered="filtered" :isAdmin="isAdmin" :costData="costData" />
+      <KpiCards :filtered="filtered" :isAdmin="isAdmin" :costData="filteredCostData" :dateRange="{ ds: filterState.ds, de: filterState.de }" />
       <ChartSection :filtered="filtered" :costData="costData" :isAdmin="isAdmin" />
       <DataTable
         :filtered="filtered"
@@ -63,6 +63,8 @@ import EditModal from '../components/EditModal.vue'
 const allData = ref([])
 const filtered = ref([])
 const costData = ref([])
+const filteredCostData = ref([])
+const filterState = ref({ ds: '2026-03-01', de: '2026-04-30' })
 const userInfo = ref({})
 const loading = ref(true)
 const router = useRouter()
@@ -112,6 +114,8 @@ onMounted(async () => {
         const c = await api.getCost()
         costData.value = Array.isArray(c) ? c : (c.cost_data || [])
       } catch(e) { costData.value = [] }
+      // 初始筛选
+      onFilter(filterState.value)
     }
     // 检查未读新线索
     if (!isAdmin.value && (leadsRes.new_leads_count || leadsRes.new_count)) {
@@ -149,6 +153,7 @@ function dedup(arr) {
 
 function onFilter(f) {
   const ds = f.ds, de = f.de, fp = f.fp, fv = f.fv, flt = f.flt, fr = f.fr || [], fs = f.fs, fk = (f.fk || '').trim().toLowerCase()
+  filterState.value = { ds, de }
   const frSet = new Set(fr)
   const res = []
   allData.value.forEach(r => {
@@ -170,6 +175,16 @@ function onFilter(f) {
     res.push(r)
   })
   filtered.value = res
+
+  // 同步筛选营销成本数据（按日期范围）
+  const cres = []
+  costData.value.forEach(c => {
+    const dt = String(c.date || c.cost_date || '').slice(0, 10)
+    if (dt && dt < ds) return
+    if (dt && dt > de) return
+    cres.push(c)
+  })
+  filteredCostData.value = cres
 }
 
 function showToast(msg, type) {
