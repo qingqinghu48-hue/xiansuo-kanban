@@ -29,6 +29,27 @@ function calcUnitCost(amount, leadCount) {
   return l > 0 ? +(a / l).toFixed(2) : 0;
 }
 
+/**
+ * 插入或更新成本记录（按 date+platform 唯一键）
+ * @returns {Object} { action: 'insert'|'update', id }
+ */
+function upsertCostData({ cost_date, platform, amount, lead_count, now }) {
+  const existing = db.prepare('SELECT id, amount, lead_count FROM cost_data WHERE cost_date = ? AND platform = ?').get(cost_date, platform);
+  if (existing) {
+    const finalAmount = amount > 0 ? amount : (existing.amount || 0);
+    const finalLeadCount = lead_count > 0 ? lead_count : (existing.lead_count || 0);
+    const finalUnitCost = calcUnitCost(finalAmount, finalLeadCount);
+    db.prepare('UPDATE cost_data SET amount = ?, lead_count = ?, unit_cost = ?, created_at = ? WHERE id = ?')
+      .run(finalAmount, finalLeadCount, finalUnitCost, now, existing.id);
+    return { action: 'update', id: existing.id };
+  } else {
+    const unit_cost = calcUnitCost(amount, lead_count);
+    const result = db.prepare('INSERT INTO cost_data (cost_date, platform, amount, lead_count, unit_cost, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(cost_date, platform, amount, lead_count, unit_cost, now);
+    return { action: 'insert', id: result.lastInsertRowid };
+  }
+}
+
 // GET /api/cost
 router.get('/api/cost', requireAdmin, (req, res) => {
   const cost_data = loadCostData();
@@ -51,23 +72,9 @@ router.post('/api/cost/add', requireAdmin, (req, res) => {
     return res.json({ success: false, message: '请填写日期和平台' });
   }
 
-  const unit_cost = calcUnitCost(amount, lead_count);
-
   try {
     const now = formatDateTime();
-    const existing = db.prepare('SELECT id, amount, lead_count FROM cost_data WHERE cost_date = ? AND platform = ?').get(cost_date, platform);
-
-    if (existing) {
-      const finalAmount = amount > 0 ? amount : (existing.amount || 0);
-      const finalLeadCount = lead_count > 0 ? lead_count : (existing.lead_count || 0);
-      const finalUnitCost = calcUnitCost(finalAmount, finalLeadCount);
-      db.prepare('UPDATE cost_data SET amount = ?, lead_count = ?, unit_cost = ?, created_at = ? WHERE id = ?')
-        .run(finalAmount, finalLeadCount, finalUnitCost, now, existing.id);
-    } else {
-      db.prepare('INSERT INTO cost_data (cost_date, platform, amount, lead_count, unit_cost, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(cost_date, platform, amount, lead_count, unit_cost, now);
-    }
-
+    upsertCostData({ cost_date, platform, amount, lead_count, now });
     return res.json({ success: true, message: `${platform} ${cost_date} 成本录入成功` });
   } catch (e) {
     return res.json({ success: false, message: '录入失败: ' + e.message });
@@ -177,22 +184,10 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
         }
       }
 
-      const unit_cost = calcUnitCost(amount, lead_count);
-
       try {
-        const existing = db.prepare('SELECT id, amount, lead_count FROM cost_data WHERE cost_date = ? AND platform = ?').get(rawDate, platform);
-        if (existing) {
-          const finalAmount = amount > 0 ? amount : (existing.amount || 0);
-          const finalLeadCount = lead_count > 0 ? lead_count : (existing.lead_count || 0);
-          const finalUnitCost = calcUnitCost(finalAmount, finalLeadCount);
-          db.prepare('UPDATE cost_data SET amount = ?, lead_count = ?, unit_cost = ?, created_at = ? WHERE id = ?')
-            .run(finalAmount, finalLeadCount, finalUnitCost, now, existing.id);
-          updated++;
-        } else {
-          db.prepare('INSERT INTO cost_data (cost_date, platform, amount, lead_count, unit_cost, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-            .run(rawDate, platform, amount, lead_count, unit_cost, now);
-          added++;
-        }
+        const result = upsertCostData({ cost_date: rawDate, platform, amount, lead_count, now });
+        if (result.action === 'update') updated++;
+        else added++;
       } catch (e) {
         skipped++;
         badRows.push({ row: i + 2, reason: e.message, data: row });

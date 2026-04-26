@@ -86,12 +86,6 @@ export default {
       body: JSON.stringify(data)
     })
   },
-  submitUnitCost(data) {
-    return request('/api/cost/add', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  },
   updateCost(data) {
     return request('/api/cost/update', {
       method: 'POST',

@@ -94,18 +94,14 @@ const otherCount = computed(() => props.filtered.filter(r => {
   return p && p !== '抖音' && p !== '小红书'
 }).length)
 
-const dyPct = computed(() => {
-  if (!total.value) return '0%'
-  return Math.round((dyCount.value / total.value) * 100) + '%'
-})
-const xhsPct = computed(() => {
-  if (!total.value) return '0%'
-  return Math.round((xhsCount.value / total.value) * 100) + '%'
-})
-const otherPct = computed(() => {
-  if (!total.value) return '0%'
-  return Math.round((otherCount.value / total.value) * 100) + '%'
-})
+function calcPct(count, total) {
+  if (!total) return '0%'
+  return Math.round((count / total) * 100) + '%'
+}
+
+const dyPct = computed(() => calcPct(dyCount.value, total.value))
+const xhsPct = computed(() => calcPct(xhsCount.value, total.value))
+const otherPct = computed(() => calcPct(otherCount.value, total.value))
 
 const otherPlatforms = computed(() => {
   const set = new Set()
