@@ -164,6 +164,9 @@ export default {
   getAgents() {
     return request('/api/agents')
   },
+  getActiveAgents() {
+    return request('/api/agents-active')
+  },
   getPlatforms() {
     return request('/api/platforms')
   },

@@ -220,16 +220,17 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
     const xhsAccount = data.xhs_account || '';
     const leadType = data.lead_type || '';
     const xhsUserId = data.xhs_user_id || '';
+    const agent = data.agent || '';
 
     if (user.role === 'admin') {
       db.prepare(`UPDATE new_leads SET
         phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
         platform = ?, entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
-        xhs_account = ?, lead_type = ?, xhs_user_id = ?
+        xhs_account = ?, lead_type = ?, xhs_user_id = ?, agent = ?
         WHERE id = ?`).run(
         newPhone || phone, name, city, validity, region, canWechat, remark,
         platform, entryDate, contactTime, contactRemark, callTime, visitTime, signTime,
-        xhsAccount, leadType, xhsUserId, leadId
+        xhsAccount, leadType, xhsUserId, agent, leadId
       );
     } else {
       db.prepare(`UPDATE new_leads SET

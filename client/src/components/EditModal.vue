@@ -9,10 +9,15 @@
         <div class="modal-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="cost-field"><label>客户姓名</label><input type="text" v-model="form['姓名']"></div>
           <div class="cost-field"><label>客户电话</label><input type="text" v-model="form['手机号']"></div>
-          <div class="cost-field"><label>线索平台</label><input type="text" v-model="form['平台']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
+          <div class="cost-field">
+            <label>线索平台</label>
+            <select v-model="form['平台']" :disabled="!isAdmin" :style="!isAdmin?roStyle:{}">
+              <option value="">请选择</option>
+              <option v-for="p in platforms" :key="p" :value="p">{{ p }}</option>
+            </select>
+          </div>
           <div class="cost-field"><label>入库日期</label><input type="date" v-model="form['入库日期']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
-          <div class="cost-field"><label>小红书账号</label><input type="text" v-model="form['小红书账号']" placeholder="请输入小红书账号"></div>
-          <div class="cost-field"><label>用户小红书ID</label><input type="text" v-model="form['用户小红书ID']" placeholder="请输入用户小红书ID"></div>
+          <div v-if="isXhs" class="cost-field"><label>用户小红书ID</label><input type="text" v-model="form['用户小红书ID']" placeholder="请输入用户小红书ID"></div>
           <div class="cost-field">
             <label>线索类型</label>
             <select v-model="form['线索类型']">
@@ -41,6 +46,13 @@
             </div>
           </div>
           <div class="cost-field"><label>所属城市</label><input type="text" v-model="form['城市']"></div>
+          <div v-if="isAdmin" class="cost-field">
+            <label>所属招商</label>
+            <select v-model="form['所属招商']">
+              <option value="">请选择</option>
+              <option v-for="a in agents" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </div>
           <div class="cost-field" style="grid-column:1/-1">
             <label>线索有效性</label>
             <select v-model="form['线索有效性']">
@@ -81,7 +93,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import api from '../api.js'
 import { splitRegions } from '../utils.js'
 
@@ -89,7 +101,9 @@ const props = defineProps({
   visible: Boolean,
   record: { type: Object, default: () => ({}) },
   isAdmin: Boolean,
-  regions: { type: Array, default: () => [] }
+  regions: { type: Array, default: () => [] },
+  platforms: { type: Array, default: () => [] },
+  agents: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['close', 'saved'])
 
@@ -102,6 +116,8 @@ const regionOpen = ref(false)
 const regionWrap = ref(null)
 const selectedRegions = ref([])
 
+const isXhs = computed(() => form.value['平台'] === '小红书')
+
 watch(() => props.visible, (v) => {
   if (v) {
     result.value = ''
@@ -113,7 +129,6 @@ watch(() => props.visible, (v) => {
       '入库日期': String(props.record['入库时间'] || props.record['入库日期'] || '').slice(0,10),
       '所属大区': props.record['所属大区'] || '',
       '城市': props.record['省份'] || props.record['城市'] || '',
-      '小红书账号': props.record['小红书账号'] || '',
       '用户小红书ID': props.record['用户小红书ID'] || '',
       '线索类型': props.record['线索类型'] || '',
       '线索有效性': props.record['线索有效性'] || props.record['有效性'] || '',
@@ -123,7 +138,8 @@ watch(() => props.visible, (v) => {
       '二次联系备注': props.record['二次联系备注'] || '',
       '最近一次电联时间': props.record['最近一次电联时间'] || '',
       '到访时间': props.record['到访时间'] || '',
-      '签约时间': props.record['签约时间'] || ''
+      '签约时间': props.record['签约时间'] || '',
+      '所属招商': props.record['所属招商'] || ''
     }
   }
 })
@@ -142,8 +158,11 @@ function close() { emit('close') }
 async function save() {
   form.value['所属大区'] = selectedRegions.value.join('、')
   const payload = { phone: form.value['手机号'] }
-  const fields = ['姓名','平台','入库日期','所属大区','城市','小红书账号','用户小红书ID','线索类型','线索有效性','是否能加上微信','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间']
+  const fields = ['姓名','平台','入库日期','所属大区','城市','用户小红书ID','线索类型','线索有效性','是否能加上微信','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间']
   fields.forEach(f => { payload[f] = form.value[f] })
+  if (props.isAdmin) {
+    payload['agent'] = form.value['所属招商']
+  }
   try {
     const data = await api.updateLead(payload)
     if (data.success) {

@@ -33,7 +33,7 @@
     </div>
 
     <DetailModal :visible="detailVisible" :record="detailRecord" @close="detailVisible = false" />
-    <EditModal :visible="editVisible" :record="editRecord" :isAdmin="isAdmin" :regions="allRegions" @close="editVisible = false" @saved="onEditSaved" />
+    <EditModal :visible="editVisible" :record="editRecord" :isAdmin="isAdmin" :regions="allRegions" :platforms="platformList" :agents="agentList" @close="editVisible = false" @saved="onEditSaved" />
 
     <!-- Toast -->
     <div v-if="toastMsg" :class="['toast', toastType === 'ok' ? 'toast-ok' : 'toast-err']">{{ toastMsg }}</div>
@@ -81,6 +81,9 @@ const unreadCount = ref(0)
 const isAdmin = computed(() => userInfo.value.role === 'admin')
 const isGuest = computed(() => userInfo.value.role === 'guest')
 
+const platformList = ref([])
+const agentList = ref([])
+
 const allRegions = computed(() => {
   const set = new Set()
   allData.value.forEach(r => {
@@ -115,6 +118,18 @@ onMounted(async () => {
       unreadCount.value = leadsRes.new_leads_count || leadsRes.new_count || 0
       notifyVisible.value = true
     }
+
+    // 加载平台列表
+    try {
+      const p = await api.getPlatforms()
+      if (p.success) platformList.value = p.platforms || []
+    } catch(e) {}
+
+    // 加载启用状态的招商员列表
+    try {
+      const a = await api.getActiveAgents()
+      if (a.success) agentList.value = a.agents || []
+    } catch(e) {}
   } catch(e) {
     console.error(e)
   }
@@ -210,11 +225,16 @@ function onEditSaved(payload) {
     Object.keys(payload).forEach(k => { if (k !== 'phone') allData.value[idx][k] = payload[k] })
     // 如果手机号改了，同步更新
     if (payload['手机号'] !== undefined) allData.value[idx]['手机号'] = payload['手机号']
+    // 如果 admin 修改了招商员，同步更新
+    if (payload['agent'] !== undefined) allData.value[idx]['所属招商'] = payload['agent']
     allData.value = [...allData.value]
   }
 
   const fIdx = filtered.value.findIndex(x => getPhone(x) === phoneStr)
   if (fIdx >= 0) {
+    Object.keys(payload).forEach(k => { if (k !== 'phone') filtered.value[fIdx][k] = payload[k] })
+    if (payload['手机号'] !== undefined) filtered.value[fIdx]['手机号'] = payload['手机号']
+    if (payload['agent'] !== undefined) filtered.value[fIdx]['所属招商'] = payload['agent']
     filtered.value = [...filtered.value]
   }
 }

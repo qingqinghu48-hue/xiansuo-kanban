@@ -97,6 +97,18 @@ router.post('/api/users/delete', requireAdmin, (req, res) => {
   res.json({ success: true, message: '账号已删除' });
 });
 
+// GET /api/agents-active — 返回启用状态的招商员姓名列表（无需 admin 权限）
+router.get('/api/agents-active', requireAuth, (req, res) => {
+  try {
+    const rows = db.prepare("SELECT name FROM users WHERE role = 'agent' AND active = 1 ORDER BY name").all();
+    const agents = rows.map(r => r.name).filter(Boolean);
+    return res.json({ success: true, agents });
+  } catch (e) {
+    console.error('[启用招商员列表错误]', e);
+    return res.status(500).json({ success: false, message: '获取招商员列表失败: ' + e.message });
+  }
+});
+
 // POST /api/users/update-self — 普通用户/招商员修改自己的姓名
 router.post('/api/users/update-self', requireAuth, (req, res) => {
   const user = req.session ? req.session.user : null;
