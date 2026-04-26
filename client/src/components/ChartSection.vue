@@ -93,29 +93,77 @@ function drawPie(canvasRef, dataDict, colorMap) {
   const { ctx, width, height } = info
   const total = Object.values(dataDict).reduce((a, b) => a + b, 0)
   if (!total) { ctx.clearRect(0, 0, width, height); return }
-  const cx = width / 2, cy = height / 2, radius = Math.min(width, height) / 2 - 30
+
+  const labelAreaW = 130
+  const cx = (width - labelAreaW) / 2 - 10
+  const cy = height / 2
+  const radius = Math.min(cx - 25, cy - 25, 90)
+
   let start = -Math.PI / 2
   const entries = Object.entries(dataDict)
-  entries.forEach(([k, v]) => {
+
+  // 计算扇区信息
+  const sectors = entries.map(([k, v]) => {
     const angle = (v / total) * Math.PI * 2
+    const mid = start + angle / 2
+    const s = start
+    start += angle
+    return { k, v, angle, mid, start: s, end: start }
+  })
+
+  // 绘制饼图
+  sectors.forEach(s => {
     ctx.beginPath()
     ctx.moveTo(cx, cy)
-    ctx.arc(cx, cy, radius, start, start + angle)
+    ctx.arc(cx, cy, radius, s.start, s.end)
     ctx.closePath()
-    ctx.fillStyle = colorMap[k] || '#94a3b8'
+    ctx.fillStyle = colorMap[s.k] || '#94a3b8'
     ctx.fill()
-    start += angle
   })
-  // legend
-  let ly = 10
-  entries.forEach(([k, v]) => {
-    const pct = ((v / total) * 100).toFixed(1) + '%'
-    ctx.fillStyle = colorMap[k] || '#94a3b8'
-    ctx.fillRect(10, ly, 10, 10)
-    ctx.fillStyle = '#475569'
-    ctx.font = '11px sans-serif'
-    ctx.fillText(`${k} ${v} (${pct})`, 24, ly + 9)
-    ly += 18
+
+  // 右侧标签和引线
+  const labelX = width - labelAreaW + 5
+  const lineEndX = labelX - 5
+  const labelYStart = (height - sectors.length * 30) / 2 + 15
+
+  sectors.forEach((s, i) => {
+    const pct = ((s.v / total) * 100).toFixed(1) + '%'
+    const ly = labelYStart + i * 30
+
+    // 引线起点（扇区边缘）
+    const sx = cx + Math.cos(s.mid) * radius
+    const sy = cy + Math.sin(s.mid) * radius
+
+    // 扇区外延伸点
+    const extR = radius + 10
+    const extX = cx + Math.cos(s.mid) * extR
+    const extY = cy + Math.sin(s.mid) * extR
+
+    // 画引线：扇区边缘 → 外延伸点 → 标签左侧
+    ctx.beginPath()
+    ctx.moveTo(sx, sy)
+    ctx.lineTo(extX, extY)
+    ctx.lineTo(lineEndX, ly)
+    ctx.strokeStyle = colorMap[s.k] || '#94a3b8'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // 引线端点圆点
+    ctx.beginPath()
+    ctx.arc(lineEndX, ly, 3, 0, Math.PI * 2)
+    ctx.fillStyle = colorMap[s.k] || '#94a3b8'
+    ctx.fill()
+
+    // 色块
+    ctx.fillStyle = colorMap[s.k] || '#94a3b8'
+    ctx.fillRect(labelX, ly - 7, 14, 14)
+
+    // 标签文字
+    ctx.fillStyle = '#1e293b'
+    ctx.font = 'bold 13px sans-serif'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`${s.k} ${s.v} (${pct})`, labelX + 20, ly)
   })
 }
 
@@ -140,11 +188,12 @@ function drawBarChart(canvasRef, dataDict, colorStart, colorEnd) {
     ctx.fillStyle = grad
     ctx.fillRect(x, y, barW, barH)
     ctx.fillStyle = '#475569'
-    ctx.font = '10px sans-serif'
+    ctx.font = '12px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(String(k).slice(5), x + barW / 2, pad + chartH + 12)
+    ctx.fillText(String(k).slice(5), x + barW / 2, pad + chartH + 14)
     ctx.fillStyle = '#0f172a'
-    ctx.fillText('¥' + Number(v).toFixed(0), x + barW / 2, y - 4)
+    ctx.font = 'bold 13px sans-serif'
+    ctx.fillText('¥' + Number(v).toFixed(0), x + barW / 2, y - 6)
   })
 }
 
@@ -199,12 +248,13 @@ function drawLineChart(canvasRef, dataDict, lineColor, fillColors) {
   // labels
   keys.forEach((k, i) => {
     ctx.fillStyle = '#475569'
-    ctx.font = '10px sans-serif'
+    ctx.font = '12px sans-serif'
     ctx.textAlign = 'center'
     const x = points[i].x
-    ctx.fillText(String(k).slice(5), x, pad + chartH + 12)
+    ctx.fillText(String(k).slice(5), x, pad + chartH + 14)
     ctx.fillStyle = '#0f172a'
-    ctx.fillText('¥' + Number(dataDict[k]).toFixed(2), x, points[i].y - 8)
+    ctx.font = 'bold 13px sans-serif'
+    ctx.fillText('¥' + Number(dataDict[k]).toFixed(2), x, points[i].y - 10)
   })
 }
 
