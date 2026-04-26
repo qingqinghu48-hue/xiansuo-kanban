@@ -8,6 +8,9 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+const db = require('./db');
+const SqliteSessionStore = require('./utils/session-store');
+
 const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
 const costRoutes = require('./routes/cost');
@@ -40,15 +43,23 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件服务（Vue 构建产物）
 app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
 
+// Session Store（基于 SQLite，服务器重启后 session 不丢失）
+const sessionStore = new SqliteSessionStore(db, { tableName: 'sessions' });
+// 每小时清理一次过期 session
+setInterval(() => sessionStore.gc(), 60 * 60 * 1000);
+
 // Session 配置
+const SESSION_MAX_AGE = 14 * 24 * 60 * 60 * 1000; // 14 天
 app.use(session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'xiansuo-kanban-secret-key-2024',
   resave: false,
   saveUninitialized: false,
+  rolling: true, // 每次请求刷新过期时间
   cookie: {
     secure: false, // HTTP环境下必须为false，否则浏览器不发送cookie
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24小时
+    maxAge: SESSION_MAX_AGE,
   },
 }));
 

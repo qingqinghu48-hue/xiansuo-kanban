@@ -4,6 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const { verifyPassword, hashPassword } = require('../db');
+const { validateSessionUser } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -62,10 +63,13 @@ router.post('/api/logout', (req, res) => {
 // GET /api/current_user
 router.get('/api/current_user', (req, res) => {
   const user = req.session ? req.session.user : null;
-  if (user) {
-    return res.json({ logged_in: true, user });
+  if (!user) {
+    return res.json({ logged_in: false });
   }
-  return res.json({ logged_in: false });
+  if (!validateSessionUser(req, res)) {
+    return res.json({ logged_in: false });
+  }
+  return res.json({ logged_in: true, user });
 });
 
 // POST /api/change-password
@@ -73,6 +77,9 @@ router.post('/api/change-password', (req, res) => {
   const user = req.session ? req.session.user : null;
   if (!user) {
     return res.status(401).json({ success: false, message: '请先登录' });
+  }
+  if (!validateSessionUser(req, res)) {
+    return res.status(401).json({ success: false, message: '登录已失效，请重新登录' });
   }
 
   const { old_password, new_password } = req.body;
