@@ -5,13 +5,13 @@ admin:
 
 agents:
   - username: zhengjianjun
-    password: zjj001345
-    name: 郑建俊
+    password: '123456'
+    name: 郑建军
     regions:
       - 华东
       - 华南
   - username: liurenjie
-    password: lrj001678
+    password: '123456'
     name: 刘仁杰
     regions:
       - 华北
