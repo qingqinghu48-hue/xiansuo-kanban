@@ -104,7 +104,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('='.repeat(50));
   console.log('\n测试账号：');
   console.log('  管理员: admin / admin123');
-  console.log('  招商员1: zhengjianjun / zjj001345');
-  console.log('  招商员2: liurenjie / lrj001678');
+  console.log('  招商员1: zhengjianjun / 123456');
+  console.log('  招商员2: liurenjie / 123456');
   console.log();
 });
