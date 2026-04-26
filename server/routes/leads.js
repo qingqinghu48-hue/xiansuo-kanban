@@ -69,7 +69,7 @@ function loadNewLeads() {
       '到访时间': cleanVal(row['到访时间']),
       '签约时间': cleanVal(row['签约时间']),
       '小红书账号': cleanVal(row.xhs_account),
-      '线索类型': cleanVal(row.lead_type),
+      '流量类型': cleanVal(row.lead_type),
       '来源文件': '手动录入',
       // 招商线索管理表扩展字段
       '是否重复': cleanVal(row.is_duplicate),
@@ -218,7 +218,7 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
     const signTime = data['签约时间'] || '';
     const platform = data.platform || '';
     const xhsAccount = data.xhs_account || '';
-    const leadType = data.lead_type || '';
+    const leadType = data.lead_type || data['流量类型'] || '';
     const xhsUserId = data.xhs_user_id || '';
     const agent = data.agent || '';
 
@@ -524,7 +524,7 @@ function handleImport(req, res) {
         '到访时间': parseDate(row, visitTimeCol),
         '签约时间': parseDate(row, signTimeCol),
         xhs_account: isXhsChannel ? getVal(row, xhsAccountCol) : '',
-        lead_type: isXhsChannel ? getVal(row, leadTypeCol) : '',
+        lead_type: getVal(row, leadTypeCol) || '',
         // 招商扩展字段
         is_duplicate: getVal(row, isDuplicateCol),
         // 小红书扩展字段

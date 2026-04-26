@@ -162,7 +162,7 @@ function onFilter(f) {
     if (dt && dt > de) return
     if (fp && r['平台'] !== fp) return
     if (fv && r['线索有效性'] !== fv && r['有效性'] !== fv) return
-    if (flt && r['线索类型'] !== flt) return
+    if (flt && r['流量类型'] !== flt) return
     if (frSet.size) {
       const recordRegions = splitRegions(r['所属大区'])
       if (!recordRegions.some(region => frSet.has(region))) return

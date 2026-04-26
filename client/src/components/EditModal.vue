@@ -18,9 +18,9 @@
           </div>
           <div class="cost-field"><label>入库日期</label><input type="date" v-model="form['入库日期']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
           <div v-if="isXhs" class="cost-field"><label>用户小红书ID</label><input type="text" v-model="form['用户小红书ID']" placeholder="请输入用户小红书ID"></div>
-          <div class="cost-field">
-            <label>线索类型</label>
-            <select v-model="form['线索类型']">
+          <div v-if="isAdChannel" class="cost-field">
+            <label>流量类型</label>
+            <select v-model="form['流量类型']">
               <option value="">请选择</option>
               <option value="广告线索">广告线索</option>
               <option value="自然流线索">自然流线索</option>
@@ -117,6 +117,10 @@ const regionWrap = ref(null)
 const selectedRegions = ref([])
 
 const isXhs = computed(() => form.value['平台'] === '小红书')
+const isAdChannel = computed(() => {
+  const p = form.value['平台']
+  return p === '抖音' || p === '小红书'
+})
 
 watch(() => props.visible, (v) => {
   if (v) {
@@ -130,7 +134,7 @@ watch(() => props.visible, (v) => {
       '所属大区': props.record['所属大区'] || '',
       '城市': props.record['省份'] || props.record['城市'] || '',
       '用户小红书ID': props.record['用户小红书ID'] || '',
-      '线索类型': props.record['线索类型'] || '',
+      '流量类型': props.record['流量类型'] || props.record['线索类型'] || '',
       '线索有效性': props.record['线索有效性'] || props.record['有效性'] || '',
       '是否能加上微信': props.record['是否能加上微信'] || '',
       '备注': props.record['备注'] || '',
@@ -158,7 +162,7 @@ function close() { emit('close') }
 async function save() {
   form.value['所属大区'] = selectedRegions.value.join('、')
   const payload = { phone: form.value['手机号'] }
-  const fields = ['姓名','平台','入库日期','所属大区','城市','用户小红书ID','线索类型','线索有效性','是否能加上微信','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间']
+  const fields = ['姓名','平台','入库日期','所属大区','城市','用户小红书ID','流量类型','线索有效性','是否能加上微信','备注','二次联系时间','二次联系备注','最近一次电联时间','到访时间','签约时间']
   fields.forEach(f => { payload[f] = form.value[f] })
   if (props.isAdmin) {
     payload['agent'] = form.value['所属招商']

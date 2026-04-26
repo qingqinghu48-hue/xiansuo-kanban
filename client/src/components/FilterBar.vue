@@ -19,7 +19,7 @@
         <option>无意向客户</option>
         <option>无效线索</option>
       </select>
-      <span class="filter-label">线索类型</span>
+      <span class="filter-label">流量类型</span>
       <select class="filter-select" v-model="filter.flt">
         <option value="">全部类型</option>
         <option>广告线索</option>
