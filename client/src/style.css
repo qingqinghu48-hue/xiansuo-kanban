@@ -236,10 +236,10 @@ td{
 
 .pager{
   padding:12px 20px;background:var(--surface2);border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;
 }
 .pager-info{font-size:13px;color:var(--text-3);white-space:nowrap}
-.pager-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pager-btns{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
 .pager-btns button{
   width:34px;height:34px;border:1px solid var(--border);border-radius:var(--radius-sm);
   background:#fff;cursor:pointer;font-size:16px;color:var(--text-2);transition:all .15s;
@@ -247,7 +247,7 @@ td{
 }
 .pager-btns button:hover:not(:disabled){background:var(--primary);color:#fff;border-color:var(--primary)}
 .pager-btns button:disabled{opacity:.4;cursor:not-allowed}
-.page-nums{display:flex;gap:4px;flex-wrap:wrap;max-width:240px;justify-content:center}
+.page-nums{display:flex;gap:4px;flex-wrap:nowrap;max-width:none;justify-content:center}
 .page-num{
   min-width:32px;height:32px;line-height:32px;border:1px solid var(--border);
   border-radius:var(--radius-sm);background:#fff;cursor:pointer;font-size:13px;

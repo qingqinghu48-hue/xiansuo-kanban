@@ -12,16 +12,16 @@
             <span style="font-size:16px">💰</span> 录入每日总消耗
           </div>
           <div class="cost-form-grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
-            <div class="cost-field"><label>日期</label><input type="date" v-model="costForm.cost_date"></div>
+            <div class="cost-field"><label>日期</label><input type="date" v-model="costForm.cost_date" @keyup.enter="submitCost"></div>
             <div class="cost-field">
               <label>平台</label>
-              <select v-model="costForm.platform">
+              <select v-model="costForm.platform" @keyup.enter="submitCost">
                 <option value="抖音">抖音</option>
                 <option value="小红书">小红书</option>
               </select>
             </div>
-            <div class="cost-field"><label>总消耗（元）</label><input type="number" v-model="costForm.amount" placeholder="输入金额" step="0.01" min="0"></div>
-            <div class="cost-field"><label>获得线索数</label><input type="number" v-model="costForm.lead_count" placeholder="输入数量" step="1" min="0"></div>
+            <div class="cost-field"><label>总消耗（元）</label><input type="number" v-model="costForm.amount" placeholder="输入金额" step="0.01" min="0" @keyup.enter="submitCost"></div>
+            <div class="cost-field"><label>获得线索数</label><input type="number" v-model="costForm.lead_count" placeholder="输入数量" step="1" min="0" @keyup.enter="submitCost"></div>
           </div>
           <div style="text-align:right;margin-top:12px">
             <button class="btn btn-pri" @click="submitCost">确认录入</button>

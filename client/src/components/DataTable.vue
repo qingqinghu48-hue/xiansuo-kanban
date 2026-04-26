@@ -4,7 +4,7 @@
       <h2>线索明细</h2>
       <div class="table-head-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span class="table-badge">{{ filtered.length }} 条</span>
-        <button type="button" class="td-btn td-btn-success" @click="downloadExcel">📥 下载Excel</button>
+        <button type="button" class="btn btn-pri" @click="downloadExcel">📥 下载Excel</button>
         <button v-if="canDelete" type="button" class="td-btn" @click="batchDelete" :style="batchStyle">🗑 批量删除</button>
       </div>
     </div>

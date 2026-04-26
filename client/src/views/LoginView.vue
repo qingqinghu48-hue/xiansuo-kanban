@@ -9,11 +9,11 @@
       </div>
       <div class="cost-field" style="margin-bottom:14px">
         <label>用户名</label>
-        <input type="text" v-model="username" placeholder="请输入用户名" style="width:100%">
+        <input type="text" v-model="username" placeholder="请输入用户名" style="width:100%" @keyup.enter="doLogin">
       </div>
       <div class="cost-field" style="margin-bottom:20px">
         <label>密码</label>
-        <input type="password" v-model="password" placeholder="请输入密码" style="width:100%">
+        <input type="password" v-model="password" placeholder="请输入密码" style="width:100%" @keyup.enter="doLogin">
       </div>
       <button class="btn btn-pri" style="width:100%;padding:10px" @click="doLogin">登录</button>
       <div v-if="error" style="margin-top:12px;color:var(--danger);font-size:13px;text-align:center">{{ error }}</div>
@@ -28,11 +28,11 @@
       </div>
       <div class="cost-field" style="margin-bottom:14px">
         <label>新密码</label>
-        <input type="password" v-model="newPassword" placeholder="请输入6位新密码" style="width:100%" maxlength="6">
+        <input type="password" v-model="newPassword" placeholder="请输入6位新密码" style="width:100%" maxlength="6" @keyup.enter="submitChangePwd">
       </div>
       <div class="cost-field" style="margin-bottom:20px">
         <label>确认密码</label>
-        <input type="password" v-model="confirmPassword" placeholder="请再次输入新密码" style="width:100%" maxlength="6">
+        <input type="password" v-model="confirmPassword" placeholder="请再次输入新密码" style="width:100%" maxlength="6" @keyup.enter="submitChangePwd">
       </div>
       <button class="btn btn-pri" style="width:100%;padding:10px" @click="submitChangePwd">确认修改</button>
       <div v-if="pwdError" style="margin-top:12px;color:var(--danger);font-size:13px;text-align:center">{{ pwdError }}</div>

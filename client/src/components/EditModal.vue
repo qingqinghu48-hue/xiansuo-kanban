@@ -1,5 +1,5 @@
 <template>
-  <div class="modal" :class="{ show: visible }" @click.self="close">
+  <div class="modal" :class="{ show: visible }" @click.self="close" @keydown.enter="onEnterSave">
     <div class="modal-box" style="max-width:560px">
       <div class="modal-hd">
         <h3>编辑线索</h3>
@@ -158,6 +158,11 @@ onMounted(() => { document.addEventListener('click', onDocClick) })
 onUnmounted(() => { document.removeEventListener('click', onDocClick) })
 
 function close() { emit('close') }
+
+function onEnterSave(e) {
+  if (e.target.tagName === 'TEXTAREA') return
+  save()
+}
 
 async function save() {
   form.value['所属大区'] = selectedRegions.value.join('、')

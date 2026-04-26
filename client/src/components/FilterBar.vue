@@ -57,9 +57,9 @@
     </div>
     <div class="filter-row">
       <span class="filter-label">搜索</span>
-      <input type="text" class="filter-search" v-model="filter.fk" placeholder="姓名 / 手机号">
+      <input type="text" class="filter-search" v-model="filter.fk" placeholder="姓名 / 手机号" @keyup.enter="apply">
       <div style="flex:1"></div>
-      <button class="btn btn-pri" @click="apply">应用筛选</button>
+      <button class="btn btn-pri" @click="apply">搜索</button>
       <button class="btn btn-ghost" @click="reset">重置</button>
     </div>
   </div>
