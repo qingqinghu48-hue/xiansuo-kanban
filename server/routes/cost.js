@@ -137,16 +137,7 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
     }
 
     const { buffer, originalname } = req.file;
-    const isCsv = originalname.toLowerCase().endsWith('.csv');
-
-    let df;
-    if (isCsv) {
-      // xlsx 也可以解析 CSV
-      const workbook = parseExcel(buffer, originalname);
-      df = workbook;
-    } else {
-      df = parseExcel(buffer, originalname);
-    }
+    const df = parseExcel(buffer, originalname);
 
     if (!df || !df.length) {
       return res.json({ success: false, message: '文件为空或无法解析' });

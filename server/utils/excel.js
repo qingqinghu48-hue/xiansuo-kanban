@@ -4,7 +4,20 @@
 const xlsx = require('xlsx');
 
 function parseExcel(buffer, filename) {
-  const workbook = xlsx.read(buffer, { type: 'buffer', cellDates: true });
+  const isCsv = (filename || '').toLowerCase().endsWith('.csv');
+
+  let workbook;
+  if (isCsv) {
+    // CSV 需要先用 UTF-8 解码为字符串，xlsx.read(type:'buffer') 对 CSV 编码处理有问题
+    let csvStr = buffer.toString('utf-8');
+    // 去除 BOM
+    if (csvStr.charCodeAt(0) === 0xFEFF) {
+      csvStr = csvStr.slice(1);
+    }
+    workbook = xlsx.read(csvStr, { type: 'string', cellDates: true });
+  } else {
+    workbook = xlsx.read(buffer, { type: 'buffer', cellDates: true });
+  }
 
   let worksheet = null;
 
