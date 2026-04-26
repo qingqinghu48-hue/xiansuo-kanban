@@ -63,18 +63,24 @@ function initDb() {
       created_at TEXT NOT NULL,
       is_read INTEGER DEFAULT 0,
       xhs_account TEXT DEFAULT '',
-      lead_type TEXT DEFAULT '',
+      flow_type TEXT DEFAULT '',
       UNIQUE(phone)
     )
   `);
 
-  // 添加可能缺失的字段（兼容旧表）
+  // 字段重命名兼容（旧表 lead_type → flow_type）
   const columns = db.prepare("PRAGMA table_info(new_leads)").all();
   const colNames = columns.map(c => c.name);
+  if (colNames.includes('lead_type') && !colNames.includes('flow_type')) {
+    db.exec(`ALTER TABLE new_leads RENAME COLUMN lead_type TO flow_type`);
+    console.log('[数据库] 字段 lead_type 已重命名为 flow_type');
+    colNames[colNames.indexOf('lead_type')] = 'flow_type';
+  }
 
+  // 添加可能缺失的字段（兼容旧表）
   const missingCols = [
     { name: 'xhs_account', type: 'TEXT DEFAULT ""' },
-    { name: 'lead_type', type: 'TEXT DEFAULT ""' },
+    { name: 'flow_type', type: 'TEXT DEFAULT ""' },
     { name: '二次联系时间', type: 'TEXT DEFAULT ""' },
     { name: '二次联系备注', type: 'TEXT DEFAULT ""' },
     { name: '最近一次电联时间', type: 'TEXT DEFAULT ""' },

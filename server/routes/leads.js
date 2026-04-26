@@ -17,7 +17,7 @@ const LEAD_FIELDS = [
   'phone', 'platform', 'agent', 'entry_date', 'name', 'city', 'region',
   'validity', 'can_wechat', 'remark',
   '二次联系时间', '二次联系备注', '最近一次电联时间', '到访时间', '签约时间',
-  'xhs_account', 'lead_type',
+  'xhs_account', 'flow_type',
   'is_duplicate', 'xhs_nickname', 'xhs_user_id', 'xhs_uid', 'source_note',
   'creative_name', 'creative_id', 'conversion_method', 'wechat_id', 'detail_json',
   'intention_type', 'intention_store', 'intention_store_id', 'follow_up_account',
@@ -69,7 +69,7 @@ function loadNewLeads() {
       '到访时间': cleanVal(row['到访时间']),
       '签约时间': cleanVal(row['签约时间']),
       '小红书账号': cleanVal(row.xhs_account),
-      '流量类型': cleanVal(row.lead_type),
+      '流量类型': cleanVal(row.flow_type),
       '来源文件': '手动录入',
       // 招商线索管理表扩展字段
       '是否重复': cleanVal(row.is_duplicate),
@@ -218,7 +218,7 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
     const signTime = data['签约时间'] || '';
     const platform = data.platform || '';
     const xhsAccount = data.xhs_account || '';
-    const leadType = data.lead_type || data['流量类型'] || '';
+    const flowType = data.flow_type || data['流量类型'] || '';
     const xhsUserId = data.xhs_user_id || '';
     const agent = data.agent || '';
 
@@ -226,21 +226,21 @@ router.post('/api/leads/update', requireAuth, (req, res) => {
       db.prepare(`UPDATE new_leads SET
         phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
         platform = ?, entry_date = ?, 二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
-        xhs_account = ?, lead_type = ?, xhs_user_id = ?, agent = ?
+        xhs_account = ?, flow_type = ?, xhs_user_id = ?, agent = ?
         WHERE id = ?`).run(
         newPhone || phone, name, city, validity, region, canWechat, remark,
         platform, entryDate, contactTime, contactRemark, callTime, visitTime, signTime,
-        xhsAccount, leadType, xhsUserId, agent, leadId
+        xhsAccount, flowType, xhsUserId, agent, leadId
       );
     } else {
       db.prepare(`UPDATE new_leads SET
         phone = ?, name = ?, city = ?, validity = ?, region = ?, can_wechat = ?, remark = ?,
         二次联系时间 = ?, 二次联系备注 = ?, 最近一次电联时间 = ?, 到访时间 = ?, 签约时间 = ?,
-        xhs_account = ?, lead_type = ?, xhs_user_id = ?
+        xhs_account = ?, flow_type = ?, xhs_user_id = ?
         WHERE id = ?`).run(
         newPhone || phone, name, city, validity, region, canWechat, remark,
         contactTime, contactRemark, callTime, visitTime, signTime,
-        xhsAccount, leadType, xhsUserId, leadId
+        xhsAccount, flowType, xhsUserId, leadId
       );
     }
 
@@ -524,7 +524,7 @@ function handleImport(req, res) {
         '到访时间': parseDate(row, visitTimeCol),
         '签约时间': parseDate(row, signTimeCol),
         xhs_account: isXhsChannel ? getVal(row, xhsAccountCol) : '',
-        lead_type: getVal(row, leadTypeCol) || '',
+        flow_type: getVal(row, leadTypeCol) || '',
         // 招商扩展字段
         is_duplicate: getVal(row, isDuplicateCol),
         // 小红书扩展字段
