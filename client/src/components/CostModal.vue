@@ -31,7 +31,7 @@
         <!-- 批量导入 -->
         <div class="cost-form" style="margin-bottom:20px;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
           <div style="font-weight:700;color:#15803d;margin-bottom:14px;font-size:14px;display:flex;align-items:center;gap:6px">
-            <span style="font-size:16px">📥</span> 批量导入营销线索消耗
+            <span style="font-size:16px">📥</span> 批量导入抖音线索消耗
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
             <button class="btn btn-ghost" style="font-size:12px" @click="downloadTemplate">
@@ -189,20 +189,19 @@ async function delCost(id) {
   } catch(e) { showMsg('网络错误', 'err') }
 }
 
-// 下载模板
+// 下载模板（抖音线索消耗：日期、营销场景、消耗(元)、转化成本(元)、转化数）
 function downloadTemplate() {
-  const header = '日期,平台,总消耗（元）,获得线索数\n'
+  const header = '日期,营销场景,消耗(元),转化成本(元),转化数\n'
   const sample = [
-    '2026-04-20,抖音,5000,100',
-    '2026-04-20,小红书,3000,60',
-    '2026-04-21,抖音,5200,104',
-    '2026-04-21,小红书,3200,64',
+    '2026-04-20,短视频,2785.96,278.60,10',
+    '2026-04-19,短视频,2533.68,281.52,9',
+    '2026-04-18,短视频,2975.04,371.88,8',
   ].join('\n') + '\n'
   const blob = new Blob(['\uFEFF' + header + sample], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = '营销线索消耗导入模板.csv'
+  a.download = '抖音线索消耗导入模板.csv'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

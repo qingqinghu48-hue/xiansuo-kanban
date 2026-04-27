@@ -138,17 +138,14 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
     const cols = Object.keys(df[0]).map(c => String(c).trim());
     console.log(`[成本导入] 文件=${originalname}, 行数=${df.length}, 列名=${cols.join(',')}`);
 
-    // 智能识别列
+    // 智能识别列（抖音线索消耗模板：日期、营销场景、消耗(元)、转化成本(元)、转化数）
     const dateCol = findCol(cols, ['日期', 'date', 'cost_date', '时间', '日期时间']);
-    const platformCol = findCol(cols, ['平台', 'platform', '渠道', '来源平台']);
-    const amountCol = findCol(cols, ['总消耗', 'amount', '消耗', '每日总消耗', '花费', '费用', '投放金额', '金额']);
-    const leadCountCol = findCol(cols, ['获得线索数', '营销线索数', '线索数', 'lead_count', '线索', '获客数', '留资数']);
+    const sceneCol = findCol(cols, ['营销场景', '场景', '投放场景']);
+    const amountCol = findCol(cols, ['消耗(元)', '消耗', '总消耗', 'amount', '每日总消耗', '花费', '费用', '投放金额', '金额']);
+    const leadCountCol = findCol(cols, ['转化数', '获得线索数', '营销线索数', '线索数', 'lead_count', '线索', '获客数', '留资数']);
 
     if (!dateCol) {
       return res.json({ success: false, message: `无法识别日期列。当前列名: ${cols.join(', ')}` });
-    }
-    if (!platformCol) {
-      return res.json({ success: false, message: `无法识别平台列。当前列名: ${cols.join(', ')}` });
     }
 
     const now = formatDateTime();
@@ -158,11 +155,11 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
     for (let i = 0; i < df.length; i++) {
       const row = df[i];
       const rawDate = parseDateVal(row[dateCol]);
-      const platform = String(row[platformCol] || '').trim();
+      const scene = sceneCol ? String(row[sceneCol] || '').trim() : '';
 
-      if (!rawDate || !platform) {
+      if (!rawDate) {
         skipped++;
-        badRows.push({ row: i + 2, reason: '日期或平台为空', data: row });
+        badRows.push({ row: i + 2, reason: '日期为空（汇总行或空行）', data: row });
         continue;
       }
 
@@ -185,7 +182,7 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
       }
 
       try {
-        const result = upsertCostData({ cost_date: rawDate, platform, amount, lead_count, now });
+        const result = upsertCostData({ cost_date: rawDate, platform: '抖音', amount, lead_count, now });
         if (result.action === 'update') updated++;
         else added++;
       } catch (e) {
