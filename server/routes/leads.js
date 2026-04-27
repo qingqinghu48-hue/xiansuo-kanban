@@ -476,7 +476,7 @@ function handleImport(req, res) {
         // 抖音/客资渠道：优先读取表格里的"跟进员工"列
         agent = getVal(row, findCol(cols, ['跟进员工'])) || getVal(row, agentCol) || '郑建军';
       } else if (isXhsChannel) {
-        agent = getVal(row, agentCol) || '郑建军';
+        agent = getVal(row, agentCol) || '';
       } else {
         agent = getVal(row, findCol(cols, ['所属招商'])) || getVal(row, findCol(cols, ['跟进员工'])) || getVal(row, agentCol) || '郑建军';
       }
