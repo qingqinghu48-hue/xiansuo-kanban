@@ -148,9 +148,17 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
       return res.json({ success: false, message: `无法识别日期列。当前列名: ${cols.join(', ')}` });
     }
 
+    const isPreview = req.query.preview === '1';
     const now = formatDateTime();
     let added = 0, updated = 0, skipped = 0;
     const badRows = [];
+
+    // preview 模式需要查已有记录来判断新增/更新
+    const existingMap = {};
+    if (isPreview) {
+      const rows = db.prepare('SELECT cost_date, platform FROM cost_data').all();
+      rows.forEach(r => { existingMap[`${r.cost_date}|${r.platform}`] = true; });
+    }
 
     for (let i = 0; i < df.length; i++) {
       const row = df[i];
@@ -179,6 +187,13 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
       const parsedLead = parseFloat(cleanLead);
       if (!isNaN(parsedLead)) lead_count = parsedLead;
 
+      if (isPreview) {
+        const key = `${rawDate}|抖音`;
+        if (existingMap[key]) updated++;
+        else added++;
+        continue;
+      }
+
       try {
         const result = upsertCostData({ cost_date: rawDate, platform: '抖音', amount, lead_count, now });
         if (result.action === 'update') updated++;
@@ -187,6 +202,18 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
         skipped++;
         badRows.push({ row: i + 2, reason: e.message, data: row });
       }
+    }
+
+    if (isPreview) {
+      let previewMsg = `预计新增 ${added} 条，更新 ${updated} 条`;
+      return res.json({
+        success: true,
+        preview: true,
+        message: previewMsg,
+        added,
+        updated,
+        total: added + updated,
+      });
     }
 
     let msg = `导入完成！新增 ${added} 条，更新 ${updated} 条`;

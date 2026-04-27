@@ -51,9 +51,16 @@
             <input ref="fileInput" type="file" accept=".csv,.xlsx,.xls" style="display:none" @change="onFileChange">
             <div style="font-size:24px;margin-bottom:6px">📁</div>
             <div style="font-size:13px;color:#15803d;font-weight:600">点击或拖拽文件到此处</div>
-            <div style="font-size:12px;color:#86a78f;margin-top:4px">支持 CSV、XLSX 格式</div>
+            <div v-if="pendingFile" style="font-size:12px;color:#15803d;margin-top:4px;font-weight:600">已选择：{{ pendingFile.name }}</div>
+            <div v-else style="font-size:12px;color:#86a78f;margin-top:4px">支持 CSV、XLSX 格式</div>
           </div>
-          <div v-if="importResult" :class="['cost-result', importResultType]" style="margin-top:10px">{{ importResult }}</div>
+          <div style="text-align:right;margin-top:12px">
+            <button v-if="!costImportPending && !costImportConfirm && pendingFile" class="btn btn-pri" @click="previewCostImport">预览导入</button>
+            <button v-if="costImportConfirm" class="btn btn-pri" @click="doCostImport">确认导入</button>
+            <button v-if="costImportConfirm" class="btn btn-ghost" @click="cancelCostConfirm" style="margin-left:8px">取消</button>
+          </div>
+          <div v-if="costImportPending" class="cost-result" style="margin-top:10px;color:var(--text-2)">正在解析...</div>
+          <div v-else-if="importResult" :class="['cost-result', importResultType]" style="margin-top:10px">{{ importResult }}</div>
         </div>
 
         <!-- 历史记录 -->
@@ -118,6 +125,9 @@ const fileInput = ref(null)
 const isDragOver = ref(false)
 const importResult = ref('')
 const importResultType = ref('')
+const pendingFile = ref(null)
+const costImportPending = ref(false)
+const costImportConfirm = ref(false)
 
 // 编辑状态
 const editingId = ref(null)
@@ -131,6 +141,15 @@ function close() { emit('close') }
 function showMsg(msg, type) {
   result.value = msg
   resultType.value = type
+}
+
+function resetCostImport() {
+  pendingFile.value = null
+  costImportPending.value = false
+  costImportConfirm.value = false
+  importResult.value = ''
+  importResultType.value = ''
+  if (fileInput.value) fileInput.value.value = ''
 }
 
 async function submitCost() {
@@ -211,36 +230,82 @@ function downloadTemplate() {
 // 文件选择
 function onFileChange(e) {
   const file = e.target.files[0]
-  if (file) handleImport(file)
+  if (file) {
+    pendingFile.value = file
+    costImportConfirm.value = false
+    importResult.value = ''
+    importResultType.value = ''
+  }
 }
 
 // 拖拽导入
 function onDrop(e) {
   isDragOver.value = false
   const file = e.dataTransfer.files[0]
-  if (file) handleImport(file)
+  if (file) {
+    pendingFile.value = file
+    costImportConfirm.value = false
+    importResult.value = ''
+    importResultType.value = ''
+  }
 }
 
-// 执行导入
-async function handleImport(file) {
-  importResult.value = '正在导入...'
-  importResultType.value = ''
+// 预览导入
+async function previewCostImport() {
+  if (!pendingFile.value) { importResult.value = '请选择文件'; importResultType.value = 'err'; return }
+  costImportPending.value = true
+  importResult.value = ''
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', pendingFile.value)
   try {
-    const data = await api.importCost(formData)
+    const data = await api.importCost(formData, true)
+    costImportPending.value = false
+    if (data.success && data.preview) {
+      costImportConfirm.value = true
+      importResult.value = '【预览】' + data.message + '，确认后写入数据库'
+      importResultType.value = 'ok'
+    } else {
+      importResult.value = data.message || '预览失败'
+      importResultType.value = 'err'
+    }
+  } catch(e) {
+    costImportPending.value = false
+    importResult.value = '网络错误，请重试'
+    importResultType.value = 'err'
+  }
+}
+
+// 确认导入
+async function doCostImport() {
+  if (!pendingFile.value) { importResult.value = '文件已失效，请重新选择'; importResultType.value = 'err'; return }
+  costImportPending.value = true
+  const formData = new FormData()
+  formData.append('file', pendingFile.value)
+  try {
+    const data = await api.importCost(formData, false)
+    costImportPending.value = false
+    costImportConfirm.value = false
     if (data.success) {
       importResult.value = data.message
       importResultType.value = 'ok'
       emit('update')
+      pendingFile.value = null
+      if (fileInput.value) fileInput.value.value = ''
     } else {
       importResult.value = data.message || '导入失败'
       importResultType.value = 'err'
     }
   } catch(e) {
+    costImportPending.value = false
     importResult.value = '网络错误，请重试'
     importResultType.value = 'err'
   }
+}
+
+function cancelCostConfirm() {
+  costImportConfirm.value = false
+  importResult.value = ''
+  importResultType.value = ''
 }
 </script>
 

@@ -98,17 +98,19 @@ export default {
       body: JSON.stringify({ id })
     })
   },
-  importCost(formData) {
-    return request('/api/cost/import', {
+  importCost(formData, preview = false) {
+    const qs = preview ? '?preview=1' : ''
+    return request('/api/cost/import' + qs, {
       method: 'POST',
       body: formData
     })
   },
-  importFile(type, formData) {
+  importFile(type, formData, preview = false) {
     const map = { zs: 'zhaoshang', dy: 'douyin', xhs: 'xiaohongshu' }
     const endpoint = type === 'dy' ? '/api/leads/import-douyin' : '/api/leads/import'
     if (type !== 'dy') formData.append('type', map[type] || type)
-    return request(endpoint, {
+    const qs = preview ? '?preview=1' : ''
+    return request(endpoint + qs, {
       method: 'POST',
       body: formData
     })

@@ -564,6 +564,56 @@ function handleImport(req, res) {
 
     console.log(`[导入] 解析成功: ${parsed.length} 条, 空值跳过: ${badRows.length} 条`);
 
+    const isPreview = req.query.preview === '1';
+
+    // 加载已有线索（preview 和正式导入都需要）
+    const existingRows = db.prepare('SELECT phone, platform, entry_date FROM new_leads').all();
+    const existing = {};
+    for (const er of existingRows) {
+      existing[er.phone] = { platform: er.platform, entry_date: er.entry_date };
+    }
+
+    // preview 模式：只计算统计，不写入数据库
+    if (isPreview) {
+      let added = 0, updated = 0, dupSkip = 0, skipped = 0;
+      const seenInFile = new Set();
+
+      for (const item of parsed) {
+        const phone = item.phone;
+        if (seenInFile.has(phone)) { dupSkip++; continue; }
+        seenInFile.add(phone);
+
+        const platform = item.platform;
+
+        if (existing[phone]) {
+          if (isDouyinChannel || isXhsChannel) { skipped++; continue; }
+          if (isZhaoshang && ((platform || '').includes('抖音') || (platform || '').includes('小红书'))) { skipped++; continue; }
+          updated++;
+        } else {
+          if (isZhaoshang && ((platform || '').includes('抖音') || (platform || '').includes('小红书'))) { skipped++; continue; }
+          added++;
+        }
+      }
+
+      let previewMsg = `预计新增 ${added} 条，更新 ${updated} 条`;
+      if (skipped) previewMsg += `，跳过 ${skipped} 条`;
+      if (dupSkip) previewMsg += `，Excel内重复 ${dupSkip} 条`;
+      if (badRows.length) previewMsg += `，空值/无效 ${badRows.length} 条`;
+
+      return res.json({
+        success: true,
+        preview: true,
+        message: previewMsg,
+        added,
+        updated,
+        skipped,
+        dup_skip: dupSkip,
+        bad: badRows.length,
+        bad_rows: badRows.slice(0, 5),
+        total: parsed.length,
+      });
+    }
+
     // 事务保护下的数据库写入
     const importTx = db.transaction((items, flags) => {
       const { isDouyinChannel, isXhsChannel, isZhaoshang } = flags;
