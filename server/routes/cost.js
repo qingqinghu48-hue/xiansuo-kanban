@@ -155,31 +155,27 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
     for (let i = 0; i < df.length; i++) {
       const row = df[i];
       const rawDate = parseDateVal(row[dateCol]);
-      const scene = sceneCol ? String(row[sceneCol] || '').trim() : '';
 
-      if (!rawDate) {
-        skipped++;
-        badRows.push({ row: i + 2, reason: '日期为空（汇总行或空行）', data: row });
+      // 读取原始值（用于判断脏数据，0 不算空）
+      const rawAmount = amountCol ? row[amountCol] : undefined;
+      const rawLead = leadCountCol ? row[leadCountCol] : undefined;
+
+      const isEmptyDate = !rawDate;
+      const isEmptyAmount = rawAmount === '' || rawAmount === null || rawAmount === undefined;
+      const isEmptyLead = rawLead === '' || rawLead === null || rawLead === undefined;
+
+      // 日期/消耗/转化数任意一个为空 → 脏数据，静默跳过不计数
+      if (isEmptyDate || isEmptyAmount || isEmptyLead) {
         continue;
       }
 
       let amount = 0;
-      if (amountCol) {
-        const rawAmount = row[amountCol];
-        if (rawAmount !== '' && rawAmount !== null && rawAmount !== undefined) {
-          const parsed = parseFloat(rawAmount);
-          if (!isNaN(parsed)) amount = parsed;
-        }
-      }
+      const parsedAmount = parseFloat(rawAmount);
+      if (!isNaN(parsedAmount)) amount = parsedAmount;
 
       let lead_count = 0;
-      if (leadCountCol) {
-        const rawLead = row[leadCountCol];
-        if (rawLead !== '' && rawLead !== null && rawLead !== undefined) {
-          const parsed = parseFloat(rawLead);
-          if (!isNaN(parsed)) lead_count = parsed;
-        }
-      }
+      const parsedLead = parseFloat(rawLead);
+      if (!isNaN(parsedLead)) lead_count = parsedLead;
 
       try {
         const result = upsertCostData({ cost_date: rawDate, platform: '抖音', amount, lead_count, now });
