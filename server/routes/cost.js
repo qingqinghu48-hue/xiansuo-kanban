@@ -170,11 +170,13 @@ router.post('/api/cost/import', requireAdmin, upload.single('file'), (req, res) 
       }
 
       let amount = 0;
-      const parsedAmount = parseFloat(rawAmount);
+      const cleanAmount = String(rawAmount).replace(/,/g, '').trim();
+      const parsedAmount = parseFloat(cleanAmount);
       if (!isNaN(parsedAmount)) amount = parsedAmount;
 
       let lead_count = 0;
-      const parsedLead = parseFloat(rawLead);
+      const cleanLead = String(rawLead).replace(/,/g, '').trim();
+      const parsedLead = parseFloat(cleanLead);
       if (!isNaN(parsedLead)) lead_count = parsedLead;
 
       try {
