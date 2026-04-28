@@ -17,7 +17,7 @@
             </select>
           </div>
           <div class="cost-field"><label>入库日期</label><input type="date" v-model="form['入库日期']" :readonly="!isAdmin" :style="!isAdmin?roStyle:{}" ></div>
-          <div class="cost-field"><label>小红书账号</label><input type="text" v-model="form['小红书账号']" placeholder="请输入小红书账号"></div>
+          <div v-if="isXhs" class="cost-field"><label>小红书账号</label><input type="text" v-model="form['小红书账号']" placeholder="请输入小红书账号"></div>
           <div v-if="isXhs" class="cost-field"><label>用户小红书ID</label><input type="text" v-model="form['用户小红书ID']" placeholder="请输入用户小红书ID"></div>
           <div v-if="isAdChannel" class="cost-field">
             <label>流量类型</label>
