@@ -49,10 +49,15 @@ const sessionStore = new SqliteSessionStore(db, { tableName: 'sessions' });
 setInterval(() => sessionStore.gc(), 60 * 60 * 1000);
 
 // Session 配置
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) {
+  console.error('[错误] 未设置 SESSION_SECRET 环境变量，请检查 server/.env 文件');
+  process.exit(1);
+}
 const SESSION_MAX_AGE = 14 * 24 * 60 * 60 * 1000; // 14 天
 app.use(session({
   store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'xiansuo-kanban-secret-key-2024',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   rolling: true, // 每次请求刷新过期时间

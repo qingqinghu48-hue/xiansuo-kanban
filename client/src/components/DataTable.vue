@@ -136,7 +136,7 @@ function sortIcon(k) {
 
 function validTag(v) {
   const cls = v === '意向客户' ? 'tag-yx' : v === '一般客户' ? 'tag-yb' : v === '无效线索' ? 'tag-wlx' : ''
-  return `<span class="tag ${cls}">${esc(v)}</span>`
+  return `<span class="tag ${esc(cls)}">${esc(v)}</span>`
 }
 function jmTag(jm) {
   if (jm === '是') return '<span style="color:#10b981;font-weight:700">是</span>'

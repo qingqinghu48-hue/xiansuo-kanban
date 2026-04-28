@@ -130,6 +130,12 @@ function setBarChart(chart, dataDict, colorStart, colorEnd) {
   if (!chart) return
   const keys = Object.keys(dataDict).sort()
   const values = keys.map(k => dataDict[k])
+  const pointCount = keys.length
+  const needZoom = pointCount > 12
+  // 数据点多时：每个柱子至少 28px，图表撑开可横向滚动
+  const minBarPx = 28
+  const barGapPx = 12
+  const chartWidth = needZoom ? Math.max(300, pointCount * (minBarPx + barGapPx)) : undefined
 
   chart.setOption({
     tooltip: {
@@ -137,11 +143,11 @@ function setBarChart(chart, dataDict, colorStart, colorEnd) {
       formatter: params => `${params[0].axisValue}<br/>¥${Number(params[0].value).toFixed(2)}`,
       textStyle: { fontSize: 13 }
     },
-    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    grid: { left: 50, right: 20, top: 30, bottom: needZoom ? 50 : 30 },
     xAxis: {
       type: 'category',
       data: keys.map(k => String(k).slice(5)),
-      axisLabel: { fontSize: 12, color: '#475569' },
+      axisLabel: { fontSize: 12, color: '#475569', interval: needZoom ? 'auto' : 0 },
       axisLine: { lineStyle: { color: '#e2e8f0' } }
     },
     yAxis: {
@@ -153,10 +159,14 @@ function setBarChart(chart, dataDict, colorStart, colorEnd) {
       },
       splitLine: { lineStyle: { color: '#f1f5f9' } }
     },
+    dataZoom: needZoom ? [
+      { type: 'inside', start: Math.max(0, 100 - Math.round(12 / pointCount * 100)), end: 100 },
+      { type: 'slider', start: Math.max(0, 100 - Math.round(12 / pointCount * 100)), end: 100, height: 18, bottom: 8, borderColor: 'transparent', fillerColor: 'rgba(148,163,184,0.15)', handleStyle: { color: '#94a3b8' } }
+    ] : undefined,
     series: [{
       type: 'bar',
       data: values,
-      barWidth: '50%',
+      barWidth: needZoom ? minBarPx : '50%',
       itemStyle: {
         borderRadius: [4, 4, 0, 0],
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -174,12 +184,24 @@ function setBarChart(chart, dataDict, colorStart, colorEnd) {
       }
     }]
   }, true)
+
+  // 动态设置容器宽度以撑开滚动
+  if (needZoom && chart.getDom) {
+    const dom = chart.getDom()
+    if (dom) dom.style.width = chartWidth + 'px'
+    chart.resize()
+  }
 }
 
 function setLineChart(chart, dataDict, lineColor, fillColors) {
   if (!chart) return
   const keys = Object.keys(dataDict).sort()
   const values = keys.map(k => dataDict[k])
+  const pointCount = keys.length
+  const needZoom = pointCount > 12
+  // 数据点多时：每个点至少 36px 间距，图表撑开可横向滚动
+  const minPointPx = 36
+  const chartWidth = needZoom ? Math.max(300, pointCount * minPointPx) : undefined
 
   chart.setOption({
     tooltip: {
@@ -187,11 +209,11 @@ function setLineChart(chart, dataDict, lineColor, fillColors) {
       formatter: params => `${params[0].axisValue}<br/>¥${Number(params[0].value).toFixed(2)}`,
       textStyle: { fontSize: 13 }
     },
-    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    grid: { left: 50, right: 20, top: 30, bottom: needZoom ? 50 : 30 },
     xAxis: {
       type: 'category',
       data: keys.map(k => String(k).slice(5)),
-      axisLabel: { fontSize: 12, color: '#475569' },
+      axisLabel: { fontSize: 12, color: '#475569', interval: needZoom ? 'auto' : 0 },
       axisLine: { lineStyle: { color: '#e2e8f0' } },
       boundaryGap: false
     },
@@ -204,6 +226,10 @@ function setLineChart(chart, dataDict, lineColor, fillColors) {
       },
       splitLine: { lineStyle: { color: '#f1f5f9' } }
     },
+    dataZoom: needZoom ? [
+      { type: 'inside', start: Math.max(0, 100 - Math.round(12 / pointCount * 100)), end: 100 },
+      { type: 'slider', start: Math.max(0, 100 - Math.round(12 / pointCount * 100)), end: 100, height: 18, bottom: 8, borderColor: 'transparent', fillerColor: 'rgba(148,163,184,0.15)', handleStyle: { color: '#94a3b8' } }
+    ] : undefined,
     series: [{
       type: 'line',
       data: values,
@@ -228,6 +254,13 @@ function setLineChart(chart, dataDict, lineColor, fillColors) {
       }
     }]
   }, true)
+
+  // 动态设置容器宽度以撑开滚动
+  if (needZoom && chart.getDom) {
+    const dom = chart.getDom()
+    if (dom) dom.style.width = chartWidth + 'px'
+    chart.resize()
+  }
 }
 
 function renderAll() {
