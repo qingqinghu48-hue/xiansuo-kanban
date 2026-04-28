@@ -440,18 +440,26 @@ function handleImport(req, res) {
       let phone = '';
       if (raw !== undefined && raw !== null && raw !== '') {
         const s = String(raw).trim();
-        const digits = s.replace(/\D/g, '');
-        if (digits.length >= 7) {
-          phone = digits;
-        } else if (s.length >= 5) {
-          phone = s;
+        if (s) {
+          const digits = s.replace(/\D/g, '');
+          if (digits.length >= 7) {
+            phone = digits;
+          } else if (s.length >= 5) {
+            phone = s;
+          }
         }
-      } else if (weixinRaw !== undefined && weixinRaw !== null && weixinRaw !== '') {
-        phone = String(weixinRaw).trim();
+      }
+
+      // 手机号为空时，回退到微信号
+      if (!phone && weixinRaw !== undefined && weixinRaw !== null && weixinRaw !== '') {
+        const wx = String(weixinRaw).trim();
+        if (wx) {
+          phone = wx;
+        }
       }
 
       if (!phone) {
-        badRows.push({ row: idx + 2, raw: String(raw), reason: '联系方式为空' });
+        badRows.push({ row: idx + 2, raw: String(raw || ''), reason: '联系方式为空' });
         continue;
       }
 
